@@ -1,0 +1,69 @@
+version: '3.9'
+services:  
+  mlflo-server:
+    build: ./mlflow-server
+    image: mlflow-server
+    container_name: mlflow-server
+    ports:
+     - "5000:5000"
+    environment:
+      MLFLOW_S3_ENDPOINT_URL: http://minio-s3:9000
+      AWS_SECRET_KEY_ID: access_key
+      AWS_SECRET_ACCESS_KEY: secret_key
+      MLFLOW_S3_IGNORE_TLS: true  # Use this if minio is configured with using SSL self-signed or signed using some internal-only CA certificate
+    depends_on:
+      - minio-s3
+      - db
+    command: >
+      mlflow server 
+      --backend-store-uri mysql+pymysql://root:password@db:3306/mlflow
+      --default-artifact-root s3://mlflow
+      --host 0.0.0.0
+    # networks:
+    #   - backend
+    #   - frontend
+
+  db:
+    # image: mysql/mysql-server:latest
+    image: mysql:8.0
+    container_name: mysql
+    ports:
+      - "3306:3306"
+      - "33060:33060"
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password
+      MYSQL_DATABASE: mlflow
+    volumes:
+      - ./mysql-data:/var/lib/mysql
+    # networks:
+    #  - backend
+        
+  minio-s3:
+  # TODO: Do health check?
+    image: minio/minio
+    container_name: minio-s3
+    ports:
+      - "9000:9000"
+      - "9090:9090"
+      - "9001:9001" 
+    environment:
+      MINIO_ROOT_USER: root
+      MINIO_ROOT_PASSWORD: password
+    volumes:
+      - ./s3-data:/data
+    command: server --console-address ":9001" /data
+    # networks:
+    #   - backend
+
+# networks:
+#   frontend:
+#     driver: bridge
+#   backend:
+#     driver: bridge
+
+volumes:
+  mysql-data:
+  s3-data:
+
