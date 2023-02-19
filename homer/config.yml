@@ -1,0 +1,82 @@
+---
+title: "Jens Lordén Dashboard"
+subtitle: "Walkx"
+logo: "logo.png"
+
+header: false
+footer: '<p>Theme made with <span class="has-text-danger">❤️</span> by <a href="https://github.com/WalkxCode">Walkx</a></p>' # Set false if you want to hide it.
+
+stylesheet:
+  - "assets/custom.css"
+
+columns: "3" # You can change this to any number that is a factor of 12: (1, 2, 3, 4, 6, 12)
+theme: default
+colors:
+  light:
+    highlight-primary: "#fff5f2"
+    highlight-secondary: "#fff5f2"
+    highlight-hover: "#bebebe"
+    background: "#12152B"
+    card-background: "rgba(255, 245, 242, 0.8)"
+    text: "#ffffff"
+    text-header: "#fafafa"
+    text-title: "#000000"
+    text-subtitle: "#111111"
+    card-shadow: rgba(0, 0, 0, 0.5)
+    link: "#3273dc"
+    link-hover: "#2e4053"
+    background-image: "../assets/wallpaper-light.jpeg" # Change wallpaper.jpeg to the name of your own custom wallpaper!
+  dark:
+    highlight-primary: "#181C3A"
+    highlight-secondary: "#181C3A"
+    highlight-hover: "#1F2347"
+    background: "#12152B"
+    card-background: "rgba(24, 28, 58, 0.8)"
+    text: "#eaeaea"
+    text-header: "#7C71DD"
+    text-title: "#fafafa"
+    text-subtitle: "#8B8D9C"
+    card-shadow: rgba(0, 0, 0, 0.5)
+    link: "#c1c1c1"
+    link-hover: "#fafafa"
+    background-image: "../assets/wallpaper.jpeg"
+
+links:
+  - name: "Github"
+    icon: "fab fa-github"
+    url: "https://github.com/Celsuss"
+    target: "_blank" # optional html a tag target attribute
+
+services:
+  - name: "//Network"
+    icon: "fas fa-github"
+    items:
+      - name: "Traefik"
+        logo: "assets/tools/traefik.png" # Change github.png to the name of your own custom icon!
+        subtitle: "Trafik monitoring"
+        tag: "Network"
+        tagstyle: "is-primary" # This will display the is-primary color! Try changing it to; is-link, is-info, is-success, is-warning or is-danger!
+        url: "http://traefik.localhost/dashboard/#/"
+        target: "_blank"
+
+  - name: "//Storage"
+    icon: "fas fa-reddit"
+    items:
+      - name: "Minio"
+        logo: "assets/tools/minio.png"
+        subtitle: "Minio S3"
+        tag: "Storage"
+        tagstyle: "is-info"
+        url: "http://minio.localhost/"
+        target: "_blank"
+
+  - name: "//Machine Learning"
+    icon: "fas fa-reddit"
+    items:
+      - name: "ML Flow"
+        logo: "assets/tools/mlflow.png"
+        subtitle: "Machine Learning Lifecycle"
+        tag: "ML"
+        tagstyle: "is-info"
+        url: "http://mlflow.localhost/"
+        target: "_blank"
