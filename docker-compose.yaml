@@ -66,9 +66,24 @@ services:
       MINIO_ROOT_PASSWORD: password
     volumes:
       - ./s3-data:/data
+    labels:
+      - "traefik.http.routers.minio-s3.rule=Host(`minio.localhost`)"
     command: server --console-address ":9001" /data
+
+  reverse-proxy:
+    image: traefik:v2.9
+    # Enables the web UI and tells Traefik to listen to docker
+    command: --api.insecure=true --providers.docker
+    ports:
+      - "80:80"
+      - "8080:8080" # Web UI
+    volumes:
+      # So that Traefik can listen to the Docker events
+      - /var/run/docker.sock:/var/run/docker.sock
 
 volumes:
   mysql-data:
   s3-data:
 
+networks:
+  loki:
