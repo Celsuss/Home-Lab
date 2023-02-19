@@ -75,6 +75,23 @@ services:
       - "traefik.http.routers.minio-s3.rule=Host(`minio.localhost`)"
     command: server --console-address ":9001" /data
 
+  # Application Dashboard
+  heimdall:
+    image: linuxserver/heimdall
+    container_name: heimdall
+    ports:
+      - "8081:80"
+      - "443:443"
+    environment:
+      PGID: 1000
+      PUID: 1000
+      TZ: Europe/London
+    labels:
+      - "traefik.http.routers.heimdall.rule=Host(`heimdall.localhost`)"
+      - "traefik.http.services.heimdall.loadbalancer.server.port=80"
+    volumes:
+      - ./heimdall:/config
+
   reverse-proxy:
     image: traefik:v2.9
     # Enables the web UI and tells Traefik to listen to docker
@@ -92,6 +109,7 @@ services:
 volumes:
   mysql-data:
   s3-data:
+  heimdall:
 
 networks:
   loki:
