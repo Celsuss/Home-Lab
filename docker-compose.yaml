@@ -6,6 +6,8 @@ services:
     container_name: mlflow-server
     ports:
      - "5000:5000"
+    labels:
+      - "traefik.http.routers.mlflow-server.rule=Host(`mlflow.localhost`)"
     depends_on:
       - minio-s3
       - db
@@ -15,13 +17,14 @@ services:
       --serve-artifacts
       --host 0.0.0.0
       --gunicorn-opts "--log-level debug"
-      --default-artifact-root http://localhost:5500/api/2.0/mlflow-artifacts/artifacts/experiments
-    # --default-artifact-root http://mlflow-artifact-server:5500/api/2.0/mlflow-artifacts/artifacts/experiments
+      --default-artifact-root http://mlflowproxy.localhost/api/2.0/mlflow-artifacts/artifacts/experiments
+    # --default-artifact-root http://localhost:5500/api/2.0/mlflow-artifacts/artifacts/experiments
+    # --default-artifact-root http://mlflow-artifact-proxy:5500/api/2.0/mlflow-artifacts/artifacts/experiments
 
-  mlflow-artifact-server:
+  mlflow-artifact-proxy:
     build: ./mlflow-server
     image: mlflow-server
-    container_name: mlflow-artifact-server
+    container_name: mlflow-artifact-proxy
     expose:
       - "5500"
     ports:
@@ -31,6 +34,8 @@ services:
       AWS_ACCESS_KEY_ID: "user"
       AWS_SECRET_ACCESS_KEY: "password"
       MLFLOW_S3_IGNORE_TLS: true  # Use this if minio is configured with using SSL self-signed or signed using some internal-only CA certificate
+    labels:
+      - "traefik.http.routers.mlflow-artifact-proxy.rule=Host(`mlflowproxy.localhost`)"
     command: >
       mlflow server
       --host 0.0.0.0
