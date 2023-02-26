@@ -1,3 +1,6 @@
+# VSCode
+.vscode/*
+
 # Storage 
 s3-data/*
 mysql-data/*
