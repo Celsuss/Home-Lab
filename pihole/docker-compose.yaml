@@ -1,25 +1,20 @@
-version: '3.9'
+version: '3'
 services:
   pihole:
     container_name: pihole
-    hostname: pihole.lan
     image: pihole/pihole:latest
-    restart: always
+    restart: unless-stopped
     ports:
       - "53:53/tcp"
       - "53:53/udp"
       - "67:67/udp" #This is required if you enable DHCP server on PiHole
-      - "8080:80/tcp"
-
+      - "80:80/tcp"
     volumes:
       - './etc-pihole/:/etc/pihole/'
       - './etc-dnsmasq.d/:/etc/dnsmasq.d/'
-
     environment:
-      - TZ= 'Europe/Stockholm'
-      # - WEBPASSWORD= 'very secure password'
-      - DNS1=1.1.1.1
-      - DNS2=1.0.0.1
+      TZ: 'Europe/Stockholm'
+      # WEBPASSWORD: 'very secure password'
 
      #Recommended but not required (DHCP needs NET_ADMIN)
     cap_add:
