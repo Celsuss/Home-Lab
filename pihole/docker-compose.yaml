@@ -16,8 +16,8 @@ services:
       - './etc-dnsmasq.d/:/etc/dnsmasq.d/'
 
     environment:
-      - TZ= 'Europe/Sweden'
-      - WEBPASSWORD= 'password'
+      - TZ= 'Europe/Stockholm'
+      # - WEBPASSWORD= 'very secure password'
       - DNS1=1.1.1.1
       - DNS2=1.0.0.1
 
