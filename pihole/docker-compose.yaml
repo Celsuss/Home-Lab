@@ -8,13 +8,38 @@ services:
       - "53:53/tcp"
       - "53:53/udp"
       - "67:67/udp" #This is required if you enable DHCP server on PiHole
-      - "80:80/tcp"
+      - "8000:80/tcp"
     volumes:
       - './etc-pihole/:/etc/pihole/'
       - './etc-dnsmasq.d/:/etc/dnsmasq.d/'
     environment:
       TZ: 'Europe/Stockholm'
+      ServerIP: 192.168.1.50
+    labels:
+    - "traefik.enable=true"
+    - "traefik.http.routers.homer.rule=Host(`pihole.localhost`)"
+    - "traefik.http.services.homer.loadbalancer.server.port=80"
       # WEBPASSWORD: 'very secure password'
+
+  traefik:
+    image: traefik:latest
+    restart: unless-stopped
+    # Enables the web UI and tells Traefik to listen to docker
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker"
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080" # Web UI
+    labels:
+      - "traefik.http.routers.reverse-proxy.rule=Host(`pitraefik.localhost`)"
+      - "traefik.http.services.reverse-proxy.loadbalancer.server.port=8080"
+      - "traefik.http.routers.api.service=api@internal"
+      - "traefik.http.routers.api.entrypoints=web"
+    volumes:
+      # So that Traefik can listen to the Docker events
+      - /var/run/docker.sock:/var/run/docker.sock
 
      #Recommended but not required (DHCP needs NET_ADMIN)
     cap_add:
