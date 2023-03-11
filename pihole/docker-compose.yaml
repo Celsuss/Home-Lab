@@ -16,7 +16,7 @@ services:
       TZ: 'Europe/Stockholm'
       VIRTUAL_HOST: pihole.local
       VIRTUAL_PORT: 80
-      ServerIP: 192.168.1.50
+      # ServerIP: 192.168.1.50
       # WEBPASSWORD: 'very secure password'
     labels:
     - "traefik.enable=true"
@@ -35,8 +35,8 @@ services:
       - "443:443"
       - "8080:8080" # Web UI
     labels:
-      - "traefik.http.routers.reverse-proxy.rule=Host(`pitraefik.local`)"
-      - "traefik.http.services.reverse-proxy.loadbalancer.server.port=8080"
+      - "traefik.http.routers.traefik.rule=Host(`pitraefik.local`)"
+      - "traefik.http.services.traefik.loadbalancer.server.port=8080"
       # - "traefik.http.routers.api.service=api@internal"
       # - "traefik.http.routers.api.entrypoints=web"
     volumes:
