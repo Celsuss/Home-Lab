@@ -14,13 +14,13 @@ services:
       - './etc-dnsmasq.d/:/etc/dnsmasq.d/'
     environment:
       TZ: 'Europe/Stockholm'
-      VIRTUAL_HOST: pihole.localhost
+      VIRTUAL_HOST: pihole.local
       VIRTUAL_PORT: 80
       ServerIP: 192.168.1.50
       # WEBPASSWORD: 'very secure password'
     labels:
     - "traefik.enable=true"
-    - "traefik.http.routers.homer.rule=Host(`pihole.localhost`)"
+    - "traefik.http.routers.homer.rule=Host(`pihole.local`, 'pihole')"
     - "traefik.http.services.homer.loadbalancer.server.port=80"
 
   traefik:
@@ -35,10 +35,10 @@ services:
       - "443:443"
       - "8080:8080" # Web UI
     labels:
-      - "traefik.http.routers.reverse-proxy.rule=Host(`pitraefik.localhost`)"
+      - "traefik.http.routers.reverse-proxy.rule=Host(`pitraefik.local`)"
       - "traefik.http.services.reverse-proxy.loadbalancer.server.port=8080"
-      - "traefik.http.routers.api.service=api@internal"
-      - "traefik.http.routers.api.entrypoints=web"
+      # - "traefik.http.routers.api.service=api@internal"
+      # - "traefik.http.routers.api.entrypoints=web"
     volumes:
       # So that Traefik can listen to the Docker events
       - /var/run/docker.sock:/var/run/docker.sock
