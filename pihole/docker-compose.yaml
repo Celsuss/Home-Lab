@@ -17,11 +17,11 @@ services:
       VIRTUAL_HOST: pihole.localhost
       VIRTUAL_PORT: 80
       ServerIP: 192.168.1.50
+      # WEBPASSWORD: 'very secure password'
     labels:
     - "traefik.enable=true"
     - "traefik.http.routers.homer.rule=Host(`pihole.localhost`)"
     - "traefik.http.services.homer.loadbalancer.server.port=80"
-      # WEBPASSWORD: 'very secure password'
 
   traefik:
     image: traefik:latest
