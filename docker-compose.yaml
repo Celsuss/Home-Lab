@@ -79,6 +79,7 @@ services:
   homer:
     image: b4bz/homer
     container_name: homer
+    hostname: homer.home.arpa
     volumes:
       - ./homer/:/www/assets
     ports:
@@ -89,6 +90,19 @@ services:
     labels:
     - "traefik.http.routers.homer.rule=Host(`homer.localhost`)"
     - "traefik.http.services.homer.loadbalancer.server.port=8080"
+
+  # portainer:
+  #   image: portainer/portainer-ee:latest
+  #   container_name: portainer
+  #   ports:
+  #     - 8000:8000
+  #     - 9443:9443
+  #   # labels:
+  #   #   - "traefik.http.routers.portainer.rule=Host(`portainer.localhost`)"
+  #   #   - "traefik.http.services.portainer.loadbalancer.server.port=9433"
+  #   volumes:
+  #     - ./portainer/data:/data
+  #     - /var/run/docker.sock:/var/run/docker.sock
 
   reverse-proxy:
     image: traefik:v2.9
@@ -107,7 +121,8 @@ services:
 volumes:
   mysql-data:
   s3-data:
-  heimdall:
+  homer:
+  portainer:
 
 networks:
   loki:
