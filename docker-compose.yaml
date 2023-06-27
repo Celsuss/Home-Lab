@@ -1,48 +1,48 @@
 version: '3.9'
 services:  
-  mlflow-server:
-    build: ./mlflow-server
-    image: mlflow-server
-    container_name: mlflow-server
-    ports:
-     - "5000:5000"
-    labels:
-      - "traefik.http.routers.mlflow-server.rule=Host(`mlflow.localhost`)"
-    depends_on:
-      - minio-s3
-      - db
-    command: >
-      mlflow server 
-      --backend-store-uri mysql+pymysql://root:password@db:3306/mlflow
-      --serve-artifacts
-      --host 0.0.0.0
-      --gunicorn-opts "--log-level debug"
-      --default-artifact-root http://mlflowproxy.localhost/api/2.0/mlflow-artifacts/artifacts/experiments
-    # --default-artifact-root http://localhost:5500/api/2.0/mlflow-artifacts/artifacts/experiments
-    # --default-artifact-root http://mlflow-artifact-proxy:5500/api/2.0/mlflow-artifacts/artifacts/experiments
+  # mlflow-server:
+  #   build: ./mlflow-server
+  #   image: mlflow-server
+  #   container_name: mlflow-server
+  #   ports:
+  #    - "5000:5000"
+  #   labels:
+  #     - "traefik.http.routers.mlflow-server.rule=Host(`mlflow.localhost`)"
+  #   depends_on:
+  #     - minio-s3
+  #     - db
+  #   command: >
+  #     mlflow server 
+  #     --backend-store-uri mysql+pymysql://root:password@db:3306/mlflow
+  #     --serve-artifacts
+  #     --host 0.0.0.0
+  #     --gunicorn-opts "--log-level debug"
+  #     --default-artifact-root http://mlflowproxy.localhost/api/2.0/mlflow-artifacts/artifacts/experiments
+  #   # --default-artifact-root http://localhost:5500/api/2.0/mlflow-artifacts/artifacts/experiments
+  #   # --default-artifact-root http://mlflow-artifact-proxy:5500/api/2.0/mlflow-artifacts/artifacts/experiments
 
-  mlflow-artifact-proxy:
-    build: ./mlflow-server
-    image: mlflow-server
-    container_name: mlflow-artifact-proxy
-    expose:
-      - "5500"
-    ports:
-     - "5500:5500"
-    environment:
-      MLFLOW_S3_ENDPOINT_URL: http://minio-s3:9000
-      AWS_ACCESS_KEY_ID: "user"
-      AWS_SECRET_ACCESS_KEY: "password"
-      MLFLOW_S3_IGNORE_TLS: true  # Use this if minio is configured with using SSL self-signed or signed using some internal-only CA certificate
-    labels:
-      - "traefik.http.routers.mlflow-artifact-proxy.rule=Host(`mlflowproxy.localhost`)"
-    command: >
-      mlflow server
-      --host 0.0.0.0
-      --port 5500
-      --artifacts-destination s3://mlflow
-      --artifacts-only
-      --gunicorn-opts "--log-level debug"
+  # mlflow-artifact-proxy:
+  #   build: ./mlflow-server
+  #   image: mlflow-server
+  #   container_name: mlflow-artifact-proxy
+  #   expose:
+  #     - "5500"
+  #   ports:
+  #    - "5500:5500"
+  #   environment:
+  #     MLFLOW_S3_ENDPOINT_URL: http://minio-s3:9000
+  #     AWS_ACCESS_KEY_ID: "user"
+  #     AWS_SECRET_ACCESS_KEY: "password"
+  #     MLFLOW_S3_IGNORE_TLS: true  # Use this if minio is configured with using SSL self-signed or signed using some internal-only CA certificate
+  #   labels:
+  #     - "traefik.http.routers.mlflow-artifact-proxy.rule=Host(`mlflowproxy.localhost`)"
+  #   command: >
+  #     mlflow server
+  #     --host 0.0.0.0
+  #     --port 5500
+  #     --artifacts-destination s3://mlflow
+  #     --artifacts-only
+  #     --gunicorn-opts "--log-level debug"
 
   db:
     image: mysql:8.0
@@ -57,7 +57,7 @@ services:
       MYSQL_DATABASE: mlflow
     volumes:
       - ./mysql-data:/var/lib/mysql
-        
+
   minio-s3:
   # TODO: Do health check?
     image: minio/minio
@@ -72,7 +72,7 @@ services:
     volumes:
       - ./s3-data:/data
     labels:
-      - "traefik.http.routers.minio-s3.rule=Host(`minio.localhost`)"
+      - "traefik.http.routers.minio-s3.rule=Host(`minio.home.arpa`)"
     command: server --console-address ":9001" /data
 
   # Application dashboard
@@ -88,7 +88,9 @@ services:
     # environment:
     #   - INIT_ASSETS=1 # default
     labels:
-    - "traefik.http.routers.homer.rule=Host(`homer.home.arpa`)"
+    - "traefik.enable=true"
+    - "traefik.http.routers.homer.rule=Host(`homer.ubuntuserver`)"
+    - "traefik.http.routers.homer.entrypoints=web"
     - "traefik.http.services.homer.loadbalancer.server.port=8080"
 
   # portainer:
@@ -105,15 +107,20 @@ services:
   #     - /var/run/docker.sock:/var/run/docker.sock
 
   reverse-proxy:
-    image: traefik:v2.9
+    image: traefik:v2.10
     # Enables the web UI and tells Traefik to listen to docker
-    command: --api.insecure=true --providers.docker
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+    hostname: home.arpa
     ports:
       - "80:80"
       - "8080:8080" # Web UI
-    labels:
-      - "traefik.http.routers.reverse-proxy.rule=Host(`traefik.localhost`)"
-      - "traefik.http.services.reverse-proxy.loadbalancer.server.port=8080"
+    # labels:
+      # - "traefik.http.routers.reverse-proxy.rule=Host(`traefik.ubuntuserver`)"
+      # - "traefik.http.services.reverse-proxy.loadbalancer.server.port=8080"
     volumes:
       # So that Traefik can listen to the Docker events
       - /var/run/docker.sock:/var/run/docker.sock
