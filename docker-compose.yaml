@@ -91,7 +91,7 @@ services:
     - "traefik.enable=true"
     - "traefik.http.routers.homer.rule=Host(`homer.ubuntuserver`)"
     - "traefik.http.routers.homer.entrypoints=web"
-    - "traefik.http.services.homer.loadbalancer.server.port=8080"
+    # - "traefik.http.services.homer.loadbalancer.server.port=8080"
 
   # portainer:
   #   image: portainer/portainer-ee:latest
@@ -119,7 +119,7 @@ services:
       - "80:80"
       - "8080:8080" # Web UI
     # labels:
-      # - "traefik.http.routers.reverse-proxy.rule=Host(`traefik.ubuntuserver`)"
+      - "traefik.http.routers.reverse-proxy.rule=Host(`traefik.ubuntuserver`)"
       # - "traefik.http.services.reverse-proxy.loadbalancer.server.port=8080"
     volumes:
       # So that Traefik can listen to the Docker events
