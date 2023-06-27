@@ -88,7 +88,7 @@ services:
     # environment:
     #   - INIT_ASSETS=1 # default
     labels:
-    - "traefik.http.routers.homer.rule=Host(`homer.localhost`)"
+    - "traefik.http.routers.homer.rule=Host(`homer.home.arpa`)"
     - "traefik.http.services.homer.loadbalancer.server.port=8080"
 
   # portainer:
