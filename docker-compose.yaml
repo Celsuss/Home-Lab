@@ -57,6 +57,7 @@ services:
       MYSQL_DATABASE: mlflow
     volumes:
       - ./mysql-data:/var/lib/mysql
+    restart: unless-stopped
 
   minio-s3:
   # TODO: Do health check?
@@ -65,7 +66,7 @@ services:
     ports:
       - "9000:9000"
       - "9090:9090"
-      - "9001:9001" 
+      - "9001:9001"
     environment:
       MINIO_ROOT_USER: root
       MINIO_ROOT_PASSWORD: password
@@ -74,6 +75,7 @@ services:
     labels:
       - "traefik.http.routers.minio-s3.rule=Host(`minio.lorden.home`)"
     command: server --console-address ":9001" /data
+    restart: unless-stopped
 
   # Application dashboard
   homer:
@@ -88,10 +90,11 @@ services:
     # environment:
     #   - INIT_ASSETS=1 # default
     labels:
-    - "traefik.enable=true"
-    - "traefik.http.routers.homer.rule=Host(`homer.lorden.home`)"
-    - "traefik.http.routers.homer.entrypoints=web"
+      - "traefik.enable=true"
+      - "traefik.http.routers.homer.rule=Host(`homer.lorden.home`)"
+      - "traefik.http.routers.homer.entrypoints=web"
     # - "traefik.http.services.homer.loadbalancer.server.port=8080"
+    restart: unless-stopped
 
   # portainer:
   #   image: portainer/portainer-ee:latest
@@ -124,6 +127,7 @@ services:
     volumes:
       # So that Traefik can listen to the Docker events
       - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
 
   dns-server:
     image: ubuntu/bind9:9.18-22.04_beta
@@ -137,7 +141,7 @@ services:
       - ./bind9/cache:/var/cache/bind
       - ./bind9/config:/etc/bind
       - ./records:/var/lib/bind
-    # restart: unless-stopped
+    restart: unless-stopped
 
 volumes:
   mysql-data:
