@@ -102,6 +102,7 @@ services:
       - 8000:8000
       - 9443:9443
     labels:
+      - "traefik.enable=true"
       - "traefik.http.routers.portainer.rule=Host(`portainer.lorden.home`)"
       - "traefik.http.services.portainer.loadbalancer.server.port=9433"
     volumes:
