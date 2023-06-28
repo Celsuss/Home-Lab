@@ -1,0 +1,21 @@
+$TTL 2d
+
+$ORIGIN lorden.home
+
+$TTL    604800
+@       IN      SOA     lorden.home. admin.lorden.home. (
+	2023062804		; Serial
+			 604800		; Refresh
+			  86400		; Retry
+			2419200		; Expire
+			 604800 )	; Negative Cache TTL
+;
+; name servers - NS records
+     IN      NS      ns1.lorden.home.
+
+; name servers - A records
+ns1.lorden.home.          IN      A       192.168.0.169
+
+; 10.128.0.0/16 - A records
+lorden.home.          IN      A      192.168.0.169
+; *.lorden.home.        IN      A      192.168.0.169

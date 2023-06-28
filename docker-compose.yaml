@@ -72,7 +72,7 @@ services:
     volumes:
       - ./s3-data:/data
     labels:
-      - "traefik.http.routers.minio-s3.rule=Host(`minio.home.arpa`)"
+      - "traefik.http.routers.minio-s3.rule=Host(`minio.lorden.home`)"
     command: server --console-address ":9001" /data
 
   # Application dashboard
@@ -89,7 +89,7 @@ services:
     #   - INIT_ASSETS=1 # default
     labels:
     - "traefik.enable=true"
-    - "traefik.http.routers.homer.rule=Host(`homer.ubuntuserver`)"
+    - "traefik.http.routers.homer.rule=Host(`homer.lorden.home`)"
     - "traefik.http.routers.homer.entrypoints=web"
     # - "traefik.http.services.homer.loadbalancer.server.port=8080"
 
@@ -119,11 +119,25 @@ services:
       - "80:80"
       - "8080:8080" # Web UI
     labels:
-      - "traefik.http.routers.reverse-proxy.rule=Host(`traefik.ubuntuserver`)"
+      - "traefik.http.routers.reverse-proxy.rule=Host(`traefik.lorden.home`)"
       # - "traefik.http.services.reverse-proxy.loadbalancer.server.port=8080"
     volumes:
       # So that Traefik can listen to the Docker events
       - /var/run/docker.sock:/var/run/docker.sock
+
+  dns-server:
+    image: ubuntu/bind9:9.18-22.04_beta
+    environment:
+      - BIND9_USER=root
+      - TZ=Europe/Stockholm
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+    volumes:
+      - ./bind9/cache:/var/cache/bind
+      - ./bind9/config:/etc/bind
+      - ./records:/var/lib/bind
+    # restart: unless-stopped
 
 volumes:
   mysql-data:
