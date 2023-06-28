@@ -3,7 +3,7 @@ $TTL 2d
 $ORIGIN lorden.home.
 
 @       IN      SOA     lorden.home. admin.lorden.home. (
-	2023062806		; Serial
+	2023062807		; Serial
 			 604800		; Refresh
 			  86400		; Retry
 			2419200		; Expire
@@ -17,4 +17,4 @@ ns1.lorden.home.          IN      A       192.168.0.169 ; 127.0.0.1 ?
 
 ; 10.128.0.0/16 - A records
 lorden.home.          IN      A      192.168.0.169
-; *.lorden.home.        IN      A      192.168.0.169
+*.lorden.home.        IN      A      192.168.0.169
