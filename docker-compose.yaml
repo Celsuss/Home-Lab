@@ -81,7 +81,6 @@ services:
   homer:
     image: b4bz/homer
     container_name: homer
-    hostname: homer.home.arpa
     volumes:
       - ./homer/:/www/assets
     ports:
@@ -117,11 +116,12 @@ services:
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
       - "--entrypoints.web.address=:80"
-    hostname: lorden.home
+    # hostname: lorden.home
     ports:
       - "80:80"
       - "8080:8080" # Web UI
     labels:
+      - "traefik.enable=true"
       - "traefik.http.routers.reverse-proxy.rule=Host(`traefik.lorden.home`)"
       # - "traefik.http.services.reverse-proxy.loadbalancer.server.port=8080"
     volumes:
