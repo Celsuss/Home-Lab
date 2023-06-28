@@ -124,7 +124,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.reverse-proxy.rule=Host(`traefik.lorden.home`)"
-      # - "traefik.http.services.reverse-proxy.loadbalancer.server.port=8080"
+      - "traefik.http.services.reverse-proxy.loadbalancer.server.port=8080"
     volumes:
       # So that Traefik can listen to the Docker events
       - /var/run/docker.sock:/var/run/docker.sock
