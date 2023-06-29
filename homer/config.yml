@@ -83,5 +83,16 @@ services:
         subtitle: "Machine Learning Lifecycle"
         tag: "ML"
         tagstyle: "is-info"
-        url: "http://mlflow.localhost/"
+        url: "http://mlflow.lorden.home/"
+        target: "_blank"
+
+  - name: "//Monitoring"
+    icon: "fas fa-reddit"
+    items:
+      - name: "Portainer"
+        logo: "assets/tools/portainer.png"
+        subtitle: "Container Management"
+        tag: "Docker"
+        tagstyle: "is-info"
+        url: "http://portainer.lorden.home"
         target: "_blank"

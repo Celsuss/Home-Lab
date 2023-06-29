@@ -7,7 +7,7 @@ services:
   #   ports:
   #    - "5000:5000"
   #   labels:
-  #     - "traefik.http.routers.mlflow-server.rule=Host(`mlflow.localhost`)"
+  #     - "traefik.http.routers.mlflow-server.rule=Host(`mlflow.lorden.home`)"
   #   depends_on:
   #     - minio-s3
   #     - db
