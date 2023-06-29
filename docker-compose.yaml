@@ -103,8 +103,8 @@ services:
       - 9443:9443
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.portainer.rule=Host(`portainer.lorden.home`)"
-      - "traefik.http.services.portainer.loadbalancer.server.port=9443"
+      - "traefik.https.routers.portainer.rule=Host(`portainer.lorden.home`)"
+      - "traefik.https.services.portainer.loadbalancer.server.port=9443"
     volumes:
       - ./portainer/data:/data
       - /var/run/docker.sock:/var/run/docker.sock
