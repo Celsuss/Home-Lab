@@ -104,7 +104,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.portainer.rule=Host(`portainer.lorden.home`)"
-      - "traefik.http.services.portainer.loadbalancer.server.port=9433"
+      - "traefik.http.services.portainer.loadbalancer.server.port=9443"
     volumes:
       - ./portainer/data:/data
       - /var/run/docker.sock:/var/run/docker.sock
