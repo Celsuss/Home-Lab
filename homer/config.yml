@@ -87,12 +87,12 @@ services:
         target: "_blank"
 
   - name: "//Monitoring"
-    icon: "fas fa-reddit"
+    icon: "fas fa-portainer"
     items:
       - name: "Portainer"
         logo: "assets/tools/portainer.png"
         subtitle: "Container Management"
         tag: "Docker"
         tagstyle: "is-info"
-        url: "http://portainer.lorden.home"
+        url: "https://portainer.lorden.home"
         target: "_blank"
