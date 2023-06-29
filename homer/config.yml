@@ -94,5 +94,5 @@ services:
         subtitle: "Container Management"
         tag: "Docker"
         tagstyle: "is-info"
-        url: "https://portainer.lorden.home"
+        url: "https://portainer.lorden.home:9443"
         target: "_blank"
