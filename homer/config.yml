@@ -47,6 +47,11 @@ links:
     url: "https://github.com/Celsuss"
     target: "_blank" # optional html a tag target attribute
 
+  - name: "Blog"
+    icon: "fab fa-github"
+    url: "https://celsuss.github.io"
+    target: "_blank" # optional html a tag target attribute
+
 services:
   - name: "//Network"
     icon: "fas fa-github"
@@ -67,7 +72,7 @@ services:
         subtitle: "Minio S3"
         tag: "Storage"
         tagstyle: "is-info"
-        url: "http://minio.lorden.home"
+        url: "http://minio.lorden.home:9001"
         target: "_blank"
 
   - name: "//Machine Learning"
