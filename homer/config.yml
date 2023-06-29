@@ -39,7 +39,7 @@ colors:
     card-shadow: rgba(0, 0, 0, 0.5)
     link: "#c1c1c1"
     link-hover: "#fafafa"
-    background-image: "../assets/wallpaper.jpeg"
+    background-image: "../assets/wallpaper-8bit-city.png"
 
 links:
   - name: "Github"
@@ -53,10 +53,10 @@ services:
     items:
       - name: "Traefik"
         logo: "assets/tools/traefik.png" # Change github.png to the name of your own custom icon!
-        subtitle: "Trafik monitoring"
+        subtitle: "Network monitoring"
         tag: "Network"
         tagstyle: "is-primary" # This will display the is-primary color! Try changing it to; is-link, is-info, is-success, is-warning or is-danger!
-        url: "http://traefik.localhost/dashboard/#/"
+        url: "http://traefik.lorden.home/dashboard/#/"
         target: "_blank"
 
   - name: "//Storage"
@@ -67,7 +67,7 @@ services:
         subtitle: "Minio S3"
         tag: "Storage"
         tagstyle: "is-info"
-        url: "http://minio.localhost/"
+        url: "http://minio.lorden.home"
         target: "_blank"
 
   - name: "//Machine Learning"
