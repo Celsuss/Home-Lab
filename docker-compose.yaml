@@ -94,7 +94,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.homer.rule=Host(`homer.lorden.home`)"
-      - "traefik.http.routers.homer.entrypoints=web"
+      # - "traefik.http.routers.homer.entrypoints=web"
       - "traefik.http.routers.homer.entrypoints=websecure"
       - "traefik.http.routers.homer.tls.certresolver=myresolver"
     restart: unless-stopped
