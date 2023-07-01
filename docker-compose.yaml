@@ -91,7 +91,7 @@ services:
       - MYSQL_USER=user
       - MYSQL_HOST=mysql
     volumes:
-      - nextcloud:/var/www/html
+      - ./nextcloud:/var/www/html
     ports:
       - "8082:80"
     labels:
