@@ -95,7 +95,6 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.homer.rule=Host(`homer.lorden.home`)"
       - "traefik.http.routers.homer.entrypoints=web"
-    # - "traefik.http.services.homer.loadbalancer.server.port=8080"
       - "traefik.http.routers.homer.entrypoints=websecure"
       - "traefik.http.routers.homer.tls.certresolver=myresolver"
     restart: unless-stopped
@@ -124,14 +123,12 @@ services:
       - "--api.insecure=true"
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
-      # - "--entrypoints.web.address=:80"
       # ssl
       - "--entrypoints.websecure.address=:443"
       - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
       - "--certificatesresolvers.myresolver.acme.email=postmaster@lorden.home"
       - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
     ports:
-      # - "80:80"
       - "443:443"
       - "8080:8080" # Web UI
     labels:
@@ -143,7 +140,6 @@ services:
     volumes:
       - "./letsencrypt:/letsencrypt"
       # So that Traefik can listen to the Docker events
-      # - /var/run/docker.sock:/var/run/docker.sock
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
     restart: unless-stopped
 
