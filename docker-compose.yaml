@@ -111,6 +111,7 @@ services:
 
   reverse-proxy:
     image: traefik:v2.10
+    container_name: traefik-reverse-proxy
     # Enables the web UI and tells Traefik to listen to docker
     command:
       - "--api.insecure=true"
@@ -132,6 +133,7 @@ services:
 
   dns-server:
     image: ubuntu/bind9:9.18-22.04_beta
+    container_name: bind9-dns-server
     environment:
       - BIND9_USER=root
       - TZ=Europe/Stockholm
