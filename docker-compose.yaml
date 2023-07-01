@@ -87,7 +87,7 @@ services:
     container_name: next-cloud
     environment:
       - MYSQL_PASSWORD=password
-      - MYSQL_DATABASE=
+      - MYSQL_DATABASE=nextcloud
       - MYSQL_USER=user
       - MYSQL_HOST=mysql
     volumes:
