@@ -75,8 +75,8 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.minio-s3.rule=Host(`minio.lorden.home`)"
-      - "traefik.http.routers.whoami.entrypoints=websecure"
-      - "traefik.http.routers.whoami.tls.certresolver=myresolver"
+      - "traefik.http.routers.minio-s3.entrypoints=websecure"
+      - "traefik.http.routers.minio-s3.tls.certresolver=myresolver"
     command: server --console-address ":9001" /data
     restart: unless-stopped
 
@@ -96,8 +96,8 @@ services:
       - "traefik.http.routers.homer.rule=Host(`homer.lorden.home`)"
       - "traefik.http.routers.homer.entrypoints=web"
     # - "traefik.http.services.homer.loadbalancer.server.port=8080"
-      - "traefik.http.routers.whoami.entrypoints=websecure"
-      - "traefik.http.routers.whoami.tls.certresolver=myresolver"
+      - "traefik.http.routers.homer.entrypoints=websecure"
+      - "traefik.http.routers.homer.tls.certresolver=myresolver"
     restart: unless-stopped
 
   portainer:
@@ -110,8 +110,8 @@ services:
       - "traefik.enable=true"
       - "traefik.https.routers.portainer.rule=Host(`portainer.lorden.home`)"
       - "traefik.https.services.portainer.loadbalancer.server.port=9443"
-      - "traefik.http.routers.whoami.entrypoints=websecure"
-      - "traefik.http.routers.whoami.tls.certresolver=myresolver"
+      - "traefik.http.routers.portainer.entrypoints=websecure"
+      - "traefik.http.routers.portainer.tls.certresolver=myresolver"
     volumes:
       - ./portainer/data:/data
       - /var/run/docker.sock:/var/run/docker.sock
