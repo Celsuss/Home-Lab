@@ -10,7 +10,7 @@ services:
   #     - "traefik.http.routers.mlflow-server.rule=Host(`mlflow.lorden.home`)"
   #   depends_on:
   #     - minio-s3
-  #     - db
+  #     - mysql
   #   command: >
   #     mlflow server 
   #     --backend-store-uri mysql+pymysql://root:password@db:3306/mlflow
@@ -44,17 +44,18 @@ services:
   #     --artifacts-only
   #     --gunicorn-opts "--log-level debug"
 
-  db:
+  mysql:
     image: mysql:8.0
     container_name: mysql
     ports:
       - "3306:3306"
       - "33060:33060"
     environment:
-      MYSQL_ROOT_PASSWORD: password
-      MYSQL_USER: user
-      MYSQL_PASSWORD: password
-      MYSQL_DATABASE: mlflow
+      MYSQL_ROOT_PASSWORD: password  # TODO: Get real values
+      MYSQL_USER: user               # TODO: Get real values
+      MYSQL_PASSWORD: password       # TODO: Get real values
+      # MYSQL_DATABASE: mlflow
+      MYSQL_DATABASE: nextcloud
     volumes:
       - ./mysql-data:/var/lib/mysql
     restart: unless-stopped
@@ -78,6 +79,26 @@ services:
       - "traefik.http.routers.minio-s3.entrypoints=websecure"
       - "traefik.http.routers.minio-s3.tls.certresolver=myresolver"
     command: server --console-address ":9001" /data
+    restart: unless-stopped
+
+  # Home cloud suit
+  nextcloud:
+    image: nextcloud:stable
+    container_name: next-cloud
+    environment:
+      - MYSQL_PASSWORD=password
+      - MYSQL_DATABASE=
+      - MYSQL_USER=user
+      - MYSQL_HOST=mysql
+    volumes:
+      - nextcloud:/var/www/html
+    ports:
+      - "8082:80"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.nextcloud.rule=Host(`nextcloud.lorden.home`)"
+      - "traefik.http.routers.nextcloud.entrypoints=websecure"
+      - "traefik.http.routers.nextcloud.tls.certresolver=myresolver"
     restart: unless-stopped
 
   # Application dashboard
