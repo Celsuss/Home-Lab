@@ -44,6 +44,7 @@ services:
   #     --artifacts-only
   #     --gunicorn-opts "--log-level debug"
 
+  # ---------- Storage
   mysql:
     image: mysql:8.0
     container_name: mysql
@@ -82,7 +83,7 @@ services:
     command: server --console-address ":9001" /data
     restart: unless-stopped
 
-  # Home cloud suit
+  # ---------- Home cloud suit
   nextcloud:
     image: nextcloud:stable
     container_name: next-cloud
@@ -122,6 +123,7 @@ services:
       - "traefik.http.routers.homer.tls.certresolver=myresolver"
     restart: unless-stopped
 
+  # ---------- Virtualization
   portainer:
     image: portainer/portainer-ee:latest
     container_name: portainer
@@ -138,6 +140,35 @@ services:
       - ./portainer/data:/data
       - /var/run/docker.sock:/var/run/docker.sock
 
+  # ---------- Monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - 9090:9090
+    volumes:
+      - ./prometheus:/etc/prometheusn
+      - prometheus_data:/prometheus
+    command: "--config.file=/etc/prometheus/prometheus.yml"
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana-oss:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    labels:
+      labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.grafana.rule=Host(`grafana.lorden.home`)"
+      - "traefik.http.routers.grafana.entrypoints=websecure"
+      - "traefik.http.routers.grafana.tls.certificatesresolvers=myresolver"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/:/etc/grafana
+    restart: unless-stopped
+
+  # ---------- Network
   reverse-proxy:
     image: traefik:v2.10
     container_name: traefik-reverse-proxy
