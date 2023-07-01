@@ -58,7 +58,7 @@ services:
       MYSQL_DATABASE: nextcloud
     volumes:
       - ./mysql-data:/var/lib/mysql
-    # command: --transaction-isolation=READ-COMMITTED --log-bin=binlog --binlog-format=ROW
+    command: --transaction-isolation=READ-COMMITTED --log-bin=binlog --binlog-format=ROW
     restart: unless-stopped
 
   minio-s3:
