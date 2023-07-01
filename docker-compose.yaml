@@ -132,6 +132,7 @@ services:
       - "--certificatesresolvers.myresolver.acme.email=postmaster@lorden.home"
       - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
     ports:
+      - "80:80"
       - "443:443"
       - "8080:8080" # Web UI
     labels:
