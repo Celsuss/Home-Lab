@@ -138,6 +138,8 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.reverse-proxy.rule=Host(`traefik.lorden.home`)"
       - "traefik.http.services.reverse-proxy.loadbalancer.server.port=8080"
+      - "traefik.http.routers.reverse-proxy.entrypoints=websecure"
+      - "traefik.http.routers.reverse-proxy.tls.certresolver=myresolver"
     volumes:
       - "./letsencrypt:/letsencrypt"
       # So that Traefik can listen to the Docker events
