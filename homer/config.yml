@@ -75,6 +75,14 @@ services:
         url: "http://minio.lorden.home:9001"
         target: "_blank"
 
+      - name: "NextCloud"
+        logo: "assets/tools/nextcloud.png"
+        subtitle: "NextCloud"
+        tag: "Cloud"
+        tagstyle: "is-info"
+        url: "http://nextcloud.lorden.home"
+        target: "_blank"
+
   - name: "//Machine Learning"
     icon: "fas fa-reddit"
     items:
