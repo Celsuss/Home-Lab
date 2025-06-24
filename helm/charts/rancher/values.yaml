@@ -1,0 +1,23 @@
+---
+hostname: rancher.minikube.local
+replicas: 1
+bootstrapPassword: admin # You should use a secret manager in production
+
+# Resource limits for development environment
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 250m
+    memory: 750Mi
+
+# Ingress configuration
+ingress:
+  enabled: true
+  tls:
+    source: rancher
+
+# Enable monitoring
+monitoring:
+  enabled: true

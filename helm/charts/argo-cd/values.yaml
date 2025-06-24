@@ -1,0 +1,13 @@
+---
+# https://github.com/argoproj/argo-helm/blob/main/charts/argo-cd/values.yaml
+argo-cd: # Need to have same name as dependency name
+  enabled: true
+  dex:
+    enabled: false # False makes it less secure, only use in minikube
+  notifications:
+    enabled: false
+  applicationSet:
+    enabled: false
+  server:
+    extraArgs:
+      - --insecure
