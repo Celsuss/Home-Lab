@@ -1,0 +1,19 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: gitea-app
+  # finalizers:
+  # - resources-finalizer.gittea.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Celsuss/Home-Lab.git
+    path: helm/charts/gitea
+    targetRevision: HEAD
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: gitea
+  syncPolicy:
+    automated:
+      selfHeal: true

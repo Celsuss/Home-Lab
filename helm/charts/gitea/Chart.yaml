@@ -1,0 +1,13 @@
+---
+# https://gitea.com/gitea/helm-gitea
+apiVersion: v2
+name: gitea
+description: A Helm chart for Kubernetes
+type: application
+version: 0.1.0
+appVersion: "1.16.0"
+dependencies:
+  - name: gittea
+    version: 12.1.0
+    repository: https://dl.gitea.com/charts/gittea
+    condition: gittea.enabled
