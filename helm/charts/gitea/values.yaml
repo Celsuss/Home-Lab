@@ -13,6 +13,9 @@ gitea:
   persistence:
     enabled: true
 
+  ingress:
+    enabled: true
+
   gitea:
     config:
       database:
