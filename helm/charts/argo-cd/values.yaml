@@ -2,12 +2,71 @@
 # https://github.com/argoproj/argo-helm/blob/main/charts/argo-cd/values.yaml
 argo-cd: # Need to have same name as dependency name
   enabled: true
+
   dex:
     enabled: false # False makes it less secure, only use in minikube
+
   notifications:
     enabled: false
+
   applicationSet:
     enabled: false
+
   server:
+    service:
+      type: ClusterIP
+
     extraArgs:
       - --insecure
+      - --repo-server-timeout-seconds=120
+
+    volumeMounts:
+      - name: k3s-ca-cert
+        mountPath: /etc/ssl/certs/k3s-ca.crt
+        subPath: ca.crt
+        readOnly: true
+
+    volumes:
+      - name: k3s-ca-cert
+        secret:
+          secretName: k3s-ca-cert
+
+    # Configure ingress to handle external access
+    ingress:
+      enabled: true
+      ingressClassName: traefik
+      hostname: argocd.homelab.local
+
+      # Enable TLS (HTTPS)
+      # tls: true
+      tls:
+        - hosts:
+          - argocd.homelab.local
+
+      # Traefik-specific annotations that handle ArgoCD's requirements
+      annotations:
+        # This tells Traefik to handle both HTTP and gRPC traffic properly
+        traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+
+        # This is crucial for ArgoCD's CLI functionality
+        traefik.ingress.kubernetes.io/router.tls: "true"
+
+        # This handles the gRPC-Web protocol that ArgoCD uses, used for CLI
+        # traefik.ingress.kubernetes.io/router.middlewares: argo-cd-argocd-server-grpc@kubernetescrd
+
+    # Configure environment variables for k3s
+    env:
+      - name: GODEBUG
+        value: "http2debug=1"
+
+  # Configure the application controller for k3s
+  controller:
+    env:
+      - name: GODEBUG
+        value: "http2debug=1"
+
+  # Configure the repo server
+  repoServer:
+    env:
+      - name: GODEBUG
+        value: "http2debug=1"

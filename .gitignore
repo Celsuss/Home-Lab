@@ -1,7 +1,7 @@
 # VSCode
 .vscode/*
 
-# Storage 
+# Storage
 s3-data/*
 mysql-data/*
 mlruns/*
@@ -16,3 +16,6 @@ heimdall/nginx/*
 heimdall/php/*
 heimdall/www/logs/*
 heimdall/.migrations
+
+# K3s
+k3s-ca.crt
