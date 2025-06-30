@@ -1,0 +1,115 @@
+---
+replicaCount: 1
+
+image:
+  repository: ollama/ollama
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+strategy:
+  type: Recreate  # GPU workloads often need this instead of RollingUpdate
+
+serviceAccount:
+  create: true
+  # automount: true
+  annotations: {}
+  name: ""
+
+env:
+  - name: OLLAMA_HOST
+    value: "0.0.0.0:11434"
+  - name: OLLAMA_MODELS
+    value: "/root/.ollama/models"
+  - name: OLLAMA_DATA
+    value: "/root/.ollama"
+  - name: OLLAMA_GPU
+    value: "nvidia"
+
+# Enable automatic model downloading via init container
+models:
+  enabled: false
+  list:
+    - "llama2:7b"
+    # - "codellama:7b"        # Code generation model (~4GB)
+    # - "mistral:7b"          # Fast and efficient model (~4GB)
+    # - "llama2:13b"        # Larger model for better quality (~7GB)
+  initContainer:
+    # Use the same Ollama image for consistency
+    image:
+      repository: ollama/ollama
+      tag: ""  # Uses chart appVersion if not specified
+      pullPolicy: IfNotPresent
+    resources:
+      limits:
+        memory: "2Gi"
+        cpu: "1"
+      requests:
+        memory: "1Gi"
+        cpu: "500m"
+    # Timeout for model downloads (some models are large)
+    timeoutSeconds: 1800  # 30 minutes
+  persistence:
+    enabled: true
+    # Use the same storage as the main Ollama data
+    # This ensures models don't need to be re-downloaded on restarts
+
+podSecurityContext:
+  fsGroup: 0
+
+securityContext:
+  runAsNonRoot: false
+  runAsUser: 0
+  runAsGroup: 0
+  fsGroup: 0
+  capabilities:
+    add:
+      - SYS_ADMIN      # Sometimes needed for GPU drivers
+
+service:
+  type: ClusterIP
+  port: 11434
+  targetPort: 11434
+
+ingress:
+  enabled: false
+  className: "traefik"
+  annotations: {}
+  hosts:
+    - host: ollama.homelab.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+resources:
+  limits:
+    nvidia.com/gpu: 1   # Request 1 GPU
+    memory: "16Gi"      # Adjust based on your models
+    cpu: "4"
+  requests:
+    nvidia.com/gpu: 1
+    memory: "8Gi"
+    cpu: "2"
+
+gpu:
+  enabled: true
+  resourceName: "nvidia.com/gpu"
+  count: 1
+  # Optional: Specify GPU model for scheduling
+  # nodeSelector:
+  #   nvidia.com/gpu.product: "NVIDIA-GeForce-GTX-4070-Ti"
+
+persistence:
+  enabled: true
+  storageClass: ""  # Use default storage class
+  # storageClass: "local-path"
+  accessMode: ReadWriteOnce
+  size: 100Gi
+  mountPath: /root/.ollama
+
+nodeSelector:
+  accelerator: nvidia
+
+tolerations: []
+
+affinity: {}

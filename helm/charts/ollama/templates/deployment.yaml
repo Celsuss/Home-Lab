@@ -1,0 +1,126 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ollama.fullname" . }}
+  labels:
+    {{- include "ollama.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  strategy:
+    type: {{ .Values.strategy.type }}
+  selector:
+    matchLabels:
+      {{- include "ollama.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "ollama.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "ollama.serviceAccountName" . }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+      # Init containers run before the main container starts
+      # This ensures models are downloaded before Ollama begins serving requests
+      {{- if .Values.models.enabled }}
+      initContainers:
+        - name: {{ .Chart.Name }}-model-downloader
+          image: "{{ .Values.models.initContainer.image.repository }}:{{ .Values.models.initContainer.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.models.initContainer.image.pullPolicy }}
+
+          # Security context for the init container
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+
+          # Resource allocation for model downloading
+          {{- with .Values.models.initContainer.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+
+          # Environment variables for model downloading
+          env:
+            {{- toYaml .Values.env | nindent 12 }}
+
+          # Mount the same persistent volume as the main container
+          # This ensures downloaded models are available to the main Ollama service
+          {{- if .Values.persistence.enabled }}
+          volumeMounts:
+            - name: ollama-data
+              mountPath: /root/.ollama
+          {{- end }}
+
+          # Use the model download script from our helper template
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              {{- include "ollama.modelDownloadScript" . | nindent 14 }}
+
+          {{- if .Values.models.initContainer.timeoutSeconds }}
+          # Note: This would be set via pod spec if supported
+          # For now, we handle timeouts within the script itsel
+          {{- end }}
+      {{- end }}
+
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion  }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            {{- toYaml .Values.env | nindent 12 }}
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.targetPort }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            {{- with .Values.resources }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          volumeMounts:
+            - name: ollama-data
+              mountpath: {{ .Values.persistence.mountPath }}
+      volumes:
+        - name: ollama-data
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "ollama.fullname" . }}-pvc
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
