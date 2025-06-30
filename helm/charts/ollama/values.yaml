@@ -107,8 +107,8 @@ persistence:
   size: 100Gi
   mountPath: /root/.ollama
 
-nodeSelector:
-  accelerator: nvidia
+# nodeSelector:
+#   accelerator: nvidia
 
 tolerations: []
 
