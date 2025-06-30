@@ -103,7 +103,7 @@ spec:
             {{- end }}
           volumeMounts:
             - name: ollama-data
-              mountpath: {{ .Values.persistence.mountPath }}
+              mountPath: {{ .Values.persistence.mountPath }}
       volumes:
         - name: ollama-data
           {{- if .Values.persistence.enabled }}
