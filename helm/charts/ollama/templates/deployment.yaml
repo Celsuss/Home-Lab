@@ -26,6 +26,9 @@ spec:
       securityContext:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- if .Values.runtimeClassName }}
+      runtimeClassName: {{ .Values.runtimeClassName }}
+      {{- end }}
 
       # Init containers run before the main container starts
       # This ensures models are downloaded before Ollama begins serving requests

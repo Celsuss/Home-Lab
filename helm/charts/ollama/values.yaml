@@ -113,3 +113,5 @@ persistence:
 tolerations: []
 
 affinity: {}
+
+runtimeClassName: "nvidia"
