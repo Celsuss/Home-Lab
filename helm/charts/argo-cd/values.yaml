@@ -70,3 +70,32 @@ argo-cd: # Need to have same name as dependency name
     env:
       - name: GODEBUG
         value: "http2debug=1"
+
+    repoServer:
+      volumes:
+        - name: sops-age-key
+          secret:
+            secretName: sops-age-key
+            defaultMode: 0400
+      volumeMounts:
+        - name: sops-age-key
+          mountPath: /home/argocd/.config/sops/age/
+          readOnly: true
+      initContainers:
+        - name: download-tools
+          image: alpine:latest
+          command: [sh, -c]
+          args:
+            - |
+              wget -O /custom-tools/sops https://github.com/getsops/sops/releases/latest/download/sops-v3.8.1.linux.amd64
+              chmod +x /custom-tools/sops
+          volumeMounts:
+            - mountPath: /custom-tools
+              name: custom-tools
+      volumes:
+        - name: custom-tools
+          emptyDir: {}
+      volumeMounts:
+        - name: custom-tools
+          mountPath: /usr/local/bin/sops
+          subPath: sops

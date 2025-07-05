@@ -17,6 +17,11 @@ kubectl create secret generic k3s-ca-cert \
         --dry-run=client \
         -o yaml | kubectl apply -f -
 
+# Create SOPS secret
+kubectl create secret generic sops-age-key \
+        --from-file=keys.txt=/home/celsuss/.config/sops/age/keys.txt \
+        -n argo-cd
+
 # Deploy chart
 helm dependency build ../charts/argo-cd
 helm upgrade --install argo-cd ../charts/argo-cd \
