@@ -76,7 +76,7 @@ argo-cd: # Need to have same name as dependency name
         command: [sh, -c]
         args:
           - |
-            wget -O /custom-tools/sops https://github.com/getsops/sops/releases/latest/download/sops-v3.8.1.linux.amd64
+            wget -O /custom-tools/sops https://github.com/getsops/sops/releases/download/v3.10.0/sops-v3.10.0.linux.amd64
             chmod +x /custom-tools/sops
         volumeMounts:
           - mountPath: /custom-tools
