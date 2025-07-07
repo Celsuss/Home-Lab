@@ -5,6 +5,10 @@ Home lab setup
 Go to `/scripts/` and run `/deploy-argo-cd.sh`.
 ArgoCD will then take care of deploying everything.
 
+## Access services
+1. Get Node ip from running `kubectl get nodes -o wide`
+2. Add `NODE-IP SERVICE-NAME.homelab.local` to `/etc/hosts`.
+
 ## Setup
 1. Install K3s.
 ```bash
