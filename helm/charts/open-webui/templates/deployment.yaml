@@ -13,10 +13,6 @@ spec:
     metadata:
       labels:
         app: {{ .Values.name }}
-      {{- with .Values.podAnnotations }}
-      annotations:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
     spec:
       containers:
       - name: {{ .Values.name }}

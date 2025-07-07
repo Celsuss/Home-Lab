@@ -5,10 +5,6 @@ kind: Ingress
 metadata:
   name: {{ .Values.name }}-ingress
   namespace: {{ .Values.namespace }}
-  {{- with .Values.ingress.annotations }}
-  annotations:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
 spec:
   ingressClassName: {{ .Values.ingress.className }}
   rules:
