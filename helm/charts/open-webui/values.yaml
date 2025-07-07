@@ -1,0 +1,64 @@
+---
+replicaCount: 1
+namespace: ai-workloads
+name: open-webui
+
+image:
+  repository: ghcr.io/open-webui/open-webui
+  pullPolicy: IfNotPresent
+  tag: "0.6.15"
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+# TODO Add this to deployment
+env:
+  - name: OLLAMA_BASE_URL
+    value: "http://ollama.ai-workloads.svc.cluster.local:11434"
+
+service:
+  type: ClusterIP
+  port: 8080
+
+# This block is for setting up the ingress for more information can be found here: https://kubernetes.io/docs/concepts/services-networking/ingress/
+ingress:
+  enabled: true
+  className: traefik
+  hostName: open-webui.homelab.local
+
+  annotations:
+    # This tells Traefik to handle both HTTP and gRPC traffic properly
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+
+  tls:
+    - hosts:
+        - open-webui.homelab.local
+
+persistence:
+  storage: 3Gi
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 512Mi
+  requests:
+    cpu: 500m
+    memory: 1024Mi
+
+# This is to setup the liveness and readiness probes more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
+livenessProbe:
+  httpGet:
+    path: /
+    port: http
+readinessProbe:
+  httpGet:
+    path: /
+    port: http
