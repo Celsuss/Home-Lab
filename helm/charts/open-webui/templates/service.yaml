@@ -4,8 +4,6 @@ kind: Service
 metadata:
   name: {{ .Values.name }}
   namespace: {{ .Values.namespace }}
-  # labels:
-  #   {{- include "open-webui.labels" . | nindent 4 }}
 spec:
   selector:
     app: {{ .Values.name }}
@@ -14,4 +12,4 @@ spec:
       targetPort: {{ .Values.service.port }}
       protocol: TCP
       name: http
-  type:{{ .Values.service.type }}
+  type: {{ .Values.service.type }}
