@@ -3,14 +3,15 @@ apiVersion: v1
 kind: Service
 metadata:
   name: {{ .Values.name }}
+  namespace: {{ .Values.namespace }}
   labels:
     {{- include "open-webui.labels" . | nindent 4 }}
 spec:
-  type: {{ .Values.service.type }}
   selector:
-    {{- include "open-webui.selectorLabels" . | nindent 4 }}
+    app: {{ .Values.name }}
   ports:
     - port: {{ .Values.service.port }}
       targetPort: {{ .Values.service.port }}
       protocol: TCP
       name: http
+  type:{{ .Values.service.type }}
