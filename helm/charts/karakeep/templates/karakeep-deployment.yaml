@@ -1,0 +1,56 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.karakeep.name }}
+  namespace: {{ .Values.namespace }}
+spec:
+  replicas: {{ .Values.karakeep.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Values.karakeep.name }}-web
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.karakeep.name }}-web
+    spec:
+      containers:
+        - name: {{ .Values.karakeep.name }}
+          image: {{ .Values.karakeep.image.repository }}:{{ .Values.karakeep.image.tag | default "latest" }}
+          imagePullPolicy: {{ .Values.karakeep.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.karakeep.service.port }}
+          env:
+            {{- toYaml .Values.karakeep.env | nindent 12 }}
+          envFrom:
+            - secretRef:
+                name: {{ .Values.karakeep.name }}-secrets
+            - configMapRef:
+                name: {{ .Values.karakeep.name }}-configuration
+          livenessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.karakeep.service.port }}
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.karakeep.service.port }}
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          {{- with .Values.karakeep.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - mountPath: /data
+              name: data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ .Values.karakeep.name }}-pvc

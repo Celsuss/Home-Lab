@@ -1,0 +1,33 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.chrome.name }}
+  namespace: {{ .Values.namespace }}
+spec:
+  replicas: {{ .Values.chrome.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Values.chrome.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.chrome.name }}
+    spec:
+      containers:
+        - name: {{ .Values.chrome.name }}
+          image: {{ .Values.chrome.image.repository }}:{{ .Values.chrome.image.tag | default "latest" }}
+          imagePullPolicy: {{ .Values.chrome.image.pullPolicy }}
+          command:
+            {{- toYaml .Values.chrome.command | nindent 12 }}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          {{- with .Values.chrome.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}

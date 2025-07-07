@@ -1,0 +1,40 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.meilisearch.name }}
+  namespace: {{ .Values.namespace }}
+spec:
+  replicas: {{ .Values.meilisearch.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Values.meilisearch.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.meilisearch.name }}
+    spec:
+      containers:
+        - name: {{ .Values.meilisearch.name }}
+          image: {{ .Values.meilisearch.image.repository }}:{{ .Values.meilisearch.image.tag | default "latest" }}
+          imagePullPolicy: {{ .Values.meilisearch.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.meilisearch.service.port }}
+          env:
+            {{- toYaml .Values.meilisearch.env | nindent 12 }}
+          envFrom:
+            - secretRef:
+                name: {{ .Values.karakeep.name }}-secrets
+            # - configMapRef:
+            #     name: karakeep-configuration
+          {{- with .Values.meilisearch.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - mountPath: /meili_data
+              name: meilisearch
+      volumes:
+        - name: meilisearch
+          persistentVolumeClaim:
+            claimName: {{ .Values.meilisearch.name }}-pvc
