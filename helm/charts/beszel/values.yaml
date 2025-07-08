@@ -9,7 +9,7 @@ image:
   tag: "latest"
 
 agent:
-  enabled: false
+  enabled: true
   image:
     repository: henrygd/beszel-agent
     pullPolicy: IfNotPresent
@@ -19,7 +19,7 @@ agent:
     - name: LISTEN
       value: '45876'
     - name: KEY
-      value: 'KEY-HERE'
+      value: 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAII0kyXZH8sIaG095KD9FnHkAHBRrc1zXEpud8G4tgxbQ'
 
 podSecurityContext: {}
   # fsGroup: 2000
