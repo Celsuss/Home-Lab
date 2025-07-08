@@ -1,0 +1,66 @@
+---
+replicaCount: 1
+namespace: monitoring
+name: beszel
+
+image:
+  repository: henrygd/beszel
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+agent:
+  enabled: false
+  image:
+    repository: henrygd/beszel-agent
+    pullPolicy: IfNotPresent
+    tag: "latest"
+  port: 45876
+  env:
+    - name: LISTEN
+      value: '45876'
+    - name: KEY
+      value: 'KEY-HERE'
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+service:
+  type: ClusterIP
+  port: 8090
+
+
+ingress:
+  enabled: true
+  className: "traefik"
+  hostName: beszel.homelab.local
+  tls: []
+
+persistence:
+  storageClass: local-path
+  storage: 5Gi
+
+resources:
+  limits:
+    cpu: 100m
+    memory: 128Mi
+  requests:
+    cpu: 200m
+    memory: 256Mi
+
+# This is to setup the liveness and readiness probes more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
+livenessProbe:
+  httpGet:
+    path: /
+    port: http
+readinessProbe:
+  httpGet:
+    path: /
+    port: http

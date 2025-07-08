@@ -1,0 +1,45 @@
+---
+{{- if .Values.agent.enabled -}}
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ .Values.name }}-agent
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "beszel.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Values.name }}-agent
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.name }}-agent
+    spec:
+      # Since we are using hostNetwork: true you use the Kubernetes node IP address when adding the system. Note:
+      # This is NOT the internal Kubernetes IP but the physical IP of the node itself. Each Kubernetes node only runs a single agent pod thus why this works.
+      hostNetwork: true
+      containers:
+        - name: {{ .Values.name }}-agent
+          image: {{ .Values.agent.image.repository }}:{{ .Values.agent.image.tag }}
+          imagePullPolicy: {{ .Values.agent.image.pullPolicy }}
+          name: {{ .Values.name }}-agent
+          ports:
+            - containerPort: {{ .Values.agent.port }}
+              hostPort: {{ .Values.agent.port }}
+          env:
+        {{- toYaml .Values.agent.env | nindent 12 }}
+      restartPolicy: Always
+      tolerations:
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/master
+          operator: Exists
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/control-plane
+          operator: Exists
+  updateStrategy:
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 100%
+    type: RollingUpdate
+{{- end }}
