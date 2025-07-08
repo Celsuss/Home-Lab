@@ -43,12 +43,16 @@ data:
                   - url: https://selfh.st/rss/
                     title: selfh.st
                     limit: 4
-                  - url: https://ciechanow.ski/atom.xml
-                  - url: https://www.joshwcomeau.com/rss.xml
-                    title: Josh Comeau
                   - url: https://samwho.dev/rss.xml
-                  - url: https://ishadeed.com/feed.xml
-                    title: Ahmad Shadeed
+                  - url: https://xeiaso.net/blog.rss
+                    title: Xe Iaso
+                    limit: 2
+                  - url: https://itsfoss.com/rss/
+                    title: It's foss
+                    limit: 4
+                  - url: https://xkcd.com/rss.xml
+                    title: xkcd
+                    limit: 2
               - type: twitch-channels
                 channels:
                   - theprimeagen
