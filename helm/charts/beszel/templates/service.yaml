@@ -7,11 +7,11 @@ metadata:
   labels:
     {{- include "beszel.labels" . | nindent 4 }}
 spec:
+  selector:
+    app: {{ .Values.name }}
   type: {{ .Values.service.type }}
   ports:
     - port: {{ .Values.service.port }}
       targetPort: {{ .Values.service.port }}
       protocol: TCP
       name: http
-  selector:
-    {{- include "beszel.selectorLabels" . | nindent 4 }}
