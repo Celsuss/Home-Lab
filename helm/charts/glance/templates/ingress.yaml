@@ -6,7 +6,7 @@ metadata:
   name: {{ .Values.name }}-ingress
   namespace: {{ .Values.namespace }}
   labels:
-    {{- include "beszel.labels" . | nindent 4 }}
+    {{- include "glance.labels" . | nindent 4 }}
 spec:
   ingressClassName: {{ .Values.ingress.className }}
   rules:
