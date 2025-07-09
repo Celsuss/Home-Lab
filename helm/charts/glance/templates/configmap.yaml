@@ -112,23 +112,11 @@ data:
                   - go-gitea/gitea
                   - immich-app/immich
                   - syncthing/syncthing
-      # Add more pages here:
-      # - name: Your page name
-      #   columns:
-      #     - size: small
-      #       widgets:
-      #         # Add widgets here
-      #     - size: full
-      #       widgets:
-      #         # Add widgets here
-      #     - size: small
-      #       widgets:
-      #         # Add widgets here
       - name: {{ .Values.config.pages.startpage }}
         width: slim
-        hide-desktop-navigation: true
+        # hide-desktop-navigation: true
         center-vertically: true
-        columns:
+        rows:
           - size: full
             widgets:
               - type: search
@@ -143,3 +131,16 @@ data:
           - type: bookmarks
             groups:
             {{- toYaml .Values.config.pages.startpage.bookmarks | nindent 14 }}
+
+      # Add more pages here:
+      # - name: Your page name
+      #   columns:
+      #     - size: small
+      #       widgets:
+      #         # Add widgets here
+      #     - size: full
+      #       widgets:
+      #         # Add widgets here
+      #     - size: small
+      #       widgets:
+      #         # Add widgets here
