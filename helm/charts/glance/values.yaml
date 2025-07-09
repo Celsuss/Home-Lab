@@ -64,16 +64,16 @@ config:
         # icon: mdi:camera # mdi for Material Design icons https://pictogrammers.com/library/mdi/
         - title: Karakeep
           url: http://karakeep.homelab.local/
-          icon: sh:karakeep-dark
+          icon: sh:karakeep-light
         - title: ArgoCD
           url: https://argocd.homelab.local/
           icon: si:argo
         - title: Open-webUI
           url: http://open-webui.homelab.local/
-          icon: sh:open-webui-dark
+          icon: sh:open-webui-light
         - title: Beszel
           url: http://beszel.homelab.local/
-          icon: sh:beszel-dark
+          icon: sh:beszel-light
       bookmarks:
         - title: General
           links:
