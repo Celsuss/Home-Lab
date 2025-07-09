@@ -133,7 +133,7 @@ data:
                   {{- toYaml .Values.config.pages.links.bookmarks | nindent 18 }}
 
       # Add more pages here:
-      - name: Your page name
+      # - name: Your page name
       #   columns:
       #     - size: small
       #       widgets:
