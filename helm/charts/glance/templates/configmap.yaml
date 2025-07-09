@@ -112,7 +112,7 @@ data:
                   - go-gitea/gitea
                   - immich-app/immich
                   - syncthing/syncthing
-      - name: {{ .Values.config.pages.startpage }}
+      - name: Links
         width: slim
         # hide-desktop-navigation: true
         center-vertically: true
@@ -126,14 +126,14 @@ data:
                 cache: 1m
                 title: Services
                 sites:
-                  {{- toYaml .Values.config.pages.startpage.services | nindent 18 }}
+                  {{- toYaml .Values.config.pages.links.services | nindent 18 }}
 
               - type: bookmarks
                 groups:
-                  {{- toYaml .Values.config.pages.startpage.bookmarks | nindent 18 }}
+                  {{- toYaml .Values.config.pages.links.bookmarks | nindent 18 }}
 
       # Add more pages here:
-      # - name: Your page name
+      - name: Your page name
       #   columns:
       #     - size: small
       #       widgets:

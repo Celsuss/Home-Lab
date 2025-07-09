@@ -56,7 +56,7 @@ readinessProbe:
 config:
   pages:
     # TODO change name?
-    startpage:
+    links:
       services:
         # icon: si:immich # si for Simple icons https://simpleicons.org/
         # icon: sh:immich # sh for selfh.st icons https://selfh.st/icons/
