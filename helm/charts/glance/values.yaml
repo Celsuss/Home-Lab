@@ -52,3 +52,40 @@ readinessProbe:
   httpGet:
     path: /
     port: http
+
+config:
+  pages:
+    # TODO change name?
+    startpage:
+      services:
+        # icon: si:immich # si for Simple icons https://simpleicons.org/
+        # icon: sh:immich # sh for selfh.st icons https://selfh.st/icons/
+        # icon: di:immich # di for Dashboard icons https://github.com/homarr-labs/dashboard-icons
+        # icon: mdi:camera # mdi for Material Design icons https://pictogrammers.com/library/mdi/
+        - title: Karakeep
+          url: http://karakeep.homelab.local/
+          icon: sh:karakeep-dark
+        - title: ArgoCD
+          url: https://argocd.homelab.local/
+          icon: si:argo
+        - title: Open-webUI
+          url: http://open-webui.homelab.local/
+          icon: sh:open-webui-dark
+        - title: Beszel
+          url: http://beszel.homelab.local/
+          icon: sh:beszel-dark
+      bookmarks:
+        - title: General
+          links:
+            - title: Proton mail
+              url: https://mail.proton.me/u/0/inbox
+        - title: News
+          links:
+            - title: Sweclockers
+              url: https://www.sweclockers.com/
+            - title: Feber
+              url: https://feber.se/
+        - title: Entertainment
+          links:
+            - title: YouTube
+              url: https://www.youtube.com/
