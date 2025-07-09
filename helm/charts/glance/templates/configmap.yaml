@@ -116,21 +116,21 @@ data:
         width: slim
         # hide-desktop-navigation: true
         center-vertically: true
-        rows:
+        columns:
           - size: full
             widgets:
               - type: search
                 autofocus: true
 
-          - type: monitor
-            cache: 1m
-            title: Services
-            sites:
-            {{- toYaml .Values.config.pages.startpage.services | nindent 14 }}
+              - type: monitor
+                cache: 1m
+                title: Services
+                sites:
+                  {{- toYaml .Values.config.pages.startpage.services | nindent 18 }}
 
-          - type: bookmarks
-            groups:
-            {{- toYaml .Values.config.pages.startpage.bookmarks | nindent 14 }}
+              - type: bookmarks
+                groups:
+                  {{- toYaml .Values.config.pages.startpage.bookmarks | nindent 18 }}
 
       # Add more pages here:
       # - name: Your page name
