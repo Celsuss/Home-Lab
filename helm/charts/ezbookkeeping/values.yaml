@@ -19,6 +19,10 @@ securityContext: {}
   # runAsNonRoot: true
   # runAsUser: 1000
 
+env:
+  - name: EBK_SERVER_DOMAIN
+    value: ezbookkeeping.homelab.local
+
 service:
   type: ClusterIP
   port: 8080
