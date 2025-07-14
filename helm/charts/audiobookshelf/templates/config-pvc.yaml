@@ -1,0 +1,15 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Values.name }}-config-pvc
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "audiobookshelf.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.persistence.config.storage }}
+  storageClassName: {{ .Values.persistence.storageClass }}

@@ -1,0 +1,59 @@
+---
+replicaCount: 1
+namespace: media
+name: audiobookshelf
+
+image:
+  repository: ghcr.io/advplyr/audiobookshelf
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+service:
+  type: ClusterIP
+  port: 13378
+
+ingress:
+  enabled: true
+  className: "traefik"
+  hostName: audiobookshelf.homelab.local
+  tls: []
+
+persistence:
+  storageClass: local-path
+  audiobooks:
+    storage: 10Gi
+  podcasts:
+    storage: 10Gi
+  metadata:
+    storage: 4Gi
+  config:
+    storage: 2Gi
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 512Mi
+
+# This is to setup the liveness and readiness probes more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
+livenessProbe:
+  httpGet:
+    path: /
+    port: http
+readinessProbe:
+  httpGet:
+    path: /
+    port: http
