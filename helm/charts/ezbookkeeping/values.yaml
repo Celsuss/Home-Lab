@@ -35,6 +35,10 @@ ingress:
   #    hosts:
   #      - chart-example.local
 
+persistence:
+  storageClass: local-path
+  storage: 3Gi
+
 resources:
   requests:
     cpu: 50m
