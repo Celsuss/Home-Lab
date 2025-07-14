@@ -4,6 +4,8 @@ kind: PersistentVolumeClaim
 metadata:
   name: {{ .Values.name }}-storage-pvc
   namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "ezbookkeeping.labels" . | nindent 4 }}
 spec:
   accessModes:
     - ReadWriteOnce
