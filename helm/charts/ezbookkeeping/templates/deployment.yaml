@@ -38,7 +38,6 @@ spec:
         volumeMounts:
           - name: data
             mountPath: /ezbookkeeping/data
-        volumeMounts:
           - name: storage
             mountPath: /ezbookkeeping/storage
       volumes:
