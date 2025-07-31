@@ -1,0 +1,127 @@
+---
+namespace: ai-workloads
+# -- Global image pull policy
+imagePullPolicy: IfNotPresent
+
+# -- Override the full name of the release
+fullnameOverride: ""
+# -- Override the name of the chart
+nameOverride: ""
+
+# -- Configuration for the main Khoj server application
+khoj:
+  image:
+    repository: ghcr.io/khoj-ai/khoj
+    tag: "latest"
+
+  # -- Configuration for the Khoj application itself
+  config:
+    # -- The internal Kubernetes service URL for your Ollama instance.
+    # -- Example: http://ollama.ollama.svc.cluster.local:11434/v1
+    ollamaUrl: "http://ollama.ai-workloads.svc.cluster.local:12434/v1"
+    adminEmail: "jenslorden@proton.me"
+    # -- Set to true to disable telemetry
+    disableTelemetry: true
+    # -- Set to true for verbose logging
+    debug: false
+
+  # -- Service configuration for the Khoj server
+  service:
+    type: ClusterIP
+    port: 42110
+
+  # -- Persistence settings for Khoj server (config and models)
+  persistence:
+    config:
+      enabled: true
+      # -- The storage class to use for the config volume. If null, the default is used.
+      storageClass: ""
+      accessMode: ReadWriteOnce
+      size: 1Gi
+    models:
+      enabled: true
+      # -- The storage class to use for the models volume. If null, the default is used.
+      storageClass: ""
+      accessMode: ReadWriteOnce
+      size: 50Gi # Embedding models can be large
+
+# -- Configuration for the PostgreSQL/pgvector database
+database:
+  image:
+    repository: ankane/pgvector
+    tag: "latest"
+
+  service:
+    port: 5432
+
+  # -- Persistence settings for the database
+  persistence:
+    enabled: true
+    # -- The storage class to use for the database volume. If null, the default is used.
+    storageClass: ""
+    accessMode: ReadWriteOnce
+    size: 10Gi
+
+# -- Configuration for the SearxNG web search engine
+search:
+  image:
+    repository: searxng/searxng
+    tag: "latest"
+
+  service:
+    port: 8080
+
+# -- Configuration for the Terrarium code execution sandbox
+sandbox:
+  image:
+    repository: khoj/terrarium
+    tag: "latest"
+
+  service:
+    port: 8080
+
+# -- Secret management using the "Bring Your Own Secret" (BYOS) pattern.
+# -- You must create a secret with the specified name before installing the chart.
+secrets:
+  # -- The name of the Kubernetes Secret containing Khoj credentials.
+  # -- This secret must contain the keys: KHOJ_ADMIN_PASSWORD, KHOJ_DJANGO_SECRET_KEY,
+  # -- POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB
+  existingName: "khoj-secrets"
+
+# -- Ingress configuration for exposing the Khoj UI
+ingress:
+  enabled: true
+  # -- The IngressClass to use
+  className: "traefik"
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    # # Annotations for WebSocket support with Nginx Ingress Controller
+    # nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    # nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+  hosts:
+    - host: khoj.homelab.local
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls:
+  #  - secretName: khoj-tls
+  #    hosts:
+  #      - khoj.local
+
+# -- Pod Security Context for running containers as a non-root user.
+# -- A good practice for security hardening. [7]
+podSecurityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+
+# -- Resource requests and limits for the pods.
+# -- It's highly recommended to customize these based on your cluster's capacity.
+resources: {}
+#  limits:
+#    cpu: 100m
+#    memory: 128Mi
+#  requests:
+#    cpu: 100m
+#    memory: 128Mi

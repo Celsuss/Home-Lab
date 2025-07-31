@@ -1,0 +1,23 @@
+Khoj has been installed.
+
+Your release is named {{.Release.Name }}.
+
+To access your Khoj instance:
+
+1. Get the Khoj server URL by running these commands:
+{{- if.Values.ingress.enabled }}
+  echo "Add the following urls to /etc/hosts"
+  {{- range.Values.ingress.hosts }}
+  http://{{.host }}
+  {{- end }}
+{{- else }}
+  export POD_NAME=$(kubectl get pods --namespace {{.Release.Namespace }} -l "app.kubernetes.io/instance={{.Release.Name }},app.kubernetes.io/component=server" -o jsonpath="{.items.metadata.name}")
+  echo "Visit http://127.0.0.1:{{.Values.khoj.service.port }} to use your application"
+  kubectl --namespace {{.Release.Namespace }} port-forward $POD_NAME {{.Values.khoj.service.port }}:{{.Values.khoj.service.port }}
+{{- end }}
+
+Admin Credentials:
+  Username: {{.Values.khoj.config.adminEmail }}
+  Password: The password is stored in the '{{.Values.secrets.existingName }}' secret under the key 'KHOJ_ADMIN_PASSWORD'.
+
+Enjoy your AI second brain!

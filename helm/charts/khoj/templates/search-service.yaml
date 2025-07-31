@@ -1,0 +1,19 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "khoj.fullname" . }}-search
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "khoj.labels" . | nindent 4 }}
+    app.kubernetes.io/component: search
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{.Values.search.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "khoj.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: search

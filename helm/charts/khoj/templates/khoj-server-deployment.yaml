@@ -1,0 +1,54 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "khoj.fullname" . }}-server
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "khoj.labels" . | nindent 4 }}
+    app.kubernetes.io/component: server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "khoj.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: server
+  template:
+    metadata:
+      labels:
+        {{- include "khoj.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: server
+    spec:
+      {{- with.Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: khoj-server
+          image: "{{.Values.khoj.image.repository }}:{{.Values.khoj.image.tag }}"
+          imagePullPolicy: {{.Values.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{.Values.khoj.service.port }}
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ include "khoj.fullname" . }}-config
+            - secretRef:
+                name: {{.Values.secrets.existingName }}
+          volumeMounts:
+            - name: config
+              mountPath: /root/.khoj
+            - name: models
+              mountPath: /root/.cache/torch
+          {{- with.Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: {{ include "khoj.fullname" . }}-config-pvc
+        - name: models
+          persistentVolumeClaim:
+            claimName: {{ include "khoj.fullname" . }}-models-pvc
