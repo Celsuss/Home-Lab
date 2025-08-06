@@ -1,0 +1,68 @@
+# .github/workflows/docker-build-and-push.yml
+
+name: Build and Push Changed Docker Images
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'docker/**'
+
+jobs:
+  identify-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      changed_apps: ${{ steps.changes.outputs.apps }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Identify Changed Applications
+        id: changes
+        uses: dorny/paths-filter@v3.0.2
+        with:
+          list-files: none
+          filters: |
+            argo-cd-repo-server-sops:
+              - 'docker/argo-cd-repo-server-sops/**'
+
+  build-and-push:
+    needs: identify-changes
+    if: needs.identify-changes.outputs.changed_apps != '[]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        app: ${{ fromJSON(needs.identify-changes.outputs.changed_apps) }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry (GHCR)
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_TOKEN }}
+
+      - name: Build and push Docker image
+        id: build-and-push
+        uses: docker/build-push-action@v6
+        with:
+          context: ./docker/${{ matrix.app }}
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/${{ matrix.app }}:latest
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+
+      # ✨ New step added below!
+      - name: Print Pushed Image Path
+        run: |
+          echo "✅ Successfully built and pushed image: ghcr.io/${{ github.repository_owner }}/${{ matrix.app }}:latest"
