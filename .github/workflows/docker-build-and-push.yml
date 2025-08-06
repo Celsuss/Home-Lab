@@ -12,7 +12,7 @@ jobs:
   identify-changes:
     runs-on: ubuntu-latest
     outputs:
-      changed_apps: ${{ steps.changes.outputs.apps }}
+      changed_apps: ${{ steps.changes.outputs.changes }}
 
     steps:
       - name: Checkout code
