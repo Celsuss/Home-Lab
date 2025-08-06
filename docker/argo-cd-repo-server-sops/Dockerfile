@@ -1,4 +1,4 @@
-# docker/argo-cd-repo-server-sops
+# /docker/argo-cd-repo-server-sops
 
 # Stage 1: Get the SOPS binary from its official Alpine-based image
 # Pinning to a specific version like v3.10.2 ensures reproducible builds.
