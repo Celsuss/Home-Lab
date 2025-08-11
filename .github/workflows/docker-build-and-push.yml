@@ -44,6 +44,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+        # Convert name to lowercase or else docker push won't work
+      - name: Convert owner name to lowercase
+        id: string
+        run: |
+          echo "owner_lc=${{ github.repository_owner,,}}" >> $GITHUB_OUTPUT
+
       - name: Log in to GitHub Container Registry (GHCR)
         uses: docker/login-action@v3
         with:
@@ -57,11 +63,11 @@ jobs:
         with:
           context: ./docker/${{ matrix.app }}
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/${{ matrix.app }}:latest
+          tags: ghcr.io/${{ steps.string.outputs.owner_lc }}/${{ matrix.app }}:latest
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
 
-      # ✨ New step added below!
       - name: Print Pushed Image Path
         run: |
-          echo "✅ Successfully built and pushed image: ghcr.io/${{ github.repository_owner }}/${{ matrix.app }}:latest"
+          # ✅ This line is also modified to use the new lowercase variable
+          echo "✅ Successfully built and pushed image: ghcr.io/${{ steps.string.outputs.owner_lc }}/${{ matrix.app }}:latest"
