@@ -10,6 +10,7 @@ FROM ghcr.io/getsops/sops:v3.10.2-alpine as sops
 # Check your chart's documentation for the correct image tag.
 FROM quay.io/argoproj/argocd:v2.12.2
 
+
 # Copy the sops binary from the first stage into the final image's PATH
 # This makes the 'sops' command available in the container.
 COPY --from=sops /usr/local/bin/sops /usr/local/bin/sops
