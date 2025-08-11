@@ -47,8 +47,11 @@ jobs:
         # Convert name to lowercase or else docker push won't work
       - name: Convert owner name to lowercase
         id: string
+        env:
+          OWNER: ${{ github.repository_owner }}
+        # Let the shell perform the lowercase conversion
         run: |
-          echo "owner_lc=${{ github.repository_owner,,}}" >> $GITHUB_OUTPUT
+          echo "owner_lc=${OWNER,,}" >> $GITHUB_OUTPUT
 
       - name: Log in to GitHub Container Registry (GHCR)
         uses: docker/login-action@v3
