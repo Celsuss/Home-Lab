@@ -1,10 +1,10 @@
 ---
 # https://www.arthurkoziel.com/setting-up-argocd-with-helm/
 apiVersion: v2
-name: argo-cd
+name: my-argocd
 version: 1.0.0
 dependencies:
   - name: argo-cd
-    version: 5.46.8
+    version: 8.3.3
     repository: https://argoproj.github.io/argo-helm
     condition: argo-cd.enabled

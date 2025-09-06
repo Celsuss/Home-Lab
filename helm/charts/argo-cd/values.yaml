@@ -1,97 +1,219 @@
 ---
 # https://github.com/argoproj/argo-helm/blob/main/charts/argo-cd/values.yaml
-argo-cd: # Need to have same name as dependency name
-  enabled: true
+# argo-cd: # Need to have same name as dependency name
+#   enabled: true
+#   fullnameOverride: "argo-cd"
 
+#   dex:
+#     enabled: false # False makes it less secure, only use in minikube
+
+#   notifications:
+#     enabled: false
+
+#   applicationSet:
+#     enabled: false
+
+#   server:
+#     service:
+#       type: ClusterIP
+
+#     extraArgs:
+#       - --insecure
+#       - --repo-server-timeout-seconds=240
+
+#     volumeMounts:
+#       - name: k3s-ca-cert
+#         mountPath: /etc/ssl/certs/k3s-ca.crt
+#         subPath: ca.crt
+#         readOnly: true
+
+#     volumes:
+#       - name: k3s-ca-cert
+#         secret:
+#           secretName: k3s-ca-cert
+
+#     # Configure ingress to handle external access
+#     ingress:
+#       enabled: true
+#       ingressClassName: traefik
+#       hostname: argocd.homelab.local
+
+#       # Enable TLS (HTTPS)
+#       # tls: true
+#       tls:
+#         - hosts:
+#           - argocd.homelab.local
+
+#       # Traefik-specific annotations that handle ArgoCD's requirements
+#       annotations:
+#         # This tells Traefik to handle both HTTP and gRPC traffic properly
+#         traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+
+#         # This is crucial for ArgoCD's CLI functionality
+#         traefik.ingress.kubernetes.io/router.tls: "true"
+
+#         # This handles the gRPC-Web protocol that ArgoCD uses, used for CLI
+#         # traefik.ingress.kubernetes.io/router.middlewares: argo-cd-argocd-server-grpc@kubernetescrd
+
+
+#     # Configure environment variables for k3s
+#     env:
+#       - name: GODEBUG
+#         value: "http2debug=1"
+
+#   # Configure the application controller for k3s
+#   controller:
+#     env:
+#       - name: GODEBUG
+#         value: "http2debug=1"
+
+#   # Configure the repo server
+#   repoServer:
+#     env:
+#       - name: GODEBUG
+#         value: "http2debug=1"
+#     image:
+#       repository: ghcr.io/celsuss/argo-cd-repo-server-sops
+#       tag: latest
+#       pullPolicy: IfNotPresent
+#     # env:
+#     #   - name: GODEBUG
+#     #     value: "http2debug=1"
+#     volumes:
+#       - name: sops-age-key
+#         secret:
+#           secretName: sops-age-key
+#           defaultMode: 0400
+#     volumeMounts:
+#       - name: sops-age-key
+#         mountPath: /home/argocd/.config/sops/age/
+#         readOnly: true
+######################################
+# argo-cd:
+#   # -- Global settings that apply to all Argo CD components.
+#   global:
+#     # -- Override the image repository for all components.
+#     # Replace 'my-registry/argocd-custom' with the actual path to your image.
+#     image:
+#       repository: ghcr.io/celsuss/argo-cd-repo-server-sops
+#       # -- Override the image tag. Use a descriptive tag that includes both
+#       # the Argo CD version and the SOPS version for clarity.
+#       tag: "latest"
+#       # -- Set the pull policy. 'IfNotPresent' is efficient for homelab environments.
+#       pullPolicy: IfNotPresent
+########################################
+argo-cd:
+  global:
+    # -- Override the image repository for all components.
+    # Replace 'my-registry/argocd-custom' with the actual path to your image.
+    image:
+      repository: ghcr.io/celsuss/argo-cd-repo-server-sops
+      # -- Override the image tag. Use a descriptive tag that includes both
+      # the Argo CD version and the SOPS version for clarity.
+      tag: "latest"
+      # -- Set the pull policy. 'IfNotPresent' is efficient for homelab environments.
+      pullPolicy: IfNotPresent
+
+  # -- Disable Dex for a simpler deployment, suitable for a homelab.
   dex:
-    enabled: false # False makes it less secure, only use in minikube
-
-  notifications:
     enabled: false
 
-  applicationSet:
-    enabled: false
+  # -- Centralized configuration for Argo CD components.
+  configs:
+    # -- Configuration for Config Management Plugins (CMPs).
+    cmp:
+      plugins:
+        # -- A plugin to support Helm charts with SOPS-encrypted value files.
+        sops-helm:
+          discover:
+            find:
+              command: ["find", ".", "-name", "values.sops.yaml"]
+          generate:
+            # This shell pipeline does the following:
+            # 1. Decrypts 'values.sops.yaml' using the 'sops -d' command.
+            # 2. Passes the decrypted YAML content to 'helm template' via the '--values -' flag.
+            #    The '-' tells helm to read values from stdin.
+            # 3. This allows merging decrypted secrets with standard 'values.yaml' files.
+            command:
+              - sh
+              - -c
+              - |
+                helm template "$ARGOCD_APP_NAME". \
+                  --namespace "$ARGOCD_APP_NAMESPACE" \
+                  --values - < <(sops -d values.sops.yaml)
 
+  # -- Argo CD Server specific configurations.
   server:
-    service:
-      type: ClusterIP
-
+    replicas: 1
+    # -- Add the --insecure flag to the server's startup arguments.
+    # This is the primary fix for the redirect loop. It tells the server to
+    # listen on HTTP, since Traefik is handling HTTPS termination.
     extraArgs:
       - --insecure
-      - --repo-server-timeout-seconds=120
+      - --repo-server-timeout-seconds=240
 
-    volumeMounts:
-      - name: k3s-ca-cert
-        mountPath: /etc/ssl/certs/k3s-ca.crt
-        subPath: ca.crt
-        readOnly: true
-
-    volumes:
-      - name: k3s-ca-cert
-        secret:
-          secretName: k3s-ca-cert
-
-    # Configure ingress to handle external access
+    # -- Ingress configuration for the Argo CD server.
     ingress:
       enabled: true
       ingressClassName: traefik
       hostname: argocd.homelab.local
-
-      # Enable TLS (HTTPS)
-      # tls: true
+      annotations:
+        # -- Instruct Traefik to use the 'websecure' entrypoint (port 443/TLS).
+        traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+        # -- Instruct Traefik to terminate TLS for this route.
+        traefik.ingress.kubernetes.io/router.tls: "true"
+        # -- If using cert-manager, uncomment the following line.
+        # cert-manager.io/cluster-issuer: "letsencrypt-production"
+        # traefik.ingress.kubernetes.io/service.scheme: h2c
       tls:
         - hosts:
           - argocd.homelab.local
 
-      # Traefik-specific annotations that handle ArgoCD's requirements
-      annotations:
-        # This tells Traefik to handle both HTTP and gRPC traffic properly
-        traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    # -- Resource requests and limits for the server.
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
 
-        # This is crucial for ArgoCD's CLI functionality
-        traefik.ingress.kubernetes.io/router.tls: "true"
-
-        # This handles the gRPC-Web protocol that ArgoCD uses, used for CLI
-        # traefik.ingress.kubernetes.io/router.middlewares: argo-cd-argocd-server-grpc@kubernetescrd
-
-    # Configure environment variables for k3s
-    env:
-      - name: GODEBUG
-        value: "http2debug=1"
-
-  # Configure the application controller for k3s
-  controller:
-    env:
-      - name: GODEBUG
-        value: "http2debug=1"
-
-  # Configure the repo server
+  # -- Configuration for the repo server, with the custom SOPS image.
   repoServer:
-    env:
-      - name: GODEBUG
-        value: "http2debug=1"
-    initContainers:
-      - name: download-tools
-        image: alpine:latest
-        command: [sh, -c]
-        args:
-          - |
-            wget -O /custom-tools/sops https://github.com/getsops/sops/releases/download/v3.10.0/sops-v3.10.0.linux.amd64
-            chmod +x /custom-tools/sops
-        volumeMounts:
-          - mountPath: /custom-tools
-            name: custom-tools
+    replicas: 1
+    # -- Use the custom image that includes the sops binary.
+    image:
+      repository: ghcr.io/celsuss/argo-cd-repo-server-sops
+      tag: latest
+      pullPolicy: IfNotPresent
+    # -- Mount the age key secret to be used by sops for decryption.
     volumes:
-      - name: custom-tools
-        emptyDir: {}
       - name: sops-age-key
         secret:
           secretName: sops-age-key
           defaultMode: 0400
     volumeMounts:
-      - name: custom-tools
-        mountPath: /usr/local/bin/sops
-        subPath: sops
       - name: sops-age-key
         mountPath: /home/argocd/.config/sops/age/
         readOnly: true
+    # -- Resource requests and limits for the repo-server.
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+
+  # -- Scale down other component replicas for a homelab environment.
+  controller:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+  applicationSet:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+  redis:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
