@@ -43,6 +43,8 @@ postgres:
     port: 5432
 
   persistence:
+    accessModes:
+      - ReadWriteOnce
     enabled: true
     storageClassName: ""
     size: 10Gi

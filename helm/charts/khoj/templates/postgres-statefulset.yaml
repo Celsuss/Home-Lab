@@ -37,6 +37,7 @@ spec:
         name: postgres-data
       spec:
         accessModes:
+          {{- toYaml .Values.postgres.persistence.accessModes | nindent 8 }}
         {{- if.Values.postgres.persistence.storageClassName }}
         storageClassName: {{.Values.postgres.persistence.storageClassName }}
         {{- end }}
