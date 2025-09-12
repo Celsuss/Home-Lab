@@ -44,9 +44,9 @@ postgres:
     port: 5432
 
   persistence:
+    enabled: true
     accessModes:
       - ReadWriteOnce
-    enabled: true
     storageClassName: ""
     size: 10Gi
 
@@ -62,6 +62,8 @@ redis:
 
   persistence:
     enabled: true
+    accessModes:
+      - ReadWriteOnce
     storageClassName: ""
     size: 5Gi
 

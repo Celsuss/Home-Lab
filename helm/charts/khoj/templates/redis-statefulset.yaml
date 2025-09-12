@@ -33,6 +33,7 @@ spec:
         name: redis-data
       spec:
         accessModes:
+          {{- toYaml .Values.redis.persistence.accessModes | nindent 8 }}
         {{- if.Values.redis.persistence.storageClassName }}
         storageClassName: {{.Values.redis.persistence.storageClassName }}
         {{- end }}
