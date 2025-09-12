@@ -19,46 +19,10 @@ spec:
         {{- include "khoj.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: server
     spec:
-      initContainers:
-        - name: khoj-db-migration
-          image: "{{ .Values.khoj.image.repository }}:{{ .Values.khoj.image.tag }}"
-          imagePullPolicy: {{ .Values.khoj.image.pullPolicy }}
-          # This command runs migrations and waits for the DB.
-          command: ["/bin/sh", "-c"]
-          args:
-            - |
-              # This assumes pg_isready is in the khoj image.
-              # If not, use a different image for the initContainer.
-              # while ! pg_isready -h "{{ include "khoj.fullname" . }}-postgres" -p "5432" -U "{{ .Values.postgres.user }}"; do
-              #   echo "Waiting for postgres..."
-              #   sleep 2
-              # done
-
-              echo "Postgres is ready. Running database migrations..."
-              python3 src/khoj/manage.py migrate --noinput
-          # The init container needs the same DB credentials.
-          env:
-            - name: POSTGRES_HOST
-              value: "{{ include "khoj.fullname" . }}-postgres"
-            - name: POSTGRES_USER
-              value: {{ .Values.postgres.user | quote }}
-            - name: POSTGRES_DB
-              value: {{ .Values.postgres.database | quote }}
-            - name: POSTGRES_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.secrets.name }}
-                  key: POSTGRES_PASSWORD
       containers:
         - name: khoj
           image: "{{.Values.khoj.image.repository }}:{{.Values.khoj.image.tag }}"
           imagePullPolicy: {{.Values.khoj.image.pullPolicy }}
-          command: ["python3", "-m", "uvicorn"]
-          args: [
-            "khoj.main:app",
-            "--host", "0.0.0.0",
-            "--port", {{ .Values.khoj.service.port | quote }}
-          ]
           ports:
             - name: http
               containerPort: {{.Values.khoj.service.port }}
@@ -66,10 +30,10 @@ spec:
           env:
             - name: KHOJ_DOMAIN
               value: {{.Values.khoj.config.KHOJ_DOMAIN | quote }}
-            # - name: KHOJ_HOST
-            #   value: "0.0.0.0"
-            # - name: KHOJ_PORT
-            #   value: {{ .Values.khoj.service.port | quote }}
+            - name: HOST
+              value: "0.0.0.0"
+            - name: PORT
+              value: {{ .Values.khoj.service.port | quote }}
             - name: KHOJ_NO_HTTPS
               value: {{.Values.khoj.config.KHOJ_NO_HTTPS | quote }}
             - name: OPENAI_BASE_URL
