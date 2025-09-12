@@ -16,7 +16,7 @@ khoj:
 
   # GPU resource requests for the Khoj server pod
   gpu:
-    enabled: true
+    enabled: false
     count: 1
 
   # Persistence for Khoj server data (e.g., indexes)
