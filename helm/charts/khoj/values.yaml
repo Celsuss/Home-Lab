@@ -35,10 +35,11 @@ khoj:
 # PostgreSQL with PostGIS Configuration
 postgres:
   image:
-    repository: postgres
+    # repository: postgres
+    repository: pgvector/pgvector
     pullPolicy: IfNotPresent
-    # tag: "16-3.5-alpine"
-    tag: "16.10-alpine"
+    # tag: "16.10-alpine"
+    tag: "pg16"
 
   service:
     port: 5432
