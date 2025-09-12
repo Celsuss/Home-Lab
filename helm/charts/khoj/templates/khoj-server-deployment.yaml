@@ -41,11 +41,11 @@ spec:
 
               # Step 3: Run database migrations.
               echo "Running migrations..."
-              python src/khoj/manage.py migrate
+              python3 src/khoj/manage.py migrate
 
               # Step 4: Collect all static files (including the newly built UI).
               echo "Collecting static files..."
-              python src/khoj/manage.py collectstatic --noinput
+              python3 src/khoj/manage.py collectstatic --noinput
           # The init container needs database credentials.
           env:
             - name: POSTGRES_HOST
