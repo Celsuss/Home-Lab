@@ -23,7 +23,7 @@ spec:
         - name: khoj
           image: "{{.Values.khoj.image.repository }}:{{.Values.khoj.image.tag }}"
           imagePullPolicy: {{.Values.khoj.image.pullPolicy }}
-          command: ["python", "-m", "uvicorn"]
+          command: ["python3", "-m", "uvicorn"]
           args:
             - "khoj.main:app"
             - "--host"
