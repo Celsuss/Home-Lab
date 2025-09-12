@@ -27,10 +27,10 @@ spec:
           args:
             - |
               # Step 1: Wait for the database using pg_isready.
-              while ! pg_isready -h "{{ include "khoj.fullname" . }}-postgres" -p "5432" -U "{{ .Values.postgres.user }}"; do
-                echo "Waiting for postgres..."
-                sleep 2
-              done
+              # while ! pg_isready -h "{{ include "khoj.fullname" . }}-postgres" -p "5432" -U "{{ .Values.postgres.user }}"; do
+              #   echo "Waiting for postgres..."
+              #   sleep 2
+              # done
 
               # Step 2: Build the frontend UI.
               echo "Building frontend..."
