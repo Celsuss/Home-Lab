@@ -23,12 +23,28 @@ spec:
         - name: khoj
           image: "{{.Values.khoj.image.repository }}:{{.Values.khoj.image.tag }}"
           imagePullPolicy: {{.Values.khoj.image.pullPolicy }}
-          command: ["python3", "-m", "uvicorn"]
-          args: [
-            "khoj.main:app",
-            "--host", "0.0.0.0",
-            "--port", {{ .Values.khoj.service.port | quote }}
-          ]
+          # command: ["python3", "-m", "uvicorn"]
+          # args: [
+          #   "khoj.main:app",
+          #   "--host", "0.0.0.0",
+          #   "--port", {{ .Values.khoj.service.port | quote }}
+          # ]
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              # Wait for the database to be ready (optional but good practice)
+              # while ! pg_isready -h "{{ include "khoj.fullname" . }}-postgres" -p "5432" -U "{{ .Values.postgres.user }}"; do
+              #   echo "Waiting for postgres..."
+              #   sleep 2
+              # done
+
+              # Run Django migrations
+              echo "Running database migrations..."
+              python src/khoj/manage.py migrate --noinput
+
+              # Start the Uvicorn server
+              echo "Starting Khoj server..."
+              uvicorn khoj.main:app --host 0.0.0.0 --port {{ .Values.khoj.service.port }}
           ports:
             - name: http
               containerPort: {{.Values.khoj.service.port }}
