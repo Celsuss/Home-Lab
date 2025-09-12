@@ -97,8 +97,8 @@ terrarium:
 ingress:
   enabled: true
   className: traefik
-  annotations: {}
   host: "khoj.homelab.local"
+  # annotations: {}
 
 # Secret management configuration
 # The chart will create a secret from values provided by a SOPS-encrypted file.
