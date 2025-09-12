@@ -26,9 +26,16 @@ spec:
           imagePullPolicy: {{.Values.postgres.image.pullPolicy }}
           ports:
             - containerPort: {{.Values.postgres.service.port }}
-          envFrom:
-            - secretRef:
-                name: {{.Values.secrets.name }}
+          env:
+            - name: POSTGRES_DB
+              value: {{ .Values.postgres.database | quote }}
+            - name: POSTGRES_USER
+              value: {{ .Values.postgres.user | quote }}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.name }}
+                  key: POSTGRES_PASSWORD
           volumeMounts:
             - name: postgres-data
               mountPath: /var/lib/postgresql/data

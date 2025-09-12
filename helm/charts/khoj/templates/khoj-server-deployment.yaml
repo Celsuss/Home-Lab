@@ -55,20 +55,15 @@ spec:
                   name: {{.Values.secrets.name }}
                   key: KHOJ_DJANGO_SECRET_KEY
             - name: POSTGRES_USER
-              valueFrom:
-                secretKeyRef:
-                  name: {{.Values.secrets.name }}
-                  key: POSTGRES_USER
+              value: {{ .Values.postgres.user | quote }}
+            - name: POSTGRES_DB
+              value: {{ .Values.postgres.database | quote }}
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{.Values.secrets.name }}
                   key: POSTGRES_PASSWORD
-            - name: POSTGRES_DB
-              valueFrom:
-                secretKeyRef:
-                  name: {{.Values.secrets.name }}
-                  key: POSTGRES_DB
+
           {{- if.Values.khoj.gpu.enabled }}
           resources:
             limits:

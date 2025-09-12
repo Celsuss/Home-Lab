@@ -43,6 +43,9 @@ postgres:
   service:
     port: 5432
 
+  user: "khoj"
+  database: "khoj_production"
+
   persistence:
     enabled: true
     accessModes:
