@@ -37,7 +37,8 @@ postgres:
   image:
     repository: postgres
     pullPolicy: IfNotPresent
-    tag: "16-3.5-alpine"
+    # tag: "16-3.5-alpine"
+    tag: "16.10-alpine"
 
   service:
     port: 5432
