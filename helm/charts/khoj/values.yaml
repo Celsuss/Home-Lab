@@ -30,7 +30,7 @@ khoj:
   config:
     KHOJ_DOMAIN: "khoj.homelab.local"
     KHOJ_NO_HTTPS: "True"
-    OPENAI_BASE_URL: "http://ollama.ai-workloads.svc.cluster.local:11434"
+    OPENAI_BASE_URL: "http://ollama.ai-workloads.svc.cluster.local:11434/v1/"
     KHOJ_ADMIN_EMAIL: "jenslorden@proton.me"
 
 # PostgreSQL with PostGIS Configuration

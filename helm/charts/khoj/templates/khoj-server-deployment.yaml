@@ -36,10 +36,6 @@ spec:
           env:
             - name: KHOJ_DOMAIN
               value: {{.Values.khoj.config.KHOJ_DOMAIN | quote }}
-            # - name: HOST
-            #   value: "0.0.0.0"
-            # - name: PORT
-            #   value: {{ .Values.khoj.service.port | quote }}
             - name: KHOJ_NO_HTTPS
               value: {{.Values.khoj.config.KHOJ_NO_HTTPS | quote }}
             - name: OPENAI_BASE_URL
