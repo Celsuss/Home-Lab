@@ -67,7 +67,7 @@ spec:
         - name: khoj
           image: "{{.Values.khoj.image.repository }}:{{.Values.khoj.image.tag }}"
           imagePullPolicy: {{.Values.khoj.image.pullPolicy }}
-          command: ["--host='0.0.0.0'" "--port=42110" "-vv" "--anonymous-mode" "--non-interactive"]
+          command: ["--host=0.0.0.0", "--port={{ .Values.khoj.service.port }}", "-vv", "--anonymous-mode", "--non-interactive"]
 
           # command: ["python", "src/khoj/manage.py", "runserver", "0.0.0.0:{{ .Values.khoj.service.port }}"]
 
