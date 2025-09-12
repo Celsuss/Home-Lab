@@ -41,6 +41,7 @@ postgres:
     # tag: "16.10-alpine"
     tag: "pg16"
 
+
   service:
     port: 5432
 
@@ -95,7 +96,7 @@ terrarium:
 # Ingress Configuration using K3s Traefik
 ingress:
   enabled: true
-  className: "" # K3s default Traefik does not require a class name
+  className: traefik
   annotations: {}
   host: "khoj.homelab.local"
 
