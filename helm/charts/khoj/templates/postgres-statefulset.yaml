@@ -1,0 +1,45 @@
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "khoj.fullname" . }}-postgres
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "khoj.labels" . | nindent 4 }}
+    app.kubernetes.io/component: postgres
+spec:
+  serviceName: {{ include "khoj.fullname" . }}-postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "khoj.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: postgres
+  template:
+    metadata:
+      labels:
+        {{- include "khoj.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: "{{.Values.postgres.image.repository }}:{{.Values.postgres.image.tag }}"
+          imagePullPolicy: {{.Values.postgres.image.pullPolicy }}
+          ports:
+            - containerPort: {{.Values.postgres.service.port }}
+          envFrom:
+            - secretRef:
+                name: {{.Values.secrets.name }}
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-data
+      spec:
+        accessModes:
+        {{- if.Values.postgres.persistence.storageClassName }}
+        storageClassName: {{.Values.postgres.persistence.storageClassName }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{.Values.postgres.persistence.size }}

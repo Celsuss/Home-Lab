@@ -1,0 +1,15 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "khoj.fullname" . }}-redis
+  labels:
+    {{- include "khoj.labels" . | nindent 4 }}
+    app.kubernetes.io/component: redis
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{.Values.redis.service.port }}
+  selector:
+    {{- include "khoj.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: redis

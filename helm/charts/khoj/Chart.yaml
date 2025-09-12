@@ -3,4 +3,4 @@ name: khoj
 description: A Helm chart for deploying the Khoj AI second brain.
 type: application
 version: 0.1.0
-appVersion: "latest"
+aappVersion: "2.5.0" # Corresponds to the Khoj application version

@@ -1,127 +1,109 @@
 ---
+# Global settings
 namespace: ai-workloads
-# -- Global image pull policy
-imagePullPolicy: IfNotPresent
+replicaCount: 1
 
-# -- Override the full name of the release
-fullnameOverride: ""
-# -- Override the name of the chart
-nameOverride: ""
-
-# -- Configuration for the main Khoj server application
+# Khoj Server Configuration
 khoj:
   image:
     repository: ghcr.io/khoj-ai/khoj
-    tag: "latest"
+    pullPolicy: IfNotPresent
+    tag: "2.0.0-beta.15"
 
-  # -- Configuration for the Khoj application itself
-  config:
-    # -- The internal Kubernetes service URL for your Ollama instance.
-    # -- Example: http://ollama.ollama.svc.cluster.local:11434/v1
-    ollamaUrl: "http://ollama.ai-workloads.svc.cluster.local:12434/v1"
-    adminEmail: "jenslorden@proton.me"
-    # -- Set to true to disable telemetry
-    disableTelemetry: true
-    # -- Set to true for verbose logging
-    debug: false
-
-  # -- Service configuration for the Khoj server
   service:
     type: ClusterIP
-    port: 42110
+    port: 8000
 
-  # -- Persistence settings for Khoj server (config and models)
+  # GPU resource requests for the Khoj server pod
+  gpu:
+    enabled: true
+    count: 1
+
+  # Persistence for Khoj server data (e.g., indexes)
   persistence:
-    config:
-      enabled: true
-      # -- The storage class to use for the config volume. If null, the default is used.
-      storageClass: ""
-      accessMode: ReadWriteOnce
-      size: 1Gi
-    models:
-      enabled: true
-      # -- The storage class to use for the models volume. If null, the default is used.
-      storageClass: ""
-      accessMode: ReadWriteOnce
-      size: 50Gi # Embedding models can be large
+    enabled: true
+    storageClassName: "" # Use default storage class or specify one
+    size: 20Gi
 
-# -- Configuration for the PostgreSQL/pgvector database
-database:
+  # Non-sensitive configuration passed as environment variables
+  # Sensitive values (like passwords) should be in a SOPS-encrypted file
+  config:
+    KHOJ_DOMAIN: "khoj.homelab.local"
+    KHOJ_NO_HTTPS: "True"
+    OPENAI_BASE_URL: "http://ollama.ai-workloads.svc.cluster.local:11434"
+
+# PostgreSQL with PostGIS Configuration
+postgres:
   image:
-    repository: ankane/pgvector
-    tag: "latest"
+    repository: postgres
+    pullPolicy: IfNotPresent
+    tag: "16-3.5-alpine"
 
   service:
     port: 5432
 
-  # -- Persistence settings for the database
   persistence:
     enabled: true
-    # -- The storage class to use for the database volume. If null, the default is used.
-    storageClass: ""
-    accessMode: ReadWriteOnce
+    storageClassName: ""
     size: 10Gi
 
-# -- Configuration for the SearxNG web search engine
-search:
+# Redis Configuration
+redis:
+  image:
+    repository: redis
+    pullPolicy: IfNotPresent
+    tag: "7.2.5-alpine"
+
+  service:
+    port: 6379
+
+  persistence:
+    enabled: true
+    storageClassName: ""
+    size: 5Gi
+
+# SearXNG Configuration
+searxng:
   image:
     repository: searxng/searxng
-    tag: "latest"
+    pullPolicy: IfNotPresent
+    tag: "2024.1.20-1"
 
   service:
     port: 8080
 
-# -- Configuration for the Terrarium code execution sandbox
-sandbox:
+# Terrarium Code Sandbox Configuration
+terrarium:
   image:
-    repository: khoj/terrarium
+    # WARNING: Only 'latest' tag is provided by upstream.
+    # For production, it is highly recommended to replace this with an immutable digest.
+    # Example: ghcr.io/khoj-ai/terrarium@sha256:<digest>
+    repository: ghcr.io/khoj-ai/terrarium
+    pullPolicy: IfNotPresent
     tag: "latest"
 
   service:
     port: 8080
 
-# -- Secret management using the "Bring Your Own Secret" (BYOS) pattern.
-# -- You must create a secret with the specified name before installing the chart.
-secrets:
-  # -- The name of the Kubernetes Secret containing Khoj credentials.
-  # -- This secret must contain the keys: KHOJ_ADMIN_PASSWORD, KHOJ_DJANGO_SECRET_KEY,
-  # -- POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB
-  existingName: "khoj-secrets"
-
-# -- Ingress configuration for exposing the Khoj UI
+# Ingress Configuration using K3s Traefik
 ingress:
   enabled: true
-  # -- The IngressClass to use
-  className: "traefik"
+  className: "" # K3s default Traefik does not require a class name
   annotations: {}
-    # kubernetes.io/ingress.class: nginx
-    # cert-manager.io/cluster-issuer: "letsencrypt-prod"
-    # # Annotations for WebSocket support with Nginx Ingress Controller
-    # nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
-    # nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
-  hosts:
-    - host: khoj.homelab.local
-      paths:
-        - path: /
-          pathType: ImplementationSpecific
-  tls:
-  #  - secretName: khoj-tls
-  #    hosts:
-  #      - khoj.local
+  host: "khoj.homelab.local"
 
-# -- Pod Security Context for running containers as a non-root user.
-# -- A good practice for security hardening. [7]
-podSecurityContext:
-  runAsUser: 1000
-  runAsGroup: 1000
-  fsGroup: 1000
-
-# -- Resource requests and limits for the pods.
-# -- It's highly recommended to customize these based on your cluster's capacity.
-resources: {}
-#  limits:
-#    cpu: 100m
-#    memory: 128Mi
-#  requests:
-#    cpu: 100m
-#    memory: 128Mi
+# Secret management configuration
+# The chart will create a secret from values provided by a SOPS-encrypted file.
+# The name of the Kubernetes Secret object to be created.
+secrets:
+  name: "khoj-secrets"
+  # Sensitive values will be populated from the SOPS file.
+  # Example structure for your secrets.yaml file:
+  # khoj:
+  #   config:
+  #     KHOJ_ADMIN_PASSWORD: "your_admin_password"
+  #     KHOJ_DJANGO_SECRET_KEY: "your_django_secret_key"
+  # postgres:
+  #   user: "khoj"
+  #   password: "your_postgres_password"
+  #   db: "khoj"

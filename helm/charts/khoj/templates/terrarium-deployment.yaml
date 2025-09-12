@@ -1,0 +1,27 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "khoj.fullname" . }}-terrarium
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "khoj.labels" . | nindent 4 }}
+    app.kubernetes.io/component: terrarium
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "khoj.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: terrarium
+  template:
+    metadata:
+      labels:
+        {{- include "khoj.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: terrarium
+    spec:
+      containers:
+        - name: terrarium
+          image: "{{.Values.terrarium.image.repository }}:{{.Values.terrarium.image.tag }}"
+          imagePullPolicy: {{.Values.terrarium.image.pullPolicy }}
+          ports:
+            - containerPort: {{.Values.terrarium.service.port }}

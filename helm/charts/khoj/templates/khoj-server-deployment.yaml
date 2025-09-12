@@ -8,7 +8,7 @@ metadata:
     {{- include "khoj.labels" . | nindent 4 }}
     app.kubernetes.io/component: server
 spec:
-  replicas: 1
+  replicas: {{.Values.replicaCount }}
   selector:
     matchLabels:
       {{- include "khoj.selectorLabels" . | nindent 6 }}
@@ -19,36 +19,67 @@ spec:
         {{- include "khoj.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: server
     spec:
-      {{- with.Values.podSecurityContext }}
-      securityContext:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
       containers:
-        - name: khoj-server
+        - name: khoj
           image: "{{.Values.khoj.image.repository }}:{{.Values.khoj.image.tag }}"
-          imagePullPolicy: {{.Values.imagePullPolicy }}
+          imagePullPolicy: {{.Values.khoj.image.pullPolicy }}
           ports:
             - name: http
               containerPort: {{.Values.khoj.service.port }}
               protocol: TCP
-          envFrom:
-            - configMapRef:
-                name: {{ include "khoj.fullname" . }}-config
-            - secretRef:
-                name: {{.Values.secrets.existingName }}
-          volumeMounts:
-            - name: config
-              mountPath: /root/.khoj
-            - name: models
-              mountPath: /root/.cache/torch
-          {{- with.Values.resources }}
+          env:
+            - name: KHOJ_DOMAIN
+              value: {{.Values.khoj.config.KHOJ_DOMAIN | quote }}
+            - name: KHOJ_NO_HTTPS
+              value: {{.Values.khoj.config.KHOJ_NO_HTTPS | quote }}
+            - name: OPENAI_BASE_URL
+              value: {{.Values.khoj.config.OPENAI_BASE_URL | quote }}
+            - name: POSTGRES_HOST
+              value: "{{ include "khoj.fullname" . }}-postgres"
+            - name: REDIS_HOST
+              value: "{{ include "khoj.fullname" . }}-redis"
+            - name: SEARXNG_HOST
+              value: "http://{{ include "khoj.fullname" . }}-searxng:{{.Values.searxng.service.port }}"
+            - name: KHOJ_CODE_EXECUTION_HOST
+              value: "http://{{ include "khoj.fullname" . }}-terrarium:{{.Values.terrarium.service.port }}"
+            - name: KHOJ_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{.Values.secrets.name }}
+                  key: KHOJ_ADMIN_PASSWORD
+            - name: KHOJ_DJANGO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{.Values.secrets.name }}
+                  key: KHOJ_DJANGO_SECRET_KEY
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{.Values.secrets.name }}
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{.Values.secrets.name }}
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: {{.Values.secrets.name }}
+                  key: POSTGRES_DB
+          {{- if.Values.khoj.gpu.enabled }}
           resources:
-            {{- toYaml . | nindent 12 }}
+            limits:
+              nvidia.com/gpu: {{.Values.khoj.gpu.count }}
           {{- end }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
       volumes:
-        - name: config
+        - name: data
+        {{- if.Values.khoj.persistence.enabled }}
           persistentVolumeClaim:
-            claimName: {{ include "khoj.fullname" . }}-config-pvc
-        - name: models
-          persistentVolumeClaim:
-            claimName: {{ include "khoj.fullname" . }}-models-pvc
+            claimName: {{ include "khoj.fullname" . }}-server-pvc
+        {{- else }}
+          emptyDir: {}
+        {{- end }}

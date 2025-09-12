@@ -1,0 +1,41 @@
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "khoj.fullname" . }}-redis
+  labels:
+    {{- include "khoj.labels" . | nindent 4 }}
+    app.kubernetes.io/component: redis
+spec:
+  serviceName: {{ include "khoj.fullname" . }}-redis
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "khoj.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: redis
+  template:
+    metadata:
+      labels:
+        {{- include "khoj.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: redis
+    spec:
+      containers:
+        - name: redis
+          image: "{{.Values.redis.image.repository }}:{{.Values.redis.image.tag }}"
+          imagePullPolicy: {{.Values.redis.image.pullPolicy }}
+          ports:
+            - containerPort: {{.Values.redis.service.port }}
+          volumeMounts:
+            - name: redis-data
+              mountPath: /data
+  volumeClaimTemplates:
+    - metadata:
+        name: redis-data
+      spec:
+        accessModes:
+        {{- if.Values.redis.persistence.storageClassName }}
+        storageClassName: {{.Values.redis.persistence.storageClassName }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{.Values.redis.persistence.size }}

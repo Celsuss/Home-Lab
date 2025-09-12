@@ -1,0 +1,27 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "khoj.fullname" . }}-searxng
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "khoj.labels" . | nindent 4 }}
+    app.kubernetes.io/component: searxng
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "khoj.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: searxng
+  template:
+    metadata:
+      labels:
+        {{- include "khoj.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: searxng
+    spec:
+      containers:
+        - name: searxng
+          image: "{{.Values.searxng.image.repository }}:{{.Values.searxng.image.tag }}"
+          imagePullPolicy: {{.Values.searxng.image.pullPolicy }}
+          ports:
+            - containerPort: {{.Values.searxng.service.port }}
