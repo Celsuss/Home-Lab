@@ -23,6 +23,13 @@ spec:
         - name: khoj
           image: "{{.Values.khoj.image.repository }}:{{.Values.khoj.image.tag }}"
           imagePullPolicy: {{.Values.khoj.image.pullPolicy }}
+          command: ["uvicorn"]
+          args:
+            - "khoj.main:app"
+            - "--host"
+            - "0.0.0.0"
+            - "--port"
+            - "{{ .Values.khoj.service.port }}"
           ports:
             - name: http
               containerPort: {{.Values.khoj.service.port }}
