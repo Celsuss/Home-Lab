@@ -19,24 +19,70 @@ spec:
         {{- include "khoj.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: server
     spec:
+      initContainers:
+        - name: khoj-setup
+          image: "{{ .Values.khoj.image.repository }}:{{ .Values.khoj.image.tag }}"
+          imagePullPolicy: {{ .Values.khoj.image.pullPolicy }}
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              # Step 1: Wait for the database using pg_isready.
+              while ! pg_isready -h "{{ include "khoj.fullname" . }}-postgres" -p "5432" -U "{{ .Values.postgres.user }}"; do
+                echo "Waiting for postgres..."
+                sleep 2
+              done
+
+              # Step 2: Build the frontend UI.
+              echo "Building frontend..."
+              cd src/khoj/interface
+              npm install
+              npm run build
+              cd /app
+
+              # Step 3: Run database migrations.
+              echo "Running migrations..."
+              python src/khoj/manage.py migrate
+
+              # Step 4: Collect all static files (including the newly built UI).
+              echo "Collecting static files..."
+              python src/khoj/manage.py collectstatic --noinput
+          # The init container needs database credentials.
+          env:
+            - name: POSTGRES_HOST
+              value: "{{ include "khoj.fullname" . }}-postgres"
+            - name: POSTGRES_USER
+              value: {{ .Values.postgres.user | quote }}
+            - name: POSTGRES_DB
+              value: {{ .Values.postgres.database | quote }}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secrets.name }}
+                  key: POSTGRES_PASSWORD
+          # It also needs the data volume to place the static files.
+          volumeMounts:
+            - name: data
+              mountPath: /data
       containers:
         - name: khoj
           image: "{{.Values.khoj.image.repository }}:{{.Values.khoj.image.tag }}"
           imagePullPolicy: {{.Values.khoj.image.pullPolicy }}
-          command: ["/bin/sh", "-c"]
-          args:
-            - |
-              echo "Waiting for database to be ready..."
-              python3 src/khoj/manage.py wait_for_database -s 60
+          command: ["python", "src/khoj/manage.py", "runserver", "0.0.0.0:{{ .Values.khoj.service.port }}"]
 
-              echo "Running database migrations..."
-              python3 src/khoj/manage.py migrate
+          # command: ["/bin/sh", "-c"]
+          # args:
+          #   - |
+          #     echo "Waiting for database to be ready..."
+          #     python3 src/khoj/manage.py wait_for_database -s 60
 
-              echo "Collecting static files..."
-              python3 src/khoj/manage.py collectstatic --noinput
+          #     echo "Running database migrations..."
+          #     python3 src/khoj/manage.py migrate
 
-              echo "Starting Django server on port {{ .Values.khoj.service.port }}..."
-              python3 src/khoj/manage.py runserver 0.0.0.0:{{ .Values.khoj.service.port }}
+          #     echo "Collecting static files..."
+          #     python3 src/khoj/manage.py collectstatic --noinput
+
+          #     echo "Starting Django server on port {{ .Values.khoj.service.port }}..."
+          #     python3 src/khoj/manage.py runserver 0.0.0.0:{{ .Values.khoj.service.port }}
 
           ports:
             - name: http
