@@ -23,6 +23,18 @@ spec:
         - name: khoj
           image: "{{.Values.khoj.image.repository }}:{{.Values.khoj.image.tag }}"
           imagePullPolicy: {{.Values.khoj.image.pullPolicy }}
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              echo "Waiting for database to be ready..."
+              python3 src/khoj/manage.py wait_for_database -s 60
+
+              echo "Running database migrations..."
+              python3 src/khoj/manage.py migrate
+
+              echo "Starting Django server on port {{ .Values.khoj.service.port }}..."
+              python3 src/khoj/manage.py runserver 0.0.0.0:{{ .Values.khoj.service.port }}
+
           ports:
             - name: http
               containerPort: {{.Values.khoj.service.port }}
@@ -30,10 +42,10 @@ spec:
           env:
             - name: KHOJ_DOMAIN
               value: {{.Values.khoj.config.KHOJ_DOMAIN | quote }}
-            - name: HOST
-              value: "0.0.0.0"
-            - name: PORT
-              value: {{ .Values.khoj.service.port | quote }}
+            # - name: HOST
+            #   value: "0.0.0.0"
+            # - name: PORT
+            #   value: {{ .Values.khoj.service.port | quote }}
             - name: KHOJ_NO_HTTPS
               value: {{.Values.khoj.config.KHOJ_NO_HTTPS | quote }}
             - name: OPENAI_BASE_URL
