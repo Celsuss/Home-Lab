@@ -31,16 +31,14 @@ khoj:
     KHOJ_DOMAIN: "khoj.homelab.local"
     KHOJ_NO_HTTPS: "True"
     OPENAI_BASE_URL: "http://ollama.ai-workloads.svc.cluster.local:11434"
+    KHOJ_ADMIN_EMAIL: "jenslorden@proton.me"
 
 # PostgreSQL with PostGIS Configuration
 postgres:
   image:
-    # repository: postgres
     repository: pgvector/pgvector
     pullPolicy: IfNotPresent
-    # tag: "16.10-alpine"
     tag: "pg16"
-
 
   service:
     port: 5432

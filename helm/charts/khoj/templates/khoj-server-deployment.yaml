@@ -42,6 +42,7 @@ spec:
               value: "http://{{ include "khoj.fullname" . }}-searxng:{{.Values.searxng.service.port }}"
             - name: KHOJ_CODE_EXECUTION_HOST
               value: "http://{{ include "khoj.fullname" . }}-terrarium:{{.Values.terrarium.service.port }}"
+            - name: KHOJ_ADMIN_EMAIL: {{ .Values.khoj.config.KHOJ_ADMIN_EMAIL }}
             - name: KHOJ_ADMIN_PASSWORD
               valueFrom:
                 secretKeyRef:
