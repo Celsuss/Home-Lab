@@ -20,7 +20,7 @@ spec:
         pathType: Prefix
         backend:
           service:
-            name: {{ .Values.name }}
+            name: {{ include "uptime-kuma.fullname" . }}
             port:
               number: {{ .Values.service.port }}
   {{- if .Values.ingress.tls }}
