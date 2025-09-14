@@ -1,0 +1,99 @@
+replicaCount: 1
+namespace: monitoring
+
+image:
+  repository: louislam/uptime-kuma
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart's appVersion.
+  tag: "2.0.0-beta.4"
+
+imagePullSecrets:
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext:
+  fsGroup: 1001
+
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1001
+  runAsGroup: 1001
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+service:
+  type: ClusterIP
+  port: 3001
+
+ingress:
+  enabled: false
+  className: "traefik"
+  annotations: {}
+    # kubernetes.io/ingress.class: traefik
+    # cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  hosts:
+    - host: uptime-kuma.homelab.local
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls:
+  #  - secretName: chart-example-tls
+  #    hosts:
+  #      - chart-example.local
+
+persistence:
+  enabled: true
+  # IMPORTANT: Uptime Kuma does NOT support NFS for its data volume.
+  # Using NFS can lead to SQLite database corruption.
+  # For K3s, the default 'local-path' provisioner is a good choice.
+  storageClassName: ""
+  accessModes:
+    - ReadWriteOnce
+  size: 1Gi
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 256Mi
+
+livenessProbe:
+  enabled: true
+  exec:
+    command:
+      - node
+      - extra/healthcheck.js
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  enabled: true
+  exec:
+    command:
+      - node
+      - extra/healthcheck.js
+  initialDelaySeconds: 15
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+nodeSelector: {}
+
+tolerations:
+
+affinity: {}
