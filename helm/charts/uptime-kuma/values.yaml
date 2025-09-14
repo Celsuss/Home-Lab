@@ -42,11 +42,7 @@ ingress:
   annotations: {}
     # kubernetes.io/ingress.class: traefik
     # cert-manager.io/cluster-issuer: "letsencrypt-prod"
-  hosts:
-    - host: uptime-kuma.homelab.local
-      paths:
-        - path: /
-          pathType: ImplementationSpecific
+  hostName: uptime-kuma.homelab.local
   tls:
   #  - secretName: chart-example-tls
   #    hosts:
