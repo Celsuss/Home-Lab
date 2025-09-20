@@ -9,7 +9,7 @@ image:
 
 env:
   - name: DT_ENV
-    value: "selfhosted"
+    value: "selfhosted.yaml"
   - name: DT_SQLITE_PATH
     value: /donetick-data/donetick.db
 
