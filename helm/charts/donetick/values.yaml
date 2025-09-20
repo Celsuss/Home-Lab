@@ -70,8 +70,8 @@ persistence:
 volumeMounts:
   - name: data
     mountPath: "/donetick-data"
-  - name: config
-    mountPath: "/config"
+  # - name: config
+  #   mountPath: "/config"
   - name: configmap
     mountPath: "/config"
     readOnly: true
