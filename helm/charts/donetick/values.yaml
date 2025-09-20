@@ -72,6 +72,6 @@ volumeMounts:
     mountPath: "/donetick-data"
   # - name: config
   #   mountPath: "/config"
-  - name: configmap
+  - name: config
     mountPath: "/config"
     readOnly: true
