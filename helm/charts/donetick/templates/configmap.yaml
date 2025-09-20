@@ -5,7 +5,7 @@ metadata:
   name: {{ include "donetick.fullname" . }}-cm
   namespace: {{ .Values.namespace }}
 data:
-  selfhosted.yaml: |
+  selfhosted: |
     name: "selfhosted"
     is_done_tick_dot_com: false
     is_user_creation_disabled: false
