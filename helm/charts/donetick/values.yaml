@@ -13,16 +13,16 @@ env:
   - name: DT_SQLITE_PATH
     value: /donetick-data/donetick.db
 
-podSecurityContext: {}
-  # fsGroup: 2000
+podSecurityContext:
+  fsGroup: 2000
 
-securityContext: {}
-  # capabilities:
-  #   drop:
-  #   - ALL
-  # readOnlyRootFilesystem: true
-  # runAsNonRoot: true
-  # runAsUser: 1000
+securityContext:
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1000
 
 service:
   type: ClusterIP
@@ -71,6 +71,5 @@ volumeMounts:
   - name: data
     mountPath: "/donetick-data"
   - name: config
-    mountPath: "/config/selfhosted.yaml"
-    subPath: "selfhosted.yaml"
+    mountPath: "/config"
     readOnly: true
