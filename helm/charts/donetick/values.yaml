@@ -9,7 +9,7 @@ image:
 
 env:
   - name: DT_ENV
-    value: "selfhosted"
+    value: "k3s"
   - name: DT_SQLITE_PATH
     value: /donetick-data/donetick.db
 
@@ -72,3 +72,6 @@ volumeMounts:
     mountPath: "/donetick-data"
   - name: config
     mountPath: "/config"
+  - name: configmap
+    mountPath: "/config"
+    readOnly: true
