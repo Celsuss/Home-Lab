@@ -72,5 +72,5 @@ volumeMounts:
     mountPath: "/donetick-data"
   - name: config
     mountPath: "/config/selfhosted.yaml"
-    subpath: "selfhosted.yaml"
+    subPath: "selfhosted.yaml"
     readOnly: true
