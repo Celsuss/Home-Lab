@@ -9,7 +9,7 @@ image:
 
 env:
   - name: DT_ENV
-    value: "k3s"
+    value: "selfhosted"
   - name: DT_SQLITE_PATH
     value: /donetick-data/donetick.db
 

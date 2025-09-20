@@ -5,7 +5,7 @@ metadata:
   name: {{ include "donetick.fullname" . }}-cm
   namespace: {{ .Values.namespace }}
 data:
-  k3s.yaml: |
+  selfhosted.yaml: |
     name: "k3s"
     is_done_tick_dot_com: false
     is_user_creation_disabled: false
