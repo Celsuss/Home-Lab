@@ -70,8 +70,7 @@ persistence:
 volumeMounts:
   - name: data
     mountPath: "/donetick-data"
-  # - name: config
-  #   mountPath: "/config"
   - name: config
-    mountPath: "/config"
+    mountPath: "/config/selfhosted.yaml"
+    subpath: "selfhosted.yaml"
     readOnly: true
