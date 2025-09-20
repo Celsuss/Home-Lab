@@ -64,9 +64,9 @@ spec:
         - name: data
           persistentVolumeClaim:
             claimName: {{ include "donetick.fullname" . }}-data-pvc
-        - name: config
-          persistentVolumeClaim:
-            claimName: {{ include "donetick.fullname" . }}-config-pvc
+        # - name: config
+        #   persistentVolumeClaim:
+        #     claimName: {{ include "donetick.fullname" . }}-config-pvc
         - name: configmap
           configmap:
             name: {{ include "donetick.fullname" . }}-cm
