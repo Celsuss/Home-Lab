@@ -1,0 +1,18 @@
+# roles/k3s/templates/config.yaml.j2
+
+token: "{{ k3s_cluster_token }}"
+protect-kernel-defaults: {{ k3s_protect_kernel_defaults | default(true) }}
+
+{% if k3s_tls_sans is defined and k3s_tls_sans %}
+tls-san:
+{% for san in k3s_tls_sans %}
+  - "{{ san }}"
+{% endfor %}
+{% endif %}
+
+{% if k3s_disable_components is defined and k3s_disable_components %}
+disable:
+{% for component in k3s_disable_components %}
+  - "{{ component }}"
+{% endfor %}
+{% endif %}

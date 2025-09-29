@@ -1,0 +1,15 @@
+# roles/post-install/tasks/main.yml
+
+- name: Fetch the kubeconfig file from the master node
+  ansible.builtin.fetch:
+    src: /etc/rancher/k3s/k3s.yaml
+    dest: "{{ playbook_dir }}/.kube/config"
+    flat: yes
+  when: inventory_hostname == groups['k3s_servers']
+
+- name: Update kubeconfig to point to the server IP
+  ansible.builtin.replace:
+    path: "{{ playbook_dir }}/.kube/config"
+    regexp: '127.0.0.1'
+    replace: "{{ hostvars[groups['k3s_servers']]['ansible_host'] }}"
+  delegate_to: localhost

@@ -1,0 +1,17 @@
+# roles/post-install/tasks/argocd.yml
+- name: Ensure argocd namespace exists
+  community.kubernetes.k8s:
+    # TODO Update namesapce name
+    name: argocd
+    api_version: v1
+    kind: Namespace
+    state: present
+
+# TODO Use my custom argo-cd helm chart.
+- name: Apply ArgoCD installation manifest
+  community.kubernetes.k8s:
+    state: present
+    src: https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+    namespace: argocd
+    wait: yes
+    wait_timeout: 300

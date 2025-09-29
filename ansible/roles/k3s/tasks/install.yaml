@@ -1,0 +1,19 @@
+# roles/k3s/tasks/install.yml
+
+- name: Install K3s on server nodes
+  ansible.builtin.shell: >
+    curl -sfL https://get.k3s.io |
+    INSTALL_K3S_EXEC="server"
+    sh -
+  args:
+    creates: /usr/local/bin/k3s
+  when: inventory_hostname in groups['k3s_servers']
+
+- name: Install K3s on agent nodes
+  ansible.builtin.shell: >
+    curl -sfL https://get.k3s.io |
+    INSTALL_K3S_EXEC="agent"
+    sh -
+  args:
+    creates: /usr/local/bin/k3s
+  when: inventory_hostname in groups['k3s_agents']

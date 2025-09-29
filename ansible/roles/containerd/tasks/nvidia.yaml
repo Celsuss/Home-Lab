@@ -1,0 +1,27 @@
+# roles/containerd/tasks/nvidia.yml
+
+- name: Install NVIDIA drivers
+  community.general.pacman:
+    name: nvidia
+    state: present
+
+- name: Install NVIDIA Container Toolkit
+  community.general.pacman:
+    name: nvidia-container-toolkit
+    state: present
+
+- name: Ensure containerd config directory exists
+  ansible.builtin.file:
+    path: /etc/containerd
+    state: directory
+    mode: '0755'
+
+- name: Generate default containerd config if it does not exist
+  ansible.builtin.command:
+    cmd: containerd config default > /etc/containerd/config.toml
+    creates: /etc/containerd/config.toml
+
+- name: Configure containerd to use the NVIDIA runtime
+  ansible.builtin.command:
+    cmd: nvidia-ctk runtime configure --runtime=containerd
+  notify: Restart containerd

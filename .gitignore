@@ -22,3 +22,7 @@ k3s-ca.crt
 
 # Secrets
 .sops.yaml
+
+# Ansible
+ansible/secrets/*
+*.retry

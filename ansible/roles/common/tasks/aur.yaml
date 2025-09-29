@@ -1,0 +1,31 @@
+# roles/common/tasks/aur.yml
+
+- name: Ensure group "aur_builder" exists
+  ansible.builtin.group:
+    name: aur_builder
+    state: present
+
+- name: Create the "aur_builder" user
+  ansible.builtin.user:
+    name: aur_builder
+    system: yes
+    create_home: yes
+    group: wheel
+
+- name: Allow "aur_builder" user to run pacman without a password
+  ansible.builtin.lineinfile:
+    path: /etc/sudoers.d/11-install-aur_builder
+    # path: /etc/sudoers.d/11-aur-builder-pacman
+    line: 'aur_builder ALL=(ALL) NOPASSWD: /usr/bin/pacman'
+    state: present
+    create: yes
+    validate: 'visudo -cf %s'
+    mode: '0440'
+
+- name: Install yay (AUR helper)
+  kewlfft.aur.aur:
+    use: makepkg
+    name: yay
+    state: present
+  become: yes
+  become_user: aur_builder
