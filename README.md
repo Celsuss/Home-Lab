@@ -91,3 +91,14 @@ spec:
           path: /var/lib/kubelet/device-plugins
 EOF
 ```
+5. Install tailscale operator
+```bash
+helm repo add tailscale https://pkgs.tailscale.com/helmcharts
+helm repo update
+helm upgrade --install tailscale-operator tailscale/tailscale-operator \
+  --namespace tailscale \
+  --create-namespace \
+  --set-string oauth.clientId="<Your-Client-ID>" \
+  --set-string oauth.clientSecret="<Your-Client-Secret>" \
+  --wait
+```
