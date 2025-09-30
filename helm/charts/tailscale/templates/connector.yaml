@@ -1,31 +1,15 @@
 ---
-apiVersion: tailscale.com/v1alpha1
-kind: Connector
-metadata:
-  name: {{ .Values.name }}
-  namespace: {{ .Values.namespace }}
-spec:
-  # Sets the hostname of the device as it will appear in the Tailscale admin console
-  hostname: {{ .Values.hostname }}
-  # Specifies that this connector should function as a subnet router
-  subnetRouter:
-    # A list of CIDR ranges to advertise to the tailnet
-    advertiseRoutes:
-      {{- toYaml .Values.advertiseRoutes | nindent 6 }}
-
----
-
 {{- if.Values.subnetRouter.enabled }}
 apiVersion: tailscale.com/v1alpha1
 kind: Connector
 metadata:
-  name: {{ include "k3s-tailscale-gateway.fullname". }}
-  namespace: {{.Release.Namespace }}
+  name: {{ include "tailscale.fullname" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "k3s-tailscale-gateway.labels". | nindent 4 }}
+    {{- include "tailscale.labels" . | nindent 4 }}
 spec:
-  hostname: {{.Values.subnetRouter.hostname | quote }}
+  hostname: {{ .Values.subnetRouter.hostname | quote }}
   subnetRouter:
     advertiseRoutes:
-      {{- toYaml.Values.subnetRouter.routes | nindent 6 }}
+      {{- toYaml .Values.subnetRouter.routes | nindent 6 }}
 {{- end }}

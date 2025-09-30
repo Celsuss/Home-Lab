@@ -1,25 +1,9 @@
 ---
-namespace: tailscale
-name: tailscale-k3s-gateway
-hostname: lord-k3s-homelab-gateway
-
-advertiseRoutes:
-  - "10.42.0.0/16" # Default K3s Pod CIDR
-  - "10.43.0.0/16" # Default K3s Service CIDR
-
----
-
-tailscale-operator:
-  oauth:
-    createSecret: true
-    clientId: ""
-    clientSecret: ""
-
 # Configuration for the subnet router Connector resource.
 subnetRouter:
   enabled: true
   # The hostname for the subnet router device on your tailnet.
-  hostname: "k3s-gateway"
+  hostname: "lord-k3s-homelab"
   # The list of CIDR ranges to advertise. Defaults are for K3s.
   routes:
     - "10.42.0.0/16"
@@ -30,3 +14,4 @@ oauthSecret:
   # The name of the Kubernetes secret containing the OAuth credentials.
   # The operator subchart expects this to be named 'operator-oauth' by default.
   name: "operator-oauth"
+  createSecret: true
