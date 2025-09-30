@@ -9,6 +9,10 @@ subnetRouter:
     - "10.42.0.0/16"
     - "10.43.0.0/16"
 
+tailscale-operator:
+  oauth:
+    createSecret: false
+
 # Configuration for the OAuth secret.
 oauthSecret:
   # The name of the Kubernetes secret containing the OAuth credentials.
