@@ -17,7 +17,7 @@ spec:
         - values.yaml
         - values-secrets.yaml
     plugin:
-      name: sops
+      name: sops-helm
   destination:
     server: 'https://kubernetes.default.svc'
     namespace: tailscale

@@ -127,7 +127,7 @@ argo-cd:
         sops-helm:
           discover:
             find:
-              command: ["find", ".", "-name", "values.sops.yaml"]
+              command: ["find", ".", "-name", "values-secrets.yaml"]
           generate:
             # This shell pipeline does the following:
             # 1. Decrypts 'values.sops.yaml' using the 'sops -d' command.
@@ -140,7 +140,7 @@ argo-cd:
               - |
                 helm template "$ARGOCD_APP_NAME". \
                   --namespace "$ARGOCD_APP_NAMESPACE" \
-                  --values - < <(sops -d values.sops.yaml)
+                  --values - < <(sops -d values-secrets.yaml)
 
   # -- Argo CD Server specific configurations.
   server:
