@@ -16,6 +16,8 @@ spec:
       valueFiles:
         - values.yaml
         - values-secrets.yaml
+    plugin:
+      name: sops
   destination:
     server: 'https://kubernetes.default.svc'
     namespace: tailscale
