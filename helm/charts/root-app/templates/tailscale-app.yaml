@@ -1,29 +1,29 @@
 ---
-# apiVersion: argoproj.io/v1alpha1
-# kind: Application
-# metadata:
-#   name: tailscale-app
-#   namespace: argo-cd
-#   finalizers:
-#   - resources-finalizer.argocd.argoproj.io
-# spec:
-#   project: default
-#   source:
-#     repoURL: https://github.com/Celsuss/Home-Lab.git
-#     path: helm/charts/tailscale
-#     targetRevision: HEAD
-#     helm:
-#       valueFiles:
-#         - values.yaml
-#         - values-secrets.yaml
-#     plugin:
-#       name: sops
-#   destination:
-#     server: 'https://kubernetes.default.svc'
-#     namespace: tailscale
-#   syncPolicy:
-#     automated:
-#       prune: true
-#       selfHeal: true
-#     syncOptions:
-#       - CreateNamespace=true
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: tailscale-app
+  namespace: argo-cd
+  finalizers:
+  - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Celsuss/Home-Lab.git
+    path: helm/charts/tailscale
+    targetRevision: HEAD
+    helm:
+      valueFiles:
+        - values.yaml
+        - values-secrets.yaml
+    plugin:
+      name: sops
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: tailscale
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
