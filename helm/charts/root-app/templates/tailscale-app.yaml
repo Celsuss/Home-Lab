@@ -15,7 +15,7 @@ spec:
     helm:
       valueFiles:
         - values.yaml
-        - values-secrets.yaml
+        # - values-secrets.yaml
     plugin:
       name: sops-helm
   destination:
