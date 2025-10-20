@@ -26,3 +26,4 @@ k3s-ca.crt
 # Ansible
 ansible/secrets/*
 *.retry
+.aider*

@@ -66,11 +66,13 @@ jobs:
         with:
           context: ./docker/${{ matrix.app }}
           push: true
-          tags: ghcr.io/${{ steps.string.outputs.owner_lc }}/${{ matrix.app }}:latest
+          tags: |
+            ghcr.io/${{ steps.string.outputs.owner_lc }}/${{ matrix.app }}:latest
+            ghcr.io/${{ steps.string.outputs.owner_lc }}/${{ matrix.app }}:1.0.${{ github.run_number }}
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
 
       - name: Print Pushed Image Path
         run: |
           # ✅ This line is also modified to use the new lowercase variable
-          echo "✅ Successfully built and pushed image: ghcr.io/${{ steps.string.outputs.owner_lc }}/${{ matrix.app }}:latest"
+          echo "✅ Successfully built and pushed image: ghcr.io/${{ steps.string.outputs.owner_lc }}/${{ matrix.app }}:1.0.${{ github.run_number }}"
