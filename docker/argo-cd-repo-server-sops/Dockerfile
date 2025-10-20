@@ -24,7 +24,7 @@ RUN export ARCH=$(dpkg --print-architecture) && \
     chmod +x /usr/local/bin/sops /usr/local/bin/age
 
 # Switch back to the non-root argocd user
-USER argocd
+USER 999
 
 # Install the helm-secrets plugin. This now works because git is installed.
 RUN helm plugin install https://github.com/jkroepke/helm-secrets --version ${HELM_SECRETS_VERSION}
