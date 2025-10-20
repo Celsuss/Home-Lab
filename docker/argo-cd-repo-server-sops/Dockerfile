@@ -1,4 +1,5 @@
 ARG ARGOCD_VERSION="v3.1.4"
+# docker/argo-cd-repo-server-sops/Dockerfile
 FROM quay.io/argoproj/argocd:${ARGOCD_VERSION}
 
 # Define tool versions for maintainability
