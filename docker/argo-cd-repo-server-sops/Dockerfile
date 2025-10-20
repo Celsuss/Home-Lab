@@ -1,5 +1,5 @@
-ARG ARGOCD_VERSION="v3.1.4"
 # docker/argo-cd-repo-server-sops/Dockerfile
+ARG ARGOCD_VERSION="v3.1.4"
 FROM quay.io/argoproj/argocd:${ARGOCD_VERSION}
 
 # Define tool versions for maintainability
@@ -23,8 +23,7 @@ RUN export ARCH=$(dpkg --print-architecture) && \
     wget -qO- "https://github.com/FiloSottile/age/releases/download/v${AGE_VERSION}/age-v${AGE_VERSION}-linux-${ARCH}.tar.gz" | tar -xz -C /usr/local/bin/ --strip-components=1 age/age && \
     chmod +x /usr/local/bin/sops /usr/local/bin/age
 
-# Switch back to the non-root argocd user
+# Switch back to the non-root user
 USER 999
 
-# Install the helm-secrets plugin. This now works because git is installed.
 RUN helm plugin install https://github.com/jkroepke/helm-secrets --version ${HELM_SECRETS_VERSION}
