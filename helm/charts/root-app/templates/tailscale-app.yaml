@@ -12,12 +12,10 @@ spec:
     repoURL: https://github.com/Celsuss/Home-Lab.git
     path: helm/charts/tailscale
     targetRevision: HEAD
-    # helm:
-    #   valueFiles:
-    #     - values.yaml
-        # - values-secrets.yaml
-    plugin:
-      name: sops-helm
+    helm:
+      valueFiles:
+        - values.yaml
+        - secrets://values-secrets.yaml
   destination:
     server: 'https://kubernetes.default.svc'
     namespace: tailscale
