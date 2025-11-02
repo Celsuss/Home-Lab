@@ -8,11 +8,11 @@
 This step must be performed once after the `vault-0` pod is running (but sealed).
 ``` bash
 # Exec into the running Vault pod
-kubectl exec -it vault-0 -n vault -- /bin/sh
+kubectl exec -it vault-server-0 -n vault -- /bin/sh
 
 # Initialize Vault. We use a 1-of-1 key for automation.
 # Enterprise production would use 3-of-5 keys.[36]
-/ # vault operator init -key-shares=1 -key-threshold=1
+vault operator init -key-shares=1 -key-threshold=1
 ```
 
 This command will output one Unseal Key and one Initial Root Token. These must be saved securely.   

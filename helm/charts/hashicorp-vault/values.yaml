@@ -56,12 +56,14 @@ vault:
         # traefik.ingress.kubernetes.io/router.entrypoints: "websecure"
         # traefik.ingress.kubernetes.io/router.tls: "true"
 
-      hosts:
-        - host: "vault.homelab.local"
-          paths:
-            - path: /
-              pathType: Prefix
-      tls:
+      hostname: vault.homelab.local
+      tls: false
+      # hosts:
+      #   - host: "vault.homelab.local"
+      #     paths:
+      #       - path: /
+      #         pathType: Prefix
+      # tls:
         # - secretName: "vault-tls-secret"
         #   hosts:
         #     - "vault.homelab.local"
