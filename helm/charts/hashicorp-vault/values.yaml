@@ -1,0 +1,78 @@
+---
+vault:
+  global:
+    # TLS will be disabled at the Vault pod layer for simplicity.
+    # Enterprise-grade TLS should be handled at the ingress (Traefik).
+    tlsDisable: true
+
+  server:
+    # Disable the default 'standalone' mode (file storage).[25]
+    standalone:
+      enabled: false
+
+    # Enable 'ha' mode, but with only one replica for our single node.[25]
+    ha:
+      enabled: true
+      replicas: 1
+
+      # Enable the robust Raft storage backend.[26, 30]
+      raft:
+        enabled: true
+        config: |
+          ui = true
+          storage "raft" {
+            path = "/vault/data"
+          }
+          listener "tcp" {
+            address = "[::]:8200"
+            cluster_address = "[::]:8201"
+            tls_disable = "true"
+          }
+
+    # Set pragmatic resource limits for a homelab.
+    # Monitor this and adjust based on load.
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "250m"
+      limits:
+        memory: "1Gi"
+        cpu: "1"
+
+    # Define the PersistentVolume for the Raft storage.
+    # This will use the K3s default 'local-path' storage class.
+    dataStorage:
+      enabled: true
+      size: "10Gi"
+      # storageClass: "local-path" # Explicitly set if needed
+
+    ingress:
+      enabled: true
+      ingressClassName: "traefik"
+
+      # Add Traefik-specific annotations
+      annotations:
+        traefik.ingress.kubernetes.io/router.entrypoints: "web"
+        # traefik.ingress.kubernetes.io/router.entrypoints: "websecure"
+        # traefik.ingress.kubernetes.io/router.tls: "true"
+
+      hosts:
+        - host: "vault.homelab.local"
+          paths:
+            - path: /
+              pathType: Prefix
+      tls:
+        # - secretName: "vault-tls-secret"
+        #   hosts:
+        #     - "vault.homelab.local"
+
+  # Enable the UI, but only expose it via ClusterIP.
+  # Access will be provided via the K3s Traefik ingress.
+  ui:
+    enabled: true
+    serviceType: "ClusterIP"
+
+  # Disable the Vault Agent Injector (sidecar), as we will be using
+  # the Vault Secrets Operator (VSO) instead.
+  injector:
+    enabled: false

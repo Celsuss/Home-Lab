@@ -1,0 +1,10 @@
+---
+apiVersion: v2
+name: my-vault-server
+description: Wrapper chart to deploy HashiCorp Vault for homelab
+version: 0.1.0
+
+dependencies:
+  - name: vault
+    version: "0.31.0" # Or the latest stable version
+    repository: "https://helm.releases.hashicorp.com"
