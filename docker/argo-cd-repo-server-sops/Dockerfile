@@ -5,7 +5,7 @@ FROM quay.io/argoproj/argocd:${ARGOCD_VERSION}
 # Define tool versions for maintainability
 ARG SOPS_VERSION="3.8.1"
 ARG AGE_VERSION="1.1.1"
-ARG HELM_SECRETS_VERSION="4.6.0"
+ARG HELM_SECRETS_VERSION="4.5.1"
 
 # Switch to root user to install packages and binaries
 USER root
