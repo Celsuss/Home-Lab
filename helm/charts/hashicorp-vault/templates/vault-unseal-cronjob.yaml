@@ -1,0 +1,44 @@
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: vault-unseal
+  namespace: vault
+spec:
+  # Run every minute to check the seal status
+  schedule: "*/1 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          # A dedicated service account with RBAC is preferred,
+          # but 'default' may work depending on K3s setup.
+          serviceAccountName: default
+          containers:
+          - name: vault-unsealer
+            # Use the same Vault image version as the server
+            image: hashicorp/vault:1.16.1
+            command:
+              - /bin/sh
+              - -ec
+              - |
+                echo "Checking Vault seal status..."
+                # Set VAULT_ADDR to the internal service
+                export VAULT_ADDR="http://vault.vault.svc.cluster.local:8200"
+
+                # Get seal status. 'jq' must be available,
+                # or parse text. Using 'vault status' exit code.
+                if vault status | grep -q "Sealed[[:space:]]*true"; then
+                  echo "Vault is sealed. Attempting unseal..."
+                  vault operator unseal $VAULT_UNSEAL_KEY_1
+                else
+                  echo "Vault is already unsealed."
+                fi
+            env:
+              # Mount the unseal key from our K8s secret
+              - name: VAULT_UNSEAL_KEY_1
+                valueFrom:
+                  secretKeyRef:
+                    name: vault-unseal-keys
+                    key: key1
