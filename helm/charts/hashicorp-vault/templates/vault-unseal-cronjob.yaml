@@ -25,7 +25,7 @@ spec:
               - |
                 echo "Checking Vault seal status..."
                 # Set VAULT_ADDR to the internal service
-                export VAULT_ADDR="http://vault.vault.svc.cluster.local:8200"
+                export VAULT_ADDR="http://vault-server.vault.svc.cluster.local:8200"
 
                 # Get seal status. 'jq' must be available,
                 # or parse text. Using 'vault status' exit code.
