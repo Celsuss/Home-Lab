@@ -41,20 +41,20 @@ These one-time actions are performed using the Initial Root Token saved from ear
 #### 1. Exec into the Vault Pod and Login
 ```bash
 kubectl exec -it vault-0 -n vault -- /bin/sh
-/ # export VAULT_ADDR="http://127.0.0.1:8200"
-/ # vault login YOUR_ROOT_TOKEN
+export VAULT_ADDR="http://127.0.0.1:8200"
+vault login YOUR_ROOT_TOKEN
 ```
 
 ### 2. Enable and Configure Kubernetes Auth Method 
 This method allows Kubernetes Service Accounts to authenticate to Vault using their own tokens.
 ```bash
 # Enable the K8s auth method
-/ # vault auth enable kubernetes
+vault auth enable kubernetes
 Success! Enabled kubernetes auth method at: kubernetes/ [41]
 
 # Configure it to talk to the K3s API server
 # This uses the in-cluster service discovery
-/ # vault write auth/kubernetes/config \
+vault write auth/kubernetes/config \
        kubernetes_host="https://kubernetes.default.svc.cluster.local"
 Success! Data written to: auth/kubernetes/config [42, 43]
 ```
@@ -63,7 +63,7 @@ Success! Data written to: auth/kubernetes/config [42, 43]
 This policy grants the VSO only the permission to read secrets from a specific path. 
 All homelab secrets will be stored under `secret/data/homelab/*` for organization.
 ```bash
-/ # vault policy write vso-policy - <<EOF
+vault policy write vso-policy - <<EOF
 path "secret/data/homelab/*" {
   capabilities = ["read"]
 }
@@ -75,7 +75,7 @@ Success! Uploaded policy: vso-policy [44]
 This "role" binds the `vso-policy` to the specific Kubernetes Service Account that the VSO will use. 
 We will name this service account `vso-service-account` and deploy it in the `vault-secrets-operator` namespace. 
 ```bash
-/ # vault write auth/kubernetes/role/vso-role \
+vault write auth/kubernetes/role/vso-role \
        bound_service_account_names=vso-service-account \
        bound_service_account_namespaces=vault-secrets-operator \
        policies=vso-policy \
@@ -87,10 +87,10 @@ Success! Data written to: auth/kubernetes/role/vso-role [47]
 A test secret for the `ollama` application will be created to verify the workflow.
 ```bash
 # Enable the kv-v2 secrets engine at 'secret/' if not already
-/ # vault secrets enable -path=secret kv-v2
+vault secrets enable -path=secret kv-v2
 
 # Create a test secret
-/ # vault kv put secret/homelab/ollama api_key="my-super-secret-ollama-key"
+vault kv put secret/homelab/ollama api_key="my-super-secret-ollama-key"
 Success! Data written to: secret/data/homelab/ollama [45]
 ```
 
