@@ -25,15 +25,15 @@ argo-cd:
     params:
       server.insecure: "true"
 
-    cm:
-      create: true
-      helm.valuesFileSchemes: >-
-        secrets,
-        secrets+literal,
-        secrets+gpg-import,
-        secrets+gpg-import-kubernetes,
-        secrets+age-import,
-        secrets+age-import-kubernetes
+    # cm:
+    #   create: true
+    #   helm.valuesFileSchemes: >-
+    #     secrets,
+    #     secrets+literal,
+    #     secrets+gpg-import,
+    #     secrets+gpg-import-kubernetes,
+    #     secrets+age-import,
+    #     secrets+age-import-kubernetes
 
   server:
     replicas: 1
@@ -66,12 +66,21 @@ argo-cd:
     replicas: 1
     # -- Use the custom image that includes the sops binary.
     image:
-      repository: ghcr.io/celsuss/argo-cd-repo-server-sops
-      tag: "1.0.10"
+
+      # repository: ghcr.io/celsuss/argo-cd-repo-server-sops
+      # tag: "1.0.12" # "1.0.10"
+
+      repository: quay.io/argoproj/argocd
+      tag: "v3.1.4"
       pullPolicy: IfNotPresent
-    env:
-      - name: HELM_PLUGINS
-        value: /home/argocd/.local/share/helm/plugins
+
+
+    # env:
+    #   - name: HELM_PLUGINS
+    #     value: /home/argocd/.local/share/helm/plugins
+    #   - name: HELM_SECRETS_QUIET
+    #     value: "true"
+
     volumes:
       - name: sops-age-key
         secret:
