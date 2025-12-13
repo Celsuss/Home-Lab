@@ -58,11 +58,11 @@ vault:
 
       hostname: vault.homelab.local
       # tls: false
-      # hosts:
-      #   - host: "vault.homelab.local"
-      #     paths:
-      #       - path: /
-      #         pathType: Prefix
+      hosts:
+        - host: "vault.homelab.local"
+          paths:
+            - path: /
+              pathType: Prefix
       # tls:
         # - secretName: "vault-tls-secret"
         #   hosts:

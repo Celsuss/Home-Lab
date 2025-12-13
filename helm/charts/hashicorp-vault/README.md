@@ -95,6 +95,4 @@ Success! Data written to: secret/data/homelab/ollama [45]
 ```
 
 ### 6. Deploy the Vault Secrets Operator (VSO) via ArgoCD
-Continue reading the documentation for setting up VSO in
-the `vault-secrets-operator` directory in this repo.
 
