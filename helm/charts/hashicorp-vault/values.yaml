@@ -57,7 +57,7 @@ vault:
         # traefik.ingress.kubernetes.io/router.tls: "true"
 
       hostname: vault.homelab.local
-      tls: false
+      # tls: false
       # hosts:
       #   - host: "vault.homelab.local"
       #     paths:
