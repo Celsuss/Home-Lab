@@ -61,8 +61,16 @@ vault:
       hosts:
         - host: "vault.homelab.local"
           paths:
-            - path: /
-              pathType: Prefix
+            - /  # <--- MUST be a simple string, not an object
+      # extraPaths:
+      #   - path: /
+      #     pathType: Prefix
+      #     backend:
+      #       service:
+      #         name: vault-active # Must point to active service in HA mode
+      #         port:
+      #           number: 8200
+
       # tls:
         # - secretName: "vault-tls-secret"
         #   hosts:
