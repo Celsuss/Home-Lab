@@ -1,0 +1,20 @@
+---
+vault-secrets-operator:
+  defaultVaultConnection:
+    enabled: true
+    address: "http://vault-server.vault.svc.cluster.local:8200"
+    skipTLSVerify: true
+
+  defaultAuthMethod:
+    enabled: true
+    namespace: "vault"
+    method: "kubernetes"
+    mount: "kubernetes"
+    kubernetes:
+      # These must match exactly  Step 4 in hashicor-vault README
+      role: "vso-role"
+      serviceAccount: "vso-service-account"
+
+  serviceAccount:
+    create: true
+    name: "vso-service-account"
