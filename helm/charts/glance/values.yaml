@@ -53,6 +53,19 @@ readinessProbe:
     path: /
     port: http
 
+hostAliases:
+  - ip: "10.43.16.148"
+    hostnames:
+      - "glance.homelab.local"
+      - "karakeep.homelab.local"
+      - "argocd.homelab.local"
+      - "open-webui.homelab.local"
+      - "beszel.homelab.local"
+      - "khoj.homelab.local"
+      - "uptime-kuma.homelab.local"
+      - "audiobookshelf.homelab.local"
+      - "ezbookkeeping.homelab.local"
+
 config:
   theme:
     # Gruvbox Dark
@@ -182,6 +195,7 @@ config:
             - type: monitor
               cache: 1m
               title: Services
+              strict-tls: false
               sites:
                 # icon: si:immich # si for Simple icons https://simpleicons.org/
                 # icon: sh:immich # sh for selfh.st icons https://selfh.st/icons/
