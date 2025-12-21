@@ -256,13 +256,15 @@ config:
                       url: https://aur.archlinux.org/
                     - title: MELPA
                       url: https://melpa.org/
-                - title: Entertainment
-                  links:
-                    - title: YouTube
-                      url: https://www.youtube.com/
                 - title: Social Media
                   links:
                     - title: Mastodon
                       url: https://mastodon.social/
                     - title: Lemmy
                       url: https://lemmy.ml/
+                - title: Entertainment
+                  links:
+                    - title: YouTube
+                      url: https://www.youtube.com/
+                    - title: 9anime
+                      url: https://9animetv.to/home
