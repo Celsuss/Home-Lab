@@ -199,6 +199,18 @@ config:
                 - title: Beszel
                   url: http://beszel.homelab.local/
                   icon: sh:beszel-light
+                - title: Khoj
+                  url: http://khoj.homelab.local/
+                  icon: sh:khoj
+                - title: Uptime Kuma
+                  url: http://uptime-kuma.homelab.local
+                  icon: sh:uptime-kuma
+                - title: Audiobookshelf
+                  url: http://audiobookshelf.homelab.local/
+                  icon: sh:audiobookshelf
+                - title: Ezbookkeeping
+                  url: http://ezbookkeeping.homelab.local/
+                  icon: sh:ezbookkeeping
 
             - type: bookmarks
               groups:
