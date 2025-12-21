@@ -232,13 +232,37 @@ config:
                   links:
                     - title: Proton mail
                       url: https://mail.proton.me/u/0/inbox
+                    - title: Proton Calendar
+                      url: https://calendar.proton.me/
+                    - title: Proton Drive
+                      url: https://drive.proton.me/
+                    - title: Github
+                      url: https://github.com/Celsuss
                 - title: News
                   links:
                     - title: Sweclockers
                       url: https://www.sweclockers.com/
                     - title: Feber
                       url: https://feber.se/
+                    - title: fz
+                      url: https://www.fz.se/
+                    - title: Flashback
+                      url: https://www.flashback.org/
+                - title: Dev & Tech
+                  links:
+                    - title: Arch Wiki
+                      url: https://wiki.archlinux.org/
+                    - title: AUR
+                      url: https://aur.archlinux.org/
+                    - title: MELPA
+                      url: https://melpa.org/
                 - title: Entertainment
                   links:
                     - title: YouTube
                       url: https://www.youtube.com/
+                - title: Social Media
+                  links:
+                    - title: Mastodon
+                      url: https://mastodon.social/
+                    - title: Lemmy
+                      url: https://lemmy.ml/
