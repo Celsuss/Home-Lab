@@ -54,38 +54,158 @@ readinessProbe:
     port: http
 
 config:
+  theme:
+    # Gruvbox Dark
+    background-color: 0 0 16
+    primary-color: 43 59 81
+    positive-color: 61 66 44
+    negative-color: 6 96 59
+
+    disable-picker: false
+    presets:
+      gruvbox-dark:
+        background-color: 0 0 16
+        primary-color: 43 59 81
+        positive-color: 61 66 44
+        negative-color: 6 96 59
+      # Tucan (Dark background, orange text)
+      tucan:
+        background-color: 50 1 6
+        primary-color: 24 97 58
+        negative-color: 209 88 54
+
   pages:
-    # TODO change name?
-    links:
-      services:
-        # icon: si:immich # si for Simple icons https://simpleicons.org/
-        # icon: sh:immich # sh for selfh.st icons https://selfh.st/icons/
-        # icon: di:immich # di for Dashboard icons https://github.com/homarr-labs/dashboard-icons
-        # icon: mdi:camera # mdi for Material Design icons https://pictogrammers.com/library/mdi/
-        - title: Karakeep
-          url: http://karakeep.homelab.local/
-          icon: sh:karakeep-light
-        - title: ArgoCD
-          url: https://argocd.homelab.local/
-          icon: si:argo
-        - title: Open-webUI
-          url: http://open-webui.homelab.local/
-          icon: sh:open-webui-light
-        - title: Beszel
-          url: http://beszel.homelab.local/
-          icon: sh:beszel-light
-      bookmarks:
-        - title: General
-          links:
-            - title: Proton mail
-              url: https://mail.proton.me/u/0/inbox
-        - title: News
-          links:
-            - title: Sweclockers
-              url: https://www.sweclockers.com/
-            - title: Feber
-              url: https://feber.se/
-        - title: Entertainment
-          links:
-            - title: YouTube
-              url: https://www.youtube.com/
+    - name: Home
+      # Optionally, if you only have a single page you can hide the desktop navigation for a cleaner look
+      # hide-desktop-navigation: true
+      columns:
+        - size: small
+          widgets:
+            - type: calendar
+              first-day-of-week: monday
+            - type: rss
+              limit: 10
+              collapse-after: 3
+              cache: 12h
+              feeds:
+                - url: https://selfh.st/rss/
+                  title: selfh.st
+                  limit: 4
+                - url: https://samwho.dev/rss.xml
+                - url: https://xeiaso.net/blog.rss
+                  title: Xe Iaso
+                  limit: 2
+                - url: https://itsfoss.com/rss/
+                  title: It's foss
+                  limit: 4
+                - url: https://xkcd.com/rss.xml
+                  title: xkcd
+                  limit: 2
+            # Removed Twitch channels widget
+        - size: full
+          widgets:
+            - type: group
+              widgets:
+                - type: hacker-news
+                - type: lobsters
+                # Added Arch Linux News
+                - type: rss
+                  title: Arch Linux News
+                  limit: 5
+                  collapse-after: 3
+                  feeds:
+                    - url: https://archlinux.org/feeds/news/
+                    - url: https://security.archlinux.org/advisory/feed.atom
+                      title: Arch Security
+            - type: videos
+              channels:
+                - UCXuqSBlHAE6Xw-yeJA0Tunw # Linus Tech Tips
+                - UCR-DXc1voovS8nhAvccRZhg # Jeff Geerling
+                - UCsBjURrPoezykLs9EqgamOA # Fireship
+                - UCBJycsmduvYEL83R_U4JriQ # Marques Brownlee
+                - UCHnyfMqiRRG1u-2MsSQLbXA # Veritasium
+            - type: group
+              widgets:
+                - type: reddit
+                  subreddit: technology
+                  show-thumbnails: true
+                - type: reddit
+                  subreddit: selfhosted
+                  show-thumbnails: true
+        - size: small
+          widgets:
+            - type: weather
+              location: Stockholm, Sweden
+              units: metric
+              hour-format: 24h
+              # Optionally hide the location from being displayed in the widget
+              # hide-location: true
+            - type: markets
+              markets:
+                - symbol: SPY
+                  name: S&P 500
+                - symbol: BTC-USD
+                  name: Bitcoin
+                - symbol: NVDA
+                  name: NVIDIA
+                - symbol: AAPL
+                  name: Apple
+                - symbol: MSFT
+                  name: Microsoft
+            - type: releases
+              cache: 1d
+              # Without authentication the Github API allows for up to 60 requests per hour. You can create a
+              # read-only token from your Github account settings and use it here to increase the limit.
+              # token: ...
+              repositories:
+                - glanceapp/glance
+                - emacs-mirror/emacs
+                - syl20bnr/spacemacs
+                - hyprwm/Hyprland
+    - name: Links
+      width: slim
+      # hide-desktop-navigation: true
+      center-vertically: true
+      columns:
+        - size: full
+          widgets:
+            - type: search
+              autofocus: true
+
+            - type: monitor
+              cache: 1m
+              title: Services
+              sites:
+                # icon: si:immich # si for Simple icons https://simpleicons.org/
+                # icon: sh:immich # sh for selfh.st icons https://selfh.st/icons/
+                # icon: di:immich # di for Dashboard icons https://github.com/homarr-labs/dashboard-icons
+                # icon: mdi:camera # mdi for Material Design icons https://pictogrammers.com/library/mdi/
+                - title: Karakeep
+                  url: http://karakeep.homelab.local/
+                  icon: sh:karakeep-light
+                - title: ArgoCD
+                  url: https://argocd.homelab.local/
+                  icon: si:argo
+                - title: Open-webUI
+                  url: http://open-webui.homelab.local/
+                  icon: sh:open-webui-light
+                - title: Beszel
+                  url: http://beszel.homelab.local/
+                  icon: sh:beszel-light
+
+            - type: bookmarks
+              groups:
+                - title: General
+                  links:
+                    - title: Proton mail
+                      url: https://mail.proton.me/u/0/inbox
+                - title: News
+                  links:
+                    - title: Sweclockers
+                      url: https://www.sweclockers.com/
+                    - title: Feber
+                      url: https://feber.se/
+                - title: Entertainment
+                  links:
+                    - title: YouTube
+                      url: https://www.youtube.com/
