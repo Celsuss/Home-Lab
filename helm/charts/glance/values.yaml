@@ -117,6 +117,15 @@ config:
                     - url: https://archlinux.org/feeds/news/
                     - url: https://security.archlinux.org/advisory/feed.atom
                       title: Arch Security
+                - type: rss
+                  title: emacs
+                  limit: 5
+                  collapse-after: 3
+                  feeds:
+                    - url: https://savannah.gnu.org/news/atom.php?group=emacs
+                      title: Emacs News
+                    - url: https://github.com/syl20bnr/spacemacs/commits/develop.atom
+                      title: Spacemacs Dev
             - type: videos
               channels:
                 - UCXuqSBlHAE6Xw-yeJA0Tunw # Linus Tech Tips
@@ -159,8 +168,6 @@ config:
               # token: ...
               repositories:
                 - glanceapp/glance
-                - emacs-mirror/emacs
-                - syl20bnr/spacemacs
                 - hyprwm/Hyprland
     - name: Links
       width: slim
