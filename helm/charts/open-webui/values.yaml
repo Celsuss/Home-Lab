@@ -23,6 +23,13 @@ securityContext: {}
 env:
   - name: OLLAMA_BASE_URL
     value: "http://ollama.ai-workloads.svc.cluster.local:11434"
+  # --- Web Search Configuration (SearXNG) ---
+  - name: ENABLE_RAG_WEB_SEARCH
+    value: "True"
+  - name: RAG_WEB_SEARCH_ENGINE
+    value: "searxng"
+  - name: SEARXNG_QUERY_URL
+    value: "http://khoj-app-searxng.ai-workloads.svc.cluster.local:8080/search?q=<query>"
 
 service:
   type: ClusterIP

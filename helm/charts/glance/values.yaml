@@ -216,6 +216,9 @@ config:
                 - title: Khoj
                   url: http://khoj.homelab.local/
                   icon: sh:khoj
+                - title: Khoj-admin
+                  url: http://khoj.homelab.local/server/admin/
+                  icon: sh:khoj
                 - title: Uptime Kuma
                   url: http://uptime-kuma.homelab.local
                   icon: sh:uptime-kuma
