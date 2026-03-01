@@ -1,5 +1,71 @@
 # Hashicorp vault helm chart
 
+## Create a secret
+
+### Create secret in hashicorp vault
+To create a secret you first need to connect to the pod and create a secret using bash.
+``` bash
+kubectl exec -it vault-server-0 -n vault -- /bin/sh
+
+# 2. Write the secret data
+# Syntax: vault kv put <mount>/<path> <key>=<value>
+# Example: Creating a database password for a "homepage" app
+vault kv put secret/homelab/homepage-db password="super-secure-password-123" username="db-user"
+```
+
+### Create a VaultStaticSecret
+Create and deploy a `VaultStaticSecret` in kubernetes.
+``` bash
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: homepage-db-secret-sync
+  namespace: default  # The namespace where your APP runs
+spec:
+  # Reference the VSO auth method (Global or Local)
+  vaultAuthRef: default
+
+  # Where did you put it in Vault?
+  mount: secret
+  type: kv-v2
+  path: homelab/homepage-db # Matches Step 1
+
+  # How often to check Vault for updates (e.g., if you rotate the password)
+  refreshAfter: 60s
+
+  # What should the Kubernetes Secret look like?
+  destination:
+    create: true
+    name: homepage-db-creds  # The final K8s Secret name
+    overwrite: true
+    # Optional: Transformation (if you want to rename keys)
+    # transformation:
+    #   excludeRaw: true
+```
+
+### Consume it in your Application
+Now that everything is deployed lets consume the secret.
+``` bash
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: homepage
+  namespace: default
+spec:
+  template:
+    spec:
+      containers:
+        - name: web
+          image: my-app:latest
+          env:
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: homepage-db-creds  # Matches 'destination.name' from Step 2
+                  key: password            # Matches the key you wrote in Step 1
+```
+
+
 ## First time deployment
 
 ### Solving Auto-Unseal

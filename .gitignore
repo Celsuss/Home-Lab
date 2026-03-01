@@ -27,3 +27,9 @@ k3s-ca.crt
 ansible/secrets/*
 *.retry
 .aider*
+
+# Direnv
+.envrc
+
+# Binaries
+*.tgz

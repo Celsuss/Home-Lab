@@ -111,3 +111,4 @@ chrome:
 ingress:
   enabled: true
   className: traefik
+  hostName: karakeep.homelab.local
