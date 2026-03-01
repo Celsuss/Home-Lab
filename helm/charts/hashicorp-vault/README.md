@@ -5,12 +5,21 @@
 ### Create secret in hashicorp vault
 To create a secret you first need to connect to the pod and create a secret using bash.
 ``` bash
+# 1. ssh in to container
 kubectl exec -it vault-server-0 -n vault -- /bin/sh
+
+# 2. login to vault
+vault login <YOUR_ROOT_TOKEN>
 
 # 2. Write the secret data
 # Syntax: vault kv put <mount>/<path> <key>=<value>
-# Example: Creating a database password for a "homepage" app
 vault kv put secret/homelab/homepage-db password="super-secure-password-123" username="db-user"
+```
+
+### Get secret
+To get a secret run the following command inside the container.
+``` bash
+vault kv get secret/homelab/tandoor-recipes
 ```
 
 ### Create a VaultStaticSecret

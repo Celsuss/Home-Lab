@@ -1,0 +1,7 @@
+---
+apiVersion: v2
+name: tandoor-recipes
+description: A Helm chart for Tandoor Recipes - self-hosted recipe management
+type: application
+version: 0.1.0
+appVersion: "1.5.21"
