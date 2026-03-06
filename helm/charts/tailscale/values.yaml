@@ -14,6 +14,10 @@ tailscale-operator:
     createSecret: false
 
 # Configuration for the OAuth secret.
+oauth:
+  clientId: ""
+  clientSecret: ""
+
 oauthSecret:
   # The name of the Kubernetes secret containing the OAuth credentials.
   # The operator subchart expects this to be named 'operator-oauth' by default.
