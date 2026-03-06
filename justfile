@@ -60,3 +60,9 @@ format:
 # Check YAML formatting without modifying files (exits non-zero if fixes needed)
 format-check:
     yamlfmt -dry -lint
+
+# Install git hooks from scripts/hooks/ into .git/hooks/
+install-hooks:
+    cp scripts/hooks/pre-commit .git/hooks/pre-commit
+    chmod +x .git/hooks/pre-commit
+    echo "Git hooks installed"
