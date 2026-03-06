@@ -1,5 +1,10 @@
 # ArgoCD
 
+## Deploy
+helm upgrade --install argo-cd . \
+     -f values.yaml \
+     --namespace argo-cd
+
 ## Setup SOPS
 First make sure you have the correct age keys for SOPS then run the following command:
 ```bash
