@@ -1,0 +1,18 @@
+---
+formatter:
+  type: basic
+  indent: 2
+  line_ending: lf
+  retain_line_breaks: true
+  trim_trailing_whitespace: true
+  eof_newline: true
+  pad_line_comments: 2
+
+include:
+  - "helm/charts/**/values.yaml"
+  - "helm/charts/**/Chart.yaml"
+
+exclude:
+  - "helm/charts/**/templates/**"
+  - "helm/charts/**/charts/**"
+  - "helm/charts/**/values-secrets.yaml"

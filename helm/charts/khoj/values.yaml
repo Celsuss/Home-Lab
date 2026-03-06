@@ -92,6 +92,10 @@ ingress:
   host: "khoj.homelab.local"
   # annotations: {}
 
+KHOJ_ADMIN_PASSWORD: ""
+KHOJ_DJANGO_SECRET_KEY: ""
+POSTGRES_PASSWORD: ""
+
 secrets:
   name: "khoj-secrets"
   # Sensitive values will be populated from the SOPS file.

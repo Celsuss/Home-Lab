@@ -1,5 +1,5 @@
+{{- if .Values.ingress.enabled }}
 ---
-{{- if.Values.ingress.enabled -}}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -7,16 +7,16 @@ metadata:
   namespace: {{ .Values.namespace }}
   labels:
     {{- include "khoj.labels" . | nindent 4 }}
-  {{- with.Values.ingress.annotations }}
+  {{- with .Values.ingress.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  {{- if.Values.ingress.className }}
-  ingressClassName: {{.Values.ingress.className }}
+  {{- if .Values.ingress.className }}
+  ingressClassName: {{ .Values.ingress.className }}
   {{- end }}
   rules:
-    - host: {{.Values.ingress.host | quote }}
+    - host: {{ .Values.ingress.host | quote }}
       http:
         paths:
           - path: "/"
@@ -25,5 +25,5 @@ spec:
               service:
                 name: {{ include "khoj.fullname" . }}-server
                 port:
-                  number: {{.Values.khoj.service.port }}
+                  number: {{ .Values.khoj.service.port }}
 {{- end }}
