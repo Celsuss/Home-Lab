@@ -8,8 +8,8 @@ metadata:
     {{- include "kanidm.labels" . | nindent 4 }}
 data:
   server.toml: |
-    bindaddress = ":::{{ .Values.service.httpsPort }}"
-    ldapbindaddress = ":::{{ .Values.service.ldapPort }}"
+    bindaddress = "[::]:{{ .Values.service.httpsPort }}"
+    ldapbindaddress = "[::]:{{ .Values.service.ldapPort }}"
     db_path = "/data/kanidm/kanidm.db"
     log_level = "{{ .Values.kanidm.logLevel }}"
     domain = "{{ .Values.kanidm.domain }}"
