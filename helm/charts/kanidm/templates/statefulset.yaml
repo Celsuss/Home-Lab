@@ -1,0 +1,57 @@
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "kanidm.fullname" . }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "kanidm.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "kanidm.selectorLabels" . | nindent 6 }}
+  serviceName: {{ include "kanidm.fullname" . }}
+  template:
+    metadata:
+      labels:
+        {{- include "kanidm.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: kanidm
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: https
+              containerPort: {{ .Values.service.httpsPort }}
+              protocol: TCP
+            - name: ldap
+              containerPort: {{ .Values.service.ldapPort }}
+              protocol: TCP
+          volumeMounts:
+            - name: config
+              mountPath: /data/server.toml
+              subPath: server.toml
+            - name: data
+              mountPath: /data/kanidm
+          readinessProbe:
+            tcpSocket:
+              port: {{ .Values.service.httpsPort }}
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "kanidm.fullname" . }}-config
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        storageClassName: {{ .Values.persistence.storageClassName }}
+        resources:
+          requests:
+            storage: {{ .Values.persistence.storage }}
