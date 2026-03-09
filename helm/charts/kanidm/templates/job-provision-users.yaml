@@ -19,6 +19,30 @@ spec:
         app.kubernetes.io/component: provisioning
     spec:
       restartPolicy: OnFailure
+      volumes:
+        - name: idm-admin-secret
+          secret:
+            secretName: {{ .Values.vault.secretName }}
+            items:
+              - key: password
+                path: password
+            optional: true
+      initContainers:
+        - name: wait-for-secret
+          image: busybox:1.36
+          volumeMounts:
+            - name: idm-admin-secret
+              mountPath: /secrets
+              readOnly: true
+          command:
+            - /bin/sh
+            - -c
+            - |
+              until [ -f /secrets/password ]; do
+                echo "Waiting for {{ .Values.vault.secretName }} secret..."
+                sleep 5
+              done
+              echo "Secret is available."
       containers:
         - name: provision
           image: "{{ .Values.provisioning.image.repository }}:{{ .Values.provisioning.image.tag }}"
@@ -28,17 +52,17 @@ spec:
               value: "https://{{ include "kanidm.fullname" . }}.{{ .Values.namespace }}.svc.cluster.local:{{ .Values.service.httpsPort }}"
             - name: KANIDM_SKIP_CERT_VERIFY
               value: "true"
-            - name: IDM_ADMIN_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.vault.secretName }}
-                  key: password
+          volumeMounts:
+            - name: idm-admin-secret
+              mountPath: /secrets
+              readOnly: true
           command:
             - /bin/sh
             - -c
             - |
               set -e
 
+              IDM_ADMIN_PASSWORD=$(cat /secrets/password)
               echo "Authenticating as idm_admin..."
               echo "$IDM_ADMIN_PASSWORD" | kanidm login -D idm_admin
 
