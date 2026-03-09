@@ -1,0 +1,72 @@
+{{- if .Values.provisioning.enabled }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "kanidm.fullname" . }}-provision-users
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "kanidm.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        {{- include "kanidm.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: provisioning
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: provision
+          image: "{{ .Values.provisioning.image.repository }}:{{ .Values.provisioning.image.tag }}"
+          imagePullPolicy: {{ .Values.provisioning.image.pullPolicy }}
+          env:
+            - name: KANIDM_URL
+              value: "https://{{ include "kanidm.fullname" . }}.{{ .Values.namespace }}.svc.cluster.local:{{ .Values.service.httpsPort }}"
+            - name: KANIDM_SKIP_CERT_VERIFY
+              value: "true"
+            - name: IDM_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.vault.secretName }}
+                  key: password
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+
+              echo "Authenticating as idm_admin..."
+              echo "$IDM_ADMIN_PASSWORD" | kanidm login -D idm_admin
+
+              {{- range .Values.provisioning.groups }}
+              echo "Ensuring group '{{ . }}' exists..."
+              if kanidm group get {{ . }} >/dev/null 2>&1; then
+                echo "Group '{{ . }}' already exists."
+              else
+                kanidm group create {{ . }}
+                echo "Group '{{ . }}' created."
+              fi
+              {{- end }}
+
+              {{- range .Values.provisioning.users }}
+              {{- $user := .name }}
+              echo "Ensuring user '{{ $user }}' exists..."
+              if kanidm person get {{ $user }} >/dev/null 2>&1; then
+                echo "User '{{ $user }}' already exists."
+              else
+                kanidm person create {{ $user }} "{{ .displayName }}"
+                echo "User '{{ $user }}' created."
+              fi
+
+              {{- range .groups }}
+              echo "Adding '{{ $user }}' to group '{{ . }}'..."
+              kanidm group add-members {{ . }} {{ $user }} || true
+              {{- end }}
+              {{- end }}
+
+              echo "Provisioning complete."
+{{- end }}
