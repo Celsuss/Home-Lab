@@ -1,0 +1,16 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "kanidm.fullname" . }}-config
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "kanidm.labels" . | nindent 4 }}
+data:
+  server.toml: |
+    bindaddress = ":::{{ .Values.service.httpsPort }}"
+    ldapbindaddress = ":::{{ .Values.service.ldapPort }}"
+    db_path = "/data/kanidm/kanidm.db"
+    log_level = "{{ .Values.kanidm.logLevel }}"
+    domain = "{{ .Values.kanidm.domain }}"
+    origin = "{{ .Values.kanidm.origin }}"

@@ -1,0 +1,21 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "kanidm.fullname" . }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "kanidm.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "kanidm.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: https
+      port: {{ .Values.service.httpsPort }}
+      targetPort: https
+      protocol: TCP
+    - name: ldap
+      port: {{ .Values.service.ldapPort }}
+      targetPort: ldap
+      protocol: TCP

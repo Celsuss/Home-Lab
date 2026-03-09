@@ -1,0 +1,34 @@
+namespace: kanidm
+
+image:
+  repository: kanidm/server
+  tag: "latest"       # Pin to a specific version e.g. "1.4.2" in production
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+kanidm:
+  domain: kanidm.homelab.local
+  origin: https://kanidm.homelab.local
+  logLevel: info
+
+service:
+  httpsPort: 8443
+  ldapPort: 3636
+
+ingress:
+  enabled: true
+  className: traefik
+  host: kanidm.homelab.local
+
+persistence:
+  storageClassName: local-path
+  storage: 5Gi
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
