@@ -24,3 +24,21 @@
 ```
  
  5. Access Kanidm UI: https://kanidm.homelab.local
+
+## User Provisioning
+
+After the initial setup above, the chart includes an automated provisioning Job
+that creates users and groups on each deploy. It runs as a Helm post-install/post-upgrade hook.
+
+**Prerequisites:**
+- The `idm_admin` password must be stored in Vault at `secret/kanidm/idm_admin`
+  with a `password` key (step 3 above).
+- The Vault Secrets Operator must be running so the `VaultStaticSecret` can sync
+  the password into a Kubernetes Secret.
+
+**What gets provisioned (configurable in `values.yaml`):**
+- Groups: `idm_admins`, `sso_users`
+- User: `celsus` (member of both groups)
+
+The provisioning script is idempotent — re-running it will skip existing users/groups.
+
