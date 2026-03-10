@@ -27,9 +27,15 @@ spec:
               set -e
               CERT_DIR=/data/kanidm
               mkdir -p "$CERT_DIR"
+              EXPECTED_SAN="DNS:{{ .Values.kanidm.domain }}, DNS:{{ include "kanidm.fullname" . }}.{{ .Values.namespace }}.svc.cluster.local"
               if [ -f "$CERT_DIR/key.pem" ] && [ -f "$CERT_DIR/chain.pem" ]; then
-                echo "TLS certs already exist, skipping generation."
-                exit 0
+                CURRENT_SAN=$(openssl x509 -in "$CERT_DIR/chain.pem" -noout -ext subjectAltName 2>/dev/null | grep -oP 'DNS:.*')
+                if [ "$CURRENT_SAN" = "$EXPECTED_SAN" ]; then
+                  echo "TLS certs already exist with correct SAN, skipping."
+                  exit 0
+                fi
+                echo "SAN mismatch detected, regenerating certs..."
+                rm -f "$CERT_DIR/key.pem" "$CERT_DIR/chain.pem" "$CERT_DIR/server.pem" "$CERT_DIR/ca.pem" "$CERT_DIR/ca.key" "$CERT_DIR/server.csr" "$CERT_DIR/san.ext"
               fi
               echo "Generating self-signed TLS certificate..."
               openssl genrsa -out "$CERT_DIR/ca.key" 4096
