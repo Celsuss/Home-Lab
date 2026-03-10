@@ -66,6 +66,9 @@ hostAliases:
       - "audiobookshelf.homelab.local"
       - "ezbookkeeping.homelab.local"
       - "kanidm.homelab.local"
+      - "donetick.homelab.local"
+      - "tandoor.homelab.local"
+      - "vault.homelab.local"
 
 config:
   theme:
@@ -118,6 +121,8 @@ config:
             # Removed Twitch channels widget
         - size: full
           widgets:
+            - type: search
+              autofocus: true
             - type: group
               widgets:
                 - type: hacker-news
@@ -155,8 +160,19 @@ config:
                 - type: reddit
                   subreddit: selfhosted
                   show-thumbnails: true
+                - type: reddit
+                  subreddit: homelab
+                  show-thumbnails: true
+                - type: reddit
+                  subreddit: linux
+                  show-thumbnails: true
         - size: small
           widgets:
+            - type: clock
+              hour-format: 24h
+              timezones:
+                - timezone: Europe/Stockholm
+                  label: Stockholm
             - type: weather
               location: Stockholm, Sweden
               units: metric
@@ -183,6 +199,10 @@ config:
               repositories:
                 - glanceapp/glance
                 - hyprwm/Hyprland
+                - k3s-io/k3s
+                - argoproj/argo-cd
+                - traefik/traefik
+                - ollama/ollama
     - name: Links
       width: slim
       # hide-desktop-navigation: true
@@ -232,6 +252,15 @@ config:
                 - title: Kanidm
                   url: https://kanidm.homelab.local/
                   icon: sh:kanidm
+                - title: Donetick
+                  url: http://donetick.homelab.local/
+                  icon: sh:donetick
+                - title: Tandoor Recipes
+                  url: http://tandoor.homelab.local/
+                  icon: sh:tandoor-recipes
+                - title: Hashicorp Vault
+                  url: http://vault.homelab.local/
+                  icon: sh:vault
 
             - type: bookmarks
               groups:
@@ -239,12 +268,16 @@ config:
                   links:
                     - title: Proton mail
                       url: https://mail.proton.me/u/0/inbox
+                      icon: si:proton
                     - title: Proton Calendar
                       url: https://calendar.proton.me/
+                      icon: si:proton
                     - title: Proton Drive
                       url: https://drive.proton.me/
+                      icon: si:proton
                     - title: Github
                       url: https://github.com/Celsuss
+                      icon: si:github
                 - title: News
                   links:
                     - title: Sweclockers
@@ -259,19 +292,24 @@ config:
                   links:
                     - title: Arch Wiki
                       url: https://wiki.archlinux.org/
+                      icon: si:archlinux
                     - title: AUR
                       url: https://aur.archlinux.org/
+                      icon: si:archlinux
                     - title: MELPA
                       url: https://melpa.org/
                 - title: Social Media
                   links:
                     - title: Mastodon
                       url: https://mastodon.social/
+                      icon: si:mastodon
                     - title: Lemmy
                       url: https://lemmy.ml/
+                      icon: si:lemmy
                 - title: Entertainment
                   links:
                     - title: YouTube
                       url: https://www.youtube.com/
+                      icon: si:youtube
                     - title: 9anime
                       url: https://9animetv.to/home
