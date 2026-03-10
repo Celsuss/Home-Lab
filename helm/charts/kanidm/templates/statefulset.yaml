@@ -45,7 +45,7 @@ spec:
                 -out "$CERT_DIR/server.csr"
               cat > "$CERT_DIR/san.ext" <<EOF
               [SAN]
-              subjectAltName=DNS:{{ .Values.kanidm.domain }}
+              subjectAltName=DNS:{{ .Values.kanidm.domain }},DNS:{{ include "kanidm.fullname" . }}.{{ .Values.namespace }}.svc.cluster.local
               EOF
               openssl x509 -req -in "$CERT_DIR/server.csr" \
                 -CA "$CERT_DIR/ca.pem" -CAkey "$CERT_DIR/ca.key" \
