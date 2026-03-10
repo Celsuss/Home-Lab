@@ -33,22 +33,3 @@ resources:
     cpu: 500m
     memory: 512Mi
 
-vault:
-  secretPath: kanidm/idm_admin
-  secretName: kanidm-idm-admin
-
-provisioning:
-  enabled: true
-  image:
-    repository: kanidm/tools
-    tag: latest
-    pullPolicy: IfNotPresent
-  users:
-    - name: celsus
-      displayName: "Celsus"
-      groups:
-        - idm_admins
-        - sso_users
-  groups:
-    - idm_admins
-    - sso_users
