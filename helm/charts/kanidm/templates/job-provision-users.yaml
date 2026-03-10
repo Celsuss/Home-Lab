@@ -60,8 +60,8 @@ spec:
             - |
               set -e
 
-              mkdir -p ~/.config/kanidm
-              printf 'uri = "%s"\nverify_ca = false\n' "$KANIDM_URL" > ~/.config/kanidm/config
+              mkdir -p ~/.config
+              printf 'uri = "%s"\nverify_ca = false\n' "$KANIDM_URL" > ~/.config/kanidm
 
               IDM_ADMIN_PASSWORD=$(cat /secrets/password)
               echo "Authenticating as idm_admin..."
