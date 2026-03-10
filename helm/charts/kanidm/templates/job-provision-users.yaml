@@ -50,8 +50,6 @@ spec:
           env:
             - name: KANIDM_URL
               value: "https://{{ include "kanidm.fullname" . }}.{{ .Values.namespace }}.svc.cluster.local:{{ .Values.service.httpsPort }}"
-            - name: KANIDM_SKIP_CERT_VERIFY
-              value: "true"
           volumeMounts:
             - name: idm-admin-secret
               mountPath: /secrets
@@ -61,6 +59,9 @@ spec:
             - -c
             - |
               set -e
+
+              mkdir -p ~/.config/kanidm
+              printf 'uri = "%s"\nverify_ca = false\n' "$KANIDM_URL" > ~/.config/kanidm/config
 
               IDM_ADMIN_PASSWORD=$(cat /secrets/password)
               echo "Authenticating as idm_admin..."
