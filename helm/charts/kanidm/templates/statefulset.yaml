@@ -29,7 +29,7 @@ spec:
               mkdir -p "$CERT_DIR"
               EXPECTED_SAN="DNS:{{ .Values.kanidm.domain }}, DNS:{{ include "kanidm.fullname" . }}.{{ .Values.namespace }}.svc.cluster.local"
               if [ -f "$CERT_DIR/key.pem" ] && [ -f "$CERT_DIR/chain.pem" ]; then
-                CURRENT_SAN=$(openssl x509 -in "$CERT_DIR/chain.pem" -noout -ext subjectAltName 2>/dev/null | grep -oP 'DNS:.*')
+                CURRENT_SAN=$(openssl x509 -in "$CERT_DIR/chain.pem" -noout -ext subjectAltName 2>/dev/null | tail -1 | sed 's/^ *//')
                 if [ "$CURRENT_SAN" = "$EXPECTED_SAN" ]; then
                   echo "TLS certs already exist with correct SAN, skipping."
                   exit 0
