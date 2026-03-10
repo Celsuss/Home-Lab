@@ -58,9 +58,10 @@ kanidm group create sso_users
 ### Create users and assign to groups
 
 ```bash
-kanidm person create celsus "Celsus"
-kanidm group add-members idm_admins celsus
-kanidm group add-members sso_users celsus
+kanidm person create <your username> <Your Displayname>
+kanidm person credential create-reset-token <your username>
+kanidm group add-members idm_admins <your username>
+kanidm group add-members sso_users <your username>
 ```
 
 ### Set a user password

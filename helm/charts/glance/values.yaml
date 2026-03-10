@@ -65,6 +65,7 @@ hostAliases:
       - "uptime-kuma.homelab.local"
       - "audiobookshelf.homelab.local"
       - "ezbookkeeping.homelab.local"
+      - "kanidm.homelab.local"
 
 config:
   theme:
@@ -228,6 +229,9 @@ config:
                 - title: Ezbookkeeping
                   url: http://ezbookkeeping.homelab.local/
                   icon: sh:ezbookkeeping
+                - title: Kanidm
+                  url: https://kanidm.homelab.local/
+                  icon: sh:kanidm
 
             - type: bookmarks
               groups:
