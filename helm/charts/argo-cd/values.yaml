@@ -1,5 +1,10 @@
 ---
 # https://github.com/argoproj/argo-helm/blob/main/charts/argo-cd/values.yaml
+
+vault:
+  secretPath: argocd/oidc
+  secretName: argocd-oidc-secret
+
 argo-cd:
   global:
     image:
@@ -17,7 +22,6 @@ argo-cd:
       # -- Set the global logging level. One of: `debug`, `info`, `warn` or `error`
       level: info
 
-  # -- TODO: Enable dex later for OAuth
   dex:
     enabled: false
 
@@ -25,18 +29,29 @@ argo-cd:
     params:
       server.insecure: "true"
 
-    # cm:
-    #   create: true
-    #   helm.valuesFileSchemes: >-
-    #     secrets,
-    #     secrets+literal,
-    #     secrets+gpg-import,
-    #     secrets+gpg-import-kubernetes,
-    #     secrets+age-import,
-    #     secrets+age-import-kubernetes
+    cm:
+      url: http://argocd.homelab.local
+      oidc.config: |
+        name: Kanidm
+        issuer: https://kanidm.homelab.local/oauth2/openid/argocd
+        clientID: argocd
+        clientSecret: $argocd-oidc-secret:client-secret
+        requestedScopes:
+          - openid
+          - profile
+          - email
+          - groups
+
+    rbac:
+      policy.csv: |
+        g, sso_users, role:admin
+      policy.default: role:readonly
 
   server:
     replicas: 1
+    env:
+      - name: ARGOCD_SERVER_OIDC_TLS_INSECURE_SKIP_VERIFY
+        value: "true"
     extraArgs:
       - --insecure
       - --repo-server-timeout-seconds=240
