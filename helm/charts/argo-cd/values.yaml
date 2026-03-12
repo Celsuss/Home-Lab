@@ -35,7 +35,7 @@ argo-cd:
       server.insecure: "true"
 
     cm:
-      oidc.tls.insecure: "true"
+      oidc.tls.insecure.skip.verify: "true"
       url: http://argocd.homelab.local
       oidc.config: |
         name: Kanidm
