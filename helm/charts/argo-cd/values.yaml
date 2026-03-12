@@ -16,6 +16,11 @@ argo-cd:
 
     domain: argocd.homelab.local
 
+    hostAliases:
+      - ip: "10.43.16.148"
+        hostnames:
+          - "kanidm.homelab.local"
+
     logging:
       # -- Set the global logging format. Either: `text` or `json`
       format: text
