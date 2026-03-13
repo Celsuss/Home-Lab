@@ -27,7 +27,12 @@ ingress:
   enabled: true
   className: "traefik"
   hostName: audiobookshelf.homelab.local
-  tls: []
+  annotations:
+    cert-manager.io/cluster-issuer: homelab-ca
+  tls:
+    - secretName: audiobookshelf-tls
+      hosts:
+        - audiobookshelf.homelab.local
 
 persistence:
   storageClass: local-path

@@ -31,13 +31,12 @@ ingress:
   enabled: true
   className: "traefik"
   hostName: ezbookkeeping.homelab.local
-  annotations: {}
-    # kubernetes.io/ingress.class: nginx
-    # kubernetes.io/tls-acme: "true"
-  tls: []
-  #  - secretName: chart-example-tls
-  #    hosts:
-  #      - chart-example.local
+  annotations:
+    cert-manager.io/cluster-issuer: homelab-ca
+  tls:
+    - secretName: ezbookkeeping-tls
+      hosts:
+        - ezbookkeeping.homelab.local
 
 persistence:
   storageClass: local-path

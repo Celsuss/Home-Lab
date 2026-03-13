@@ -116,3 +116,9 @@ ingress:
   enabled: true
   className: traefik
   hostName: karakeep.homelab.local
+  annotations:
+    cert-manager.io/cluster-issuer: homelab-ca
+  tls:
+    - secretName: karakeep-tls
+      hosts:
+        - karakeep.homelab.local
