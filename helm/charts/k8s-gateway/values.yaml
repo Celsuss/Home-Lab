@@ -3,6 +3,10 @@ k8s-gateway:
   domain: homelab.local
   watchedResources:
     - Ingress
+  # Enable fallthrough so queries not matched by k8s_gateway (e.g. Kanidm
+  # which uses IngressRouteTCP) fall through to the file plugin below.
+  fallthrough:
+    enabled: true
   # Static DNS entry for Kanidm (uses IngressRouteTCP, not standard Ingress)
   # so k8s-gateway won't auto-discover it. We use a zone file with the
   # Traefik LoadBalancer IP (192.168.0.142).
