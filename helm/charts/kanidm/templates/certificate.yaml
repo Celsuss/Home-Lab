@@ -1,0 +1,16 @@
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ include "kanidm.fullname" . }}-tls
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "kanidm.labels" . | nindent 4 }}
+spec:
+  secretName: kanidm-tls
+  issuerRef:
+    name: homelab-ca
+    kind: ClusterIssuer
+  dnsNames:
+    - {{ .Values.kanidm.domain }}
+    - {{ include "kanidm.fullname" . }}.{{ .Values.namespace }}.svc.cluster.local

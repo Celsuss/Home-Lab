@@ -14,5 +14,5 @@ data:
     log_level = "{{ .Values.kanidm.logLevel }}"
     domain = "{{ .Values.kanidm.domain }}"
     origin = "{{ .Values.kanidm.origin }}"
-    tls_chain = "/data/kanidm/chain.pem"
-    tls_key = "/data/kanidm/key.pem"
+    tls_chain = "/tls/tls.crt"
+    tls_key = "/tls/tls.key"

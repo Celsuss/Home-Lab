@@ -17,52 +17,6 @@ spec:
       labels:
         {{- include "kanidm.selectorLabels" . | nindent 8 }}
     spec:
-      initContainers:
-        - name: generate-tls
-          image: alpine/openssl:latest
-          command:
-            - sh
-            - -c
-            - |
-              set -e
-              CERT_DIR=/data/kanidm
-              mkdir -p "$CERT_DIR"
-              EXPECTED_SAN="DNS:{{ .Values.kanidm.domain }}, DNS:{{ include "kanidm.fullname" . }}.{{ .Values.namespace }}.svc.cluster.local"
-              if [ -f "$CERT_DIR/key.pem" ] && [ -f "$CERT_DIR/chain.pem" ]; then
-                CURRENT_SAN=$(openssl x509 -in "$CERT_DIR/chain.pem" -noout -ext subjectAltName 2>/dev/null | tail -1 | sed 's/^ *//')
-                if [ "$CURRENT_SAN" = "$EXPECTED_SAN" ]; then
-                  echo "TLS certs already exist with correct SAN, skipping."
-                  exit 0
-                fi
-                echo "SAN mismatch detected, regenerating certs..."
-                rm -f "$CERT_DIR/key.pem" "$CERT_DIR/chain.pem" "$CERT_DIR/server.pem" "$CERT_DIR/ca.pem" "$CERT_DIR/ca.key" "$CERT_DIR/server.csr" "$CERT_DIR/san.ext"
-              fi
-              echo "Generating self-signed TLS certificate..."
-              openssl genrsa -out "$CERT_DIR/ca.key" 4096
-              openssl req -x509 -new -nodes \
-                -key "$CERT_DIR/ca.key" \
-                -sha256 -days 3650 \
-                -subj "/CN=Kanidm CA" \
-                -out "$CERT_DIR/ca.pem"
-              openssl genrsa -out "$CERT_DIR/key.pem" 4096
-              openssl req -new \
-                -key "$CERT_DIR/key.pem" \
-                -subj "/CN={{ .Values.kanidm.domain }}" \
-                -out "$CERT_DIR/server.csr"
-              cat > "$CERT_DIR/san.ext" <<EOF
-              [SAN]
-              subjectAltName=DNS:{{ .Values.kanidm.domain }},DNS:{{ include "kanidm.fullname" . }}.{{ .Values.namespace }}.svc.cluster.local
-              EOF
-              openssl x509 -req -in "$CERT_DIR/server.csr" \
-                -CA "$CERT_DIR/ca.pem" -CAkey "$CERT_DIR/ca.key" \
-                -CAcreateserial -days 3650 -sha256 \
-                -extfile "$CERT_DIR/san.ext" -extensions SAN \
-                -out "$CERT_DIR/server.pem"
-              cat "$CERT_DIR/server.pem" "$CERT_DIR/ca.pem" > "$CERT_DIR/chain.pem"
-              echo "TLS certificate generation complete."
-          volumeMounts:
-            - name: data
-              mountPath: /data/kanidm
       containers:
         - name: kanidm
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -80,6 +34,9 @@ spec:
               subPath: server.toml
             - name: data
               mountPath: /data/kanidm
+            - name: tls
+              mountPath: /tls
+              readOnly: true
           readinessProbe:
             tcpSocket:
               port: {{ .Values.service.httpsPort }}
@@ -91,6 +48,9 @@ spec:
         - name: config
           configMap:
             name: {{ include "kanidm.fullname" . }}-config
+        - name: tls
+          secret:
+            secretName: kanidm-tls
   volumeClaimTemplates:
     - metadata:
         name: data
