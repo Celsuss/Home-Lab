@@ -5,10 +5,14 @@ kind: Ingress
 metadata:
   name: {{ .Values.karakeep.name }}-web-ingress
   namespace: {{ .Values.namespace }}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   ingressClassName: {{ .Values.ingress.className }}
   rules:
-  - host: "karakeep.homelab.local"
+  - host: {{ .Values.ingress.hostName }}
     http:
       paths:
       - path: "/"
