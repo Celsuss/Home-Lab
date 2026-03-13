@@ -86,6 +86,39 @@ argo-cd:
       - --insecure
       - --repo-server-timeout-seconds=240
 
+    # Inject homelab CA into system trust store so OIDC (Kanidm) connections
+    # trust our private CA. argocd-tls-certs-cm only covers repo connections.
+    initContainers:
+      - name: inject-ca
+        image: quay.io/argoproj/argocd:v3.1.4
+        command:
+          - sh
+          - -c
+          - |
+            cp /etc/ssl/certs/ca-certificates.crt /custom-ssl/ca-certificates.crt
+            cat /homelab-ca/ca.crt >> /custom-ssl/ca-certificates.crt
+        volumeMounts:
+          - name: custom-ssl
+            mountPath: /custom-ssl
+          - name: homelab-ca
+            mountPath: /homelab-ca
+
+    volumes:
+      - name: custom-ssl
+        emptyDir: {}
+      - name: homelab-ca
+        configMap:
+          name: argocd-tls-certs-cm
+          items:
+            - key: kanidm.homelab.local
+              path: ca.crt
+
+    volumeMounts:
+      - name: custom-ssl
+        mountPath: /etc/ssl/certs/ca-certificates.crt
+        subPath: ca-certificates.crt
+        readOnly: true
+
     ingress:
       enabled: true
       ingressClassName: traefik
