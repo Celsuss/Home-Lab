@@ -71,15 +71,19 @@ service:
   targetPort: 11434
 
 ingress:
-  enabled: false
+  enabled: true
   className: "traefik"
-  annotations: {}
+  annotations:
+    cert-manager.io/cluster-issuer: homelab-ca
   hosts:
     - host: ollama.homelab.local
       paths:
         - path: /
           pathType: Prefix
-  tls: []
+  tls:
+    - secretName: ollama-tls
+      hosts:
+        - ollama.homelab.local
 
 resources:
   limits:
