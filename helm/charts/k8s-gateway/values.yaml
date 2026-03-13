@@ -1,0 +1,14 @@
+---
+k8s-gateway:
+  domain: homelab.local
+  watchedResources:
+    - Ingress
+  # Static DNS entry for Kanidm (uses IngressRouteTCP, not standard Ingress)
+  # so k8s-gateway won't auto-discover it. We use a zone file with the
+  # Traefik LoadBalancer IP (192.168.0.142).
+  zoneFiles:
+    - filename: kanidm.db
+      domains: kanidm.homelab.local
+      contents: |
+        kanidm.homelab.local.   IN  SOA sns.dns.icann.org. noc.dns.icann.org. 2015082541 7200 3600 1209600 3600
+        kanidm.homelab.local.   IN  A   192.168.0.142

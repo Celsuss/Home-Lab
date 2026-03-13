@@ -90,7 +90,12 @@ ingress:
   enabled: true
   className: traefik
   host: "khoj.homelab.local"
-  # annotations: {}
+  annotations:
+    cert-manager.io/cluster-issuer: homelab-ca
+  tls:
+    - secretName: khoj-tls
+      hosts:
+        - khoj.homelab.local
 
 KHOJ_ADMIN_PASSWORD: ""
 KHOJ_DJANGO_SECRET_KEY: ""

@@ -41,7 +41,12 @@ ingress:
   enabled: true
   className: "traefik"
   hostName: beszel.homelab.local
-  tls: []
+  annotations:
+    cert-manager.io/cluster-issuer: homelab-ca
+  tls:
+    - secretName: beszel-tls
+      hosts:
+        - beszel.homelab.local
 
 persistence:
   storageClass: local-path

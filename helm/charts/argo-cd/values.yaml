@@ -16,11 +16,6 @@ argo-cd:
 
     domain: argocd.homelab.local
 
-    hostAliases:
-      - ip: "10.43.16.148"
-        hostnames:
-          - "kanidm.homelab.local"
-
     logging:
       # -- Set the global logging format. Either: `text` or `json`
       format: text
@@ -35,8 +30,7 @@ argo-cd:
       server.insecure: "true"
 
     cm:
-      oidc.tls.insecure.skip.verify: "true"
-      url: http://argocd.homelab.local
+      url: https://argocd.homelab.local
       oidc.config: |
         name: Kanidm
         issuer: https://kanidm.homelab.local/oauth2/openid/argocd
@@ -55,9 +49,6 @@ argo-cd:
 
   server:
     replicas: 1
-    env:
-      - name: ARGOCD_SERVER_OIDC_TLS_INSECURE_SKIP_VERIFY
-        value: "true"
     extraArgs:
       - --insecure
       - --repo-server-timeout-seconds=240
@@ -68,15 +59,9 @@ argo-cd:
       hostname: argocd.homelab.local
       servicePortName: http
       annotations:
-        # -- Instruct Traefik to use the 'websecure' entrypoint (port 443/TLS).
-        # traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
-        # -- Instruct Traefik to terminate TLS for this route.
-        # traefik.ingress.kubernetes.io/router.tls: "true"
         traefik.ingress.kubernetes.io/service.scheme: h2c
-      tls: false
-      # tls:
-      #   - hosts:
-      #     - argocd.homelab.local
+        cert-manager.io/cluster-issuer: homelab-ca
+      tls: true
 
     resources:
       requests:

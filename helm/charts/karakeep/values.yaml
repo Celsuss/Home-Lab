@@ -20,7 +20,7 @@ karakeep:
       value: http://chrome:9222
       # value: http://{{ .Release.Name }}-chrome:9222
     - name: NEXTAUTH_URL
-      value: http://karakeep.homelab.local
+      value: https://karakeep.homelab.local
       # value: http://localhost:3000
       # value: "{{ .Values.applicationProtocol }}://{{ .Values.applicationHost }}"
     - name: KARAKEEP_VERSION
@@ -116,3 +116,9 @@ ingress:
   enabled: true
   className: traefik
   hostName: karakeep.homelab.local
+  annotations:
+    cert-manager.io/cluster-issuer: homelab-ca
+  tls:
+    - secretName: karakeep-tls
+      hosts:
+        - karakeep.homelab.local

@@ -40,14 +40,12 @@ ingress:
   enabled: true
   className: traefik
   hostName: open-webui.homelab.local
-
-  # annotations:
-    # This tells Traefik to handle both HTTP and gRPC traffic properly
-    # traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
-
-  # tls:
-  #   - hosts:
-  #       - open-webui.homelab.local
+  annotations:
+    cert-manager.io/cluster-issuer: homelab-ca
+  tls:
+    - secretName: open-webui-tls
+      hosts:
+        - open-webui.homelab.local
 
 persistence:
   storage: 3Gi
