@@ -42,6 +42,39 @@ argo-cd:
           - email
           - groups
 
+    tls:
+      certificates:
+        kanidm.homelab.local: |
+          -----BEGIN CERTIFICATE-----
+          MIIE9zCCAt+gAwIBAgIRAM6zEn3WF6ihBjl3hwMedyQwDQYJKoZIhvcNAQENBQAw
+          FTETMBEGA1UEAxMKaG9tZWxhYi1jYTAeFw0yNjAzMTMxMzAxMTFaFw0zNjAzMTAx
+          MzAxMTFaMBUxEzARBgNVBAMTCmhvbWVsYWItY2EwggIiMA0GCSqGSIb3DQEBAQUA
+          A4ICDwAwggIKAoICAQDiSgLdoI3SoLB/577Cf8Ub6I7hAC02wJ4iDdw2ZtT9RZqP
+          C8Ne+9XZ/VE4+hPeqso1DCQ60p3VODTqEYy9bYHFER3dbJOFzPcEkmsZ80gSfdWJ
+          qOH6Rs4eWwgqyH30+XvtGNDu9sKZPeYZmr9OaOuiagn7DbUgSDqqd2o/xlOCZCTO
+          06UI4t5DcyiHcYvD/HMUmiuNPkIlbu6n29ayn3SNAF+erY11kV9DpgJxe8upxvvO
+          wjhgBAgIidKU3pXYHOZv/RetJEnqSULoTzo5hHn644B5P4HnO/TJoaOrQxN25JGe
+          0XyILM/1Y8ntA2xFKv8c6rEtwDBFYpUNki+Yukjw0iWooR3ZV9FR2sn9R1icfDRQ
+          ikoHeiIk5OwbMP/Uniem3jOuk0PiMBdQqb4BElYxqeg41CwRpyMwEwzsQciHvf3A
+          q1YZotq3kgcagtEf2M798T8GsYr2vJIAft7OQs1vhJGjxmkrVOPR96ThY2uc+6yf
+          iMj2xvqCKyKOt1pgEwMePES2ROdLEgEqxdvc0+R42i2o0E3WNEWboS9ZIEHrFjqd
+          pzWX+oZsuVerTpP0W8PKnP/9NwWRtdmiTQjbBiAn9MHcoPnF8ZZobxvmxwPL02s1
+          /3ElSWPksgO4YAuhrhovyIC5OQF6uaJb/6b4Cs3D5n57ep/Z1hvZQ+adPjyFwwID
+          AQABo0IwQDAOBgNVHQ8BAf8EBAMCAqQwDwYDVR0TAQH/BAUwAwEB/zAdBgNVHQ4E
+          FgQUz3udA7TDTN8A+1lrigmI6KaTOSUwDQYJKoZIhvcNAQENBQADggIBAIVWn5n6
+          MaCVWdBbgZ///bfDrIm3BCHQ5x8pxzXjcMyHzAykdRQ4efJC99TDg102nDNhCxZO
+          uv86jlBr3Ckt5izhg4m9dqijP6OmypWXcVtzFKxwlV4fWXyzOsmrNVUyHxLKun6l
+          WdHuRUn+OO8U7OdbyKFeju3CmfPLWlAsGoaBbo9Mw7xwCw3QvbOvQNvKb3EPufh9
+          ZEAzBH1nV5MCKWdKfO3JWPr4jMOy172hswpBURlK1RrpMhcMAhXX0qRdtywbZF99
+          0thPGEiOGB1d7aulXUzyRxMo5Sw+hOgErLvS4Q//c6InlDmwa6cuohl2ztoJNX2z
+          QzB8Mc2DmDgJj+CSMsW+XqumdZh4iIFA+enLq3RIxlWv/rAC0EiVGHa2OOo3qmOx
+          gw+G9M+n9vLWR6b+lUilx0QHi/uosSBMwDe2+T0RG5oN+gRSBPBYlSQfsMhFAJv6
+          Ged/sWEC1CIlhrhKtV4ikXgUk7aiFUesz1ye1DrXaC6yqQW0vg/JvQTfrWG9XOX7
+          Cx/gcA5etAEou4zqnxU5Ulq7WeETKR4fXJHnL7o6D3QOqJnGTfa5sCnC3BXWTJuE
+          SUsrv5P83E+WwF21U8n/5cjrHLWi2lO7g1eWj7v5f02NdbOX58Ii7Ly0R5HxZfP1
+          qQ8n5Lai9T1lIGrjd6UxeUWDGN9AKDkYRcrD
+          -----END CERTIFICATE-----
+
     rbac:
       policy.csv: |
         g, sso_users, role:admin
