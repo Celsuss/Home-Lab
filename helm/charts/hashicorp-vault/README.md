@@ -148,11 +148,13 @@ Success! Uploaded policy: vso-policy [44]
 
 ### 4. Create a Vault Role for VSO
 This "role" binds the `vso-policy` to the specific Kubernetes Service Account that the VSO will use.
-We will name this service account `vso-service-account` and deploy it in the `vault-secrets-operator` namespace.
+Each namespace that uses a `VaultStaticSecret` needs a `vso-service-account` ServiceAccount.
+Using `"*"` for namespaces allows any namespace with this SA to authenticate — the policy still
+controls which Vault paths are readable.
 ```bash
 vault write auth/kubernetes/role/vso-role \
        bound_service_account_names=vso-service-account \
-       bound_service_account_namespaces=vault-secrets-operator \
+       bound_service_account_namespaces="*" \
        policies=vso-policy \
        ttl=24h
 Success! Data written to: auth/kubernetes/role/vso-role [47]

@@ -26,5 +26,5 @@ kanidm system oauth2 warning-insecure-client-disable-pkce argocd
 
 # Get the client secret and store it in Vault
 kanidm system oauth2 show-basic-secret argocd
-vault kv put secret/argocd/oidc client-secret=<secret-from-above>
+vault kv put secret/homelab/argocd/oidc client-secret=<secret-from-above>
 ```
