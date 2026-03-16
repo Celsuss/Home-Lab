@@ -1,0 +1,1 @@
+{{ include "homelab-common.tailscale-ingress" (dict "Values" .Values "fullname" (include "ollama.fullname" .) "labels" (include "ollama.labels" . | trim) "namespace" .Values.namespace) }}
