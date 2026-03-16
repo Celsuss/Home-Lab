@@ -84,10 +84,11 @@ spec:
 ```yaml
 {{- define "homelab-common.tailscale-ingress" -}}
 {{- if .Values.tailscale.enabled }}
+---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ .fullname }}-tailscale
+  name: {{ .fullname }}-tailscale-ingress
   namespace: {{ .namespace }}
   labels:
     {{- .labels | nindent 4 }}
@@ -95,9 +96,9 @@ spec:
   ingressClassName: tailscale
   tls:
     - hosts:
-        - {{ .fullname }}
+        - {{ .fullname | quote }}
   rules:
-    - host: {{ .fullname }}
+    - host: {{ .fullname | quote }}
       http:
         paths:
           - path: /
@@ -110,6 +111,8 @@ spec:
 {{- end }}
 {{- end }}
 ```
+
+**Hostname convention:** The Tailscale operator registers each Ingress as a device on the tailnet. A chart with fullname `khoj` becomes `khoj.<tailnet>.ts.net`. These device names appear in the Tailscale admin console.
 
 **App chart usage** (e.g., `khoj/templates/ingress-tailscale.yaml`):
 
@@ -144,14 +147,22 @@ tailscale:
   # servicePort: 80   # optional, defaults to service.port
 ```
 
+**Charts requiring explicit overrides:**
+- **khoj** — service name is `khoj-server` (not `khoj`), so must set `tailscale.serviceName: khoj-server`
+- Any chart where the service name differs from the chart fullname or where `service.port` is not at the standard values path should set `tailscale.servicePort` explicitly
+
 ### 4. Tailscale Operator Configuration
 
-The upstream `tailscale-operator` chart automatically registers the `tailscale` IngressClass when deployed. No Helm config changes needed.
+The upstream `tailscale-operator` chart creates a `tailscale` IngressClass as part of its reconciliation loop. This depends on the operator pod running with a properly configured OAuth client — if OAuth is misconfigured, the IngressClass will not be created or function.
 
 **Manual prerequisite (Tailscale admin console):**
-- The operator's OAuth client must have `devices` and `dns` write scopes
+- The operator's OAuth client must have `devices` and `dns` write scopes — without these, IngressClass creation fails
 - ACL tags must permit the operator to create new devices (one per Ingress)
 - Verify at https://login.tailscale.com/admin/settings/oauth
+
+**Capacity note:** Each Tailscale Ingress creates a separate device on the tailnet. With 13 charts enabled, that is 13 additional devices. The free Tailscale plan allows 100 devices, so this is well within limits. Rollback is simply setting `tailscale.enabled: false` — the operator cleans up the device.
+
+**Tailscale TLS:** Tailscale automatically provisions and manages HTTPS certificates for `*.ts.net` hostnames via Let's Encrypt. No cert-manager annotations or TLS secretName are needed on the Tailscale Ingress — this is intentionally omitted from the template.
 
 ### 5. App Chart Integration
 
@@ -174,21 +185,28 @@ Each chart that opts in needs:
 
 4. Run `helm dependency update` to pull in the library chart
 
+**ArgoCD and `file://` dependencies:** ArgoCD renders Helm charts from the Git repo. For `file://../homelab-common` to resolve, ArgoCD must have access to the parent directory. Since ArgoCD Application resources use `path: helm/charts/<chart-name>`, the repo root is already available and sibling chart references work. Verify this in Phase 1 with a dry-run before rolling out to all charts.
+
 ## Rollout Plan
 
 ### Phase 1: Foundation
 - Create `homelab-common` library chart
 - Verify Tailscale operator OAuth scopes support IngressClass
+- Verify ArgoCD resolves `file://` chart dependencies correctly (dry-run one chart)
 
 ### Phase 2: Hostname Standardization
-- Normalize all 12 charts to `ingress.host` (single string)
-- Update templates, values.yaml, NOTES.txt
+- Normalize all charts to `ingress.host` (single string)
+- **7 charts** (audiobookshelf, beszel, ezbookkeeping, glance, karakeep, open-webui, uptime-kuma): rename `hostName` → `host`
+- **5 charts** (donetick, forgejo, jellyfin, ollama, tandoor-recipes): flatten `hosts[]` → `host`
+- **2 charts** (khoj, kanidm): already compliant, no changes
+- Update templates, values.yaml, NOTES.txt (forgejo, karakeep)
 - No functional change — same Traefik ingress behavior
 
 ### Phase 3: Library Integration
-- Add `homelab-common` dependency to all 13 standard app charts
+- Add `homelab-common` dependency to all 13 standard app charts (excluding kanidm, argo-cd)
 - Add `ingress-tailscale.yaml` template to each
 - Add `tailscale.enabled: false` to each values.yaml
+- Set `tailscale.serviceName` override for khoj (`khoj-server`) and any other chart with non-standard service names
 
 ### Phase 4: Enable and Validate
 - Enable on one low-risk chart (e.g., uptime-kuma): `tailscale.enabled: true`
