@@ -119,6 +119,16 @@ kubectl rollout restart deployment coredns -n kube-system
 kubectl rollout status deployment coredns -n kube-system
 ```
 
+Install Gateway API CRDs:
+
+``` bash
+# Run this on your cluster:
+kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.0.0/experimental-install.yaml
+
+# This installs the CRD definitions only (no controllers). k8s-gateway just needs them to exist so its watchers don't fail. After applying, restart k8s-gateway:
+kubectl rollout restart deployment k8s-gateway -n k8s-gateway
+```
+
 Validate DNS resolution from inside the cluster:
 
 ```bash
@@ -196,9 +206,9 @@ sudo sed -i '/homelab\.local/d' /etc/hosts
 
 ```bash
 # DNS resolution
-dig glance.homelab.local +short
-dig kanidm.homelab.local +short
-dig argocd.homelab.local +short
+resolvectl query glance.homelab.local
+resolvectl query kanidm.homelab.local
+resolvectl query argocd.homelab.local
 
 # All should return the Traefik ingress IP
 ```
@@ -265,6 +275,14 @@ Verify HTTPS access:
 curl -v https://argocd.homelab.local 2>&1 | grep -E "subject:|issuer:|SSL"
 ```
 
+
+You need to trust the homelab CA on your local machine:
+```
+kubectl get secret homelab-ca-tls -n cert-manager -o jsonpath='{.data.ca\.crt}' | base64 -d > /tmp/homelab-ca.crt
+sudo trust anchor /tmp/homelab-ca.crt
+```
+Then restart your browser.
+
 **Test OIDC login:**
 
 1. Open `https://argocd.homelab.local` in your browser
@@ -277,7 +295,7 @@ curl -v https://argocd.homelab.local 2>&1 | grep -E "subject:|issuer:|SSL"
 - If OIDC fails with "connection refused" or DNS error, check that the ArgoCD server pod can resolve `kanidm.homelab.local` via the CoreDNS stub zone (Step 4)
 - If OIDC fails with TLS errors, verify the ArgoCD pod trusts the homelab CA. The `oidc.tls.insecure.skip.verify` was removed — if Kanidm's cert is not yet issued, OIDC will fail. Check `kubectl get certificate -n kanidm` first
 - Re-add `oidc.tls.insecure.skip.verify: "true"` temporarily if needed to unblock while debugging
-
+- 
 ---
 
 ## Step 8: Validate Batch 2 (all remaining services)
