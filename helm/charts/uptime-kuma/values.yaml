@@ -39,7 +39,7 @@ service:
 ingress:
   enabled: true
   className: "traefik"
-  hostName: uptime-kuma.homelab.local
+  host: uptime-kuma.homelab.local
   annotations:
     cert-manager.io/cluster-issuer: homelab-ca
   tls:
