@@ -86,6 +86,7 @@ kanidm system oauth2 create argocd "ArgoCD" https://argocd.homelab.local
 
 # Set the redirect URI for the OIDC callback
 kanidm system oauth2 add-redirect-url argocd https://argocd.homelab.local/auth/callback
+kanidm system oauth2 disable-strict-redirect-url argocd
 
 # Allow sso_users group to use this client
 kanidm system oauth2 update-scope-map argocd sso_users openid profile email groups
@@ -96,7 +97,7 @@ kanidm system oauth2 warning-insecure-client-disable-pkce argocd
 
 # Get the client secret and store it in Vault
 kanidm system oauth2 show-basic-secret argocd
-vault kv put secret/argocd/oidc client-secret=<secret-from-above>
+vault kv put secret/homelab/argocd/oidc client-secret=<secret-from-above>
 ```
 
 ## Troubleshooting
