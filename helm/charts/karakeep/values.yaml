@@ -115,7 +115,7 @@ NEXT_PUBLIC_SECRET: ""
 ingress:
   enabled: true
   className: traefik
-  hostName: karakeep.homelab.local
+  host: karakeep.homelab.local
   annotations:
     cert-manager.io/cluster-issuer: homelab-ca
   tls:
