@@ -61,11 +61,7 @@ ingress:
   enabled: true
   annotations:
     cert-manager.io/cluster-issuer: homelab-ca
-  hosts:
-    - host: jellyfin.homelab.local
-      paths:
-        - path: /
-          pathType: ImplementationSpecific
+  host: jellyfin.homelab.local
   tls:
     - secretName: jellyfin-tls
       hosts:

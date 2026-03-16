@@ -26,7 +26,7 @@ service:
 ingress:
   enabled: true
   className: "traefik"
-  hostName: glance.homelab.local
+  host: glance.homelab.local
   annotations:
     cert-manager.io/cluster-issuer: homelab-ca
   tls:
@@ -51,6 +51,10 @@ readinessProbe:
   httpGet:
     path: /
     port: http
+
+tailscale:
+  enabled: false
+  serviceName: glance
 
 config:
   theme:

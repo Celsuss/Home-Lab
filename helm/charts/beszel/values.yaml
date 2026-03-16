@@ -40,7 +40,7 @@ service:
 ingress:
   enabled: true
   className: "traefik"
-  hostName: beszel.homelab.local
+  host: beszel.homelab.local
   annotations:
     cert-manager.io/cluster-issuer: homelab-ca
   tls:
@@ -69,3 +69,7 @@ readinessProbe:
   httpGet:
     path: /
     port: http
+
+tailscale:
+  enabled: false
+  serviceName: beszel

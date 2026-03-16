@@ -39,7 +39,7 @@ service:
 ingress:
   enabled: true
   className: traefik
-  hostName: open-webui.homelab.local
+  host: open-webui.homelab.local
   annotations:
     cert-manager.io/cluster-issuer: homelab-ca
   tls:
@@ -67,3 +67,7 @@ readinessProbe:
   httpGet:
     path: /
     port: http
+
+tailscale:
+  enabled: false
+  serviceName: open-webui
