@@ -117,4 +117,4 @@ affinity: {}
 runtimeClassName: "nvidia"
 
 tailscale:
-  enabled: false
+  enabled: true

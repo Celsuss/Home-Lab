@@ -124,6 +124,6 @@ ingress:
         - karakeep.homelab.local
 
 tailscale:
-  enabled: false
+  enabled: true
   serviceName: karakeep
   servicePort: 3000

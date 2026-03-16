@@ -117,4 +117,4 @@ tolerations: []
 affinity: {}
 
 tailscale:
-  enabled: false
+  enabled: true
