@@ -3,9 +3,9 @@ name: tailscale
 description: A Helm chart to deploy the Tailscale operator and configure it as a subnet router for a K3s cluster.
 type: application
 version: 0.1.0
-appVersion: "1.86.5" # Corresponds to the tailscale-operator version
+appVersion: "1.94.2" # Corresponds to the tailscale-operator version
 
 dependencies:
   - name: tailscale-operator
-    version: "1.86.5"
+    version: "1.94.2"
     repository: "https://pkgs.tailscale.com/helmcharts"
