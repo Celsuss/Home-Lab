@@ -115,4 +115,4 @@ secrets:
   #   db: "khoj"
 
 tailscale:
-  enabled: false
+  enabled: true

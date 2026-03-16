@@ -69,5 +69,5 @@ readinessProbe:
     port: http
 
 tailscale:
-  enabled: false
+  enabled: true
   serviceName: open-webui
