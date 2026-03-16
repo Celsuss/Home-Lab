@@ -34,6 +34,11 @@ template:
     failed=0
     charts=$(find {{charts_dir}} -maxdepth 2 -name "Chart.yaml" -printf "%h\n" | sort)
     for chart in $charts; do
+        # Skip library charts (not installable)
+        if grep -q "^type: library" "$chart/Chart.yaml" 2>/dev/null; then
+            echo "Skipping $chart (library chart)"
+            continue
+        fi
         # Skip wrapper charts whose dependencies haven't been downloaded yet
         if grep -q "^dependencies:" "$chart/Chart.yaml" 2>/dev/null && \
            { [ ! -d "$chart/charts" ] || [ -z "$(ls -A "$chart/charts" 2>/dev/null)" ]; }; then

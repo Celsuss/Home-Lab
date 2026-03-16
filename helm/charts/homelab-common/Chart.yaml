@@ -1,0 +1,6 @@
+---
+apiVersion: v2
+name: homelab-common
+description: Shared Helm library chart for homelab infrastructure templates
+type: library
+version: 0.1.0
