@@ -20,17 +20,9 @@ serviceAccount:
 
 podAnnotations: {}
 
-podSecurityContext:
-  fsGroup: 1001
+podSecurityContext: {}
 
-securityContext:
-  runAsNonRoot: true
-  runAsUser: 1001
-  runAsGroup: 1001
-  allowPrivilegeEscalation: false
-  capabilities:
-    drop:
-      - ALL
+securityContext: {}
 
 service:
   type: ClusterIP
@@ -67,10 +59,10 @@ resources:
 
 livenessProbe:
   enabled: true
-  exec:
-    command:
-      - node
-      - extra/healthcheck.js
+  httpGet:
+    path: /api/entry-page
+    port: 3001
+    scheme: HTTP
   initialDelaySeconds: 30
   periodSeconds: 10
   timeoutSeconds: 5
@@ -78,10 +70,10 @@ livenessProbe:
 
 readinessProbe:
   enabled: true
-  exec:
-    command:
-      - node
-      - extra/healthcheck.js
+  httpGet:
+    path: /api/entry-page
+    port: 3001
+    scheme: HTTP
   initialDelaySeconds: 15
   periodSeconds: 10
   timeoutSeconds: 5
