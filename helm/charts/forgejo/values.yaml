@@ -62,11 +62,7 @@ ingress:
   className: "traefik"
   annotations:
     cert-manager.io/cluster-issuer: homelab-ca
-  hosts:
-    - host: forgejo.homelab.local
-      paths:
-        - path: /
-          pathType: ImplementationSpecific
+  host: forgejo.homelab.local
   tls:
     - secretName: forgejo-tls
       hosts:

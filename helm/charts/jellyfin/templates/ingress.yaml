@@ -2,9 +2,9 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "ollama.fullname" . }}
+  name: {{ include "jellyfin.fullname" . }}
   labels:
-    {{- include "ollama.labels" . | nindent 4 }}
+    {{- include "jellyfin.labels" . | nindent 4 }}
   {{- with .Values.ingress.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
@@ -31,7 +31,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: {{ include "ollama.fullname" . }}
+                name: {{ include "jellyfin.fullname" . }}
                 port:
                   number: {{ .Values.service.port }}
 {{- end }}

@@ -75,11 +75,7 @@ ingress:
   className: "traefik"
   annotations:
     cert-manager.io/cluster-issuer: homelab-ca
-  hosts:
-    - host: ollama.homelab.local
-      paths:
-        - path: /
-          pathType: Prefix
+  host: ollama.homelab.local
   tls:
     - secretName: ollama-tls
       hosts:

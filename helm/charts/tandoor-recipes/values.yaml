@@ -34,11 +34,7 @@ ingress:
   className: traefik
   annotations:
     cert-manager.io/cluster-issuer: homelab-ca
-  hosts:
-    - host: tandoor.homelab.local
-      paths:
-        - path: /
-          pathType: ImplementationSpecific
+  host: tandoor.homelab.local
   tls:
     - secretName: tandoor-tls
       hosts:

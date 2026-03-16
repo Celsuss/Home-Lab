@@ -33,11 +33,7 @@ ingress:
   className: "traefik"
   annotations:
     cert-manager.io/cluster-issuer: homelab-ca
-  hosts:
-    - host: donetick.homelab.local
-      paths:
-        - path: /
-          pathType: ImplementationSpecific
+  host: donetick.homelab.local
   tls:
     - secretName: donetick-tls
       hosts:
