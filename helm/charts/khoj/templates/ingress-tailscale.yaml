@@ -1,0 +1,2 @@
+{{- $serviceName := printf "%s-server" (include "khoj.fullname" .) -}}
+{{ include "homelab-common.tailscale-ingress" (dict "Values" .Values "fullname" (include "khoj.fullname" .) "labels" (include "khoj.labels" . | trim) "namespace" .Values.namespace "serviceName" $serviceName "servicePort" .Values.khoj.service.port) }}

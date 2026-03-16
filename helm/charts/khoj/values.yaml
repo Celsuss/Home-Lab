@@ -113,3 +113,6 @@ secrets:
   #   user: "khoj"
   #   password: "your_postgres_password"
   #   db: "khoj"
+
+tailscale:
+  enabled: false
