@@ -1,5 +1,8 @@
 {{- define "homelab-common.tailscale-ingress" -}}
 {{- if .Values.tailscale.enabled }}
+{{- $svcName := .serviceName | default (.Values.tailscale.serviceName | default .fullname) }}
+{{- $svcPort := .servicePort | default .Values.tailscale.servicePort }}
+{{- if not $svcPort }}{{- $svcPort = .Values.service.port }}{{- end }}
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -21,8 +24,8 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: {{ .serviceName | default (.Values.tailscale.serviceName | default .fullname) }}
+                name: {{ $svcName }}
                 port:
-                  number: {{ .servicePort | default (.Values.tailscale.servicePort | default .Values.service.port) }}
+                  number: {{ $svcPort }}
 {{- end }}
 {{- end }}

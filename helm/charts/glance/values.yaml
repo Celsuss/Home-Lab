@@ -52,6 +52,10 @@ readinessProbe:
     path: /
     port: http
 
+tailscale:
+  enabled: false
+  serviceName: glance
+
 config:
   theme:
     # Gruvbox Dark

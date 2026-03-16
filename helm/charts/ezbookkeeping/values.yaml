@@ -59,3 +59,7 @@ readinessProbe:
   httpGet:
     path: /
     port: http
+
+tailscale:
+  enabled: false
+  serviceName: ezbookkeeping

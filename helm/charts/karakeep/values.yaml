@@ -122,3 +122,8 @@ ingress:
     - secretName: karakeep-tls
       hosts:
         - karakeep.homelab.local
+
+tailscale:
+  enabled: false
+  serviceName: karakeep
+  servicePort: 3000
