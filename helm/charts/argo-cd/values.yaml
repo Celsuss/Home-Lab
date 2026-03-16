@@ -2,7 +2,7 @@
 # https://github.com/argoproj/argo-helm/blob/main/charts/argo-cd/values.yaml
 
 vault:
-  secretPath: argocd/oidc
+  secretPath: homelab/argocd/oidc
   secretName: argocd-oidc-secret
 
 argo-cd:
