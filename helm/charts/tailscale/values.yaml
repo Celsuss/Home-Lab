@@ -1,4 +1,6 @@
 ---
+namespace: tailscale
+
 # Configuration for the subnet router Connector resource.
 subnetRouter:
   enabled: true
@@ -13,13 +15,7 @@ tailscale-operator:
   oauth:
     createSecret: false
 
-# Configuration for the OAuth secret.
-oauth:
-  clientId: ""
-  clientSecret: ""
-
-oauthSecret:
-  # The name of the Kubernetes secret containing the OAuth credentials.
-  # The operator subchart expects this to be named 'operator-oauth' by default.
-  name: "operator-oauth"
-  createSecret: true
+# Vault Secrets Operator configuration.
+vault:
+  secretPath: homelab/tailscale
+  secretName: operator-oauth
