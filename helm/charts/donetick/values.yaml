@@ -71,3 +71,6 @@ volumeMounts:
   - name: config
     mountPath: "/config"
     readOnly: true
+
+tailscale:
+  enabled: false

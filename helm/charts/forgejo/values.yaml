@@ -154,3 +154,6 @@ nodeSelector: {}
 tolerations: []
 
 affinity: {}
+
+tailscale:
+  enabled: false
