@@ -16,6 +16,9 @@ woodpecker:
       ingressClassName: traefik
       hosts:
         - host: woodpecker.homelab.local
+          paths:
+            - path: /
+              pathType: Prefix
       annotations:
         cert-manager.io/cluster-issuer: homelab-ca
     persistentVolume:
