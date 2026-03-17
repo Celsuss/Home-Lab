@@ -1,0 +1,7 @@
+---
+apiVersion: v2
+name: searxng
+description: A Helm chart for SearXNG metasearch engine
+type: application
+version: 0.1.0
+appVersion: "latest"
