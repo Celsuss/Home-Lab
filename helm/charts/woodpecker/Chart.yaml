@@ -1,0 +1,15 @@
+---
+apiVersion: v2
+name: woodpecker
+description: A Helm chart to deploy Woodpecker CI with Forgejo integration
+type: application
+version: 0.1.0
+appVersion: "3.13.0"
+
+dependencies:
+  - name: woodpecker
+    version: "3.5.1"
+    repository: "oci://ghcr.io/woodpecker-ci/helm"
+  - name: homelab-common
+    version: 0.1.0
+    repository: "file://../homelab-common"

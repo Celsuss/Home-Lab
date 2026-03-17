@@ -1,6 +1,9 @@
 dependencies:
+- name: forgejo
+  repository: oci://code.forgejo.org/forgejo-helm
+  version: 16.2.1
 - name: homelab-common
   repository: file://../homelab-common
   version: 0.1.0
-digest: sha256:557eb662f9019c45067926b1e04f8ab968eb58eacf4aeb43c00ff6b05f4b2228
-generated: "2026-03-16T21:09:00.420784191+01:00"
+digest: sha256:47a9810f5cf10d90657337d56f2f8108201ecfc3b82153e6d91ce32b85c3ee34
+generated: "2026-03-17T09:46:25.784279916+01:00"
