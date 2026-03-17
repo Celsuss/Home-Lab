@@ -1,0 +1,7 @@
+---
+apiVersion: v2
+name: mcpo
+description: A Helm chart for mcpo - MCP-to-OpenAPI proxy for OpenWebUI
+type: application
+version: 0.1.0
+appVersion: "latest"

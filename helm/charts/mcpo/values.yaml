@@ -1,0 +1,20 @@
+---
+namespace: ai-workloads
+name: mcpo
+
+image:
+  repository: ghcr.io/open-webui/mcpo
+  pullPolicy: IfNotPresent
+  tag: "main"
+
+service:
+  type: ClusterIP
+  port: 8000
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 256Mi

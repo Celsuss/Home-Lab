@@ -1,0 +1,17 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.name }}-config
+  namespace: {{ .Values.namespace }}
+data:
+  settings.yml: |
+    use_default_settings: true
+    server:
+      secret_key: "searxng-homelab-secret"
+      limiter: false
+    search:
+      safe_search: 0
+      formats:
+        - html
+        - json
