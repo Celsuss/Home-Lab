@@ -8,7 +8,7 @@ woodpecker:
       WOODPECKER_HOST: https://woodpecker.homelab.local
       WOODPECKER_FORGEJO: "true"
       WOODPECKER_FORGEJO_URL: http://forgejo-http.forgejo.svc.cluster.local:3000
-      WOODPECKER_ADMIN: <forgejo-admin-username>
+      WOODPECKER_ADMIN: admin
     extraSecretNamesForEnvFrom:
       - woodpecker-secret
     ingress:
