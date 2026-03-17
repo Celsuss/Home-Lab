@@ -1,8 +1,10 @@
-{{- if .Values.ingress.enabled -}}
+{{- if .Values.ingress.enabled }}
+---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "jellyfin.fullname" . }}
+  name: {{ .Values.name }}-ingress
+  namespace: {{ .Values.namespace }}
   labels:
     {{- include "jellyfin.labels" . | nindent 4 }}
   {{- with .Values.ingress.annotations }}
@@ -10,9 +12,18 @@ metadata:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  {{- with .Values.ingress.className }}
-  ingressClassName: {{ . }}
-  {{- end }}
+  ingressClassName: {{ .Values.ingress.className }}
+  rules:
+  - host: {{ .Values.ingress.host }}
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ .Values.name }}
+            port:
+              number: {{ .Values.service.port }}
   {{- if .Values.ingress.tls }}
   tls:
     {{- range .Values.ingress.tls }}
@@ -23,15 +34,4 @@ spec:
       secretName: {{ .secretName }}
     {{- end }}
   {{- end }}
-  rules:
-    - host: {{ .Values.ingress.host | quote }}
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: {{ include "jellyfin.fullname" . }}
-                port:
-                  number: {{ .Values.service.port }}
 {{- end }}
