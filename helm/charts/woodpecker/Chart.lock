@@ -1,0 +1,9 @@
+dependencies:
+- name: woodpecker
+  repository: oci://ghcr.io/woodpecker-ci/helm
+  version: 3.5.1
+- name: homelab-common
+  repository: file://../homelab-common
+  version: 0.1.0
+digest: sha256:e2286bbaa3cd4b5b2213585c6cf961563c0791e0f651f6a78c3d1f320f17cada
+generated: "2026-03-17T09:54:10.999772589+01:00"
