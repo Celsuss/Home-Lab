@@ -1,0 +1,1 @@
+{{ include "homelab-common.tailscale-ingress" (dict "Values" .Values "fullname" (include "forgejo.fullname" .) "labels" (include "forgejo.labels" . | trim) "namespace" .Values.namespace) }}
