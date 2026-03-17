@@ -8,10 +8,7 @@ forgejo:
       existingSecret: forgejo-admin-secret
     config:
       database:
-        DB_TYPE: postgres
-        HOST: forgejo-postgresql.forgejo.svc.cluster.local:5432
-        NAME: forgejo
-        USER: forgejo
+        DB_TYPE: sqlite3
       server:
         DOMAIN: forgejo.homelab.local
         ROOT_URL: https://forgejo.homelab.local
@@ -35,16 +32,6 @@ forgejo:
           - forgejo.homelab.local
     annotations:
       cert-manager.io/cluster-issuer: homelab-ca
-  postgresql:
-    enabled: true
-    auth:
-      existingSecret: forgejo-admin-secret
-      secretKeys:
-        adminPasswordKey: postgres-password
-        userPasswordKey: postgres-password
-    primary:
-      persistence:
-        storageClass: local-path
 
 tailscale:
   enabled: true
