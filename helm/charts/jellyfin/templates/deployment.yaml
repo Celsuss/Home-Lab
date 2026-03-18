@@ -53,5 +53,6 @@ spec:
         persistentVolumeClaim:
           claimName: {{ .Values.name }}-config-pvc
       - name: media
-        persistentVolumeClaim:
-          claimName: {{ .Values.name }}-media-pvc
+        hostPath:
+          path: {{ .Values.persistence.media.hostPath }}
+          type: Directory

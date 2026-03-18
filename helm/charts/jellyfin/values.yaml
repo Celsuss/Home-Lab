@@ -32,7 +32,7 @@ persistence:
   config:
     storage: 5Gi
   media:
-    storage: 50Gi
+    hostPath: /home/celsuss/Videos
 
 resources:
   requests:
