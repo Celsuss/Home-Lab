@@ -247,6 +247,15 @@ config:
                 - title: Hashicorp Vault
                   url: https://vault.homelab.local/
                   icon: sh:vault
+                - title: Jellyfin
+                  url: https://jellyfin.homelab.local/
+                  icon: sh:jellyfin
+                - title: Forgejo
+                  url: https://forgejo.homelab.local/
+                  icon: sh:forgejo
+                - title: Woodpecker CI
+                  url: https://woodpecker.homelab.local/
+                  icon: sh:woodpecker-ci
 
             - type: bookmarks
               groups:
