@@ -65,7 +65,7 @@ spec:
           persistentVolumeClaim:
             claimName: {{ include "donetick.fullname" . }}-data-pvc
         - name: config
-          configmap:
+          configMap:
             name: {{ include "donetick.fullname" . }}-cm
       {{- with .Values.nodeSelector }}
       nodeSelector:
