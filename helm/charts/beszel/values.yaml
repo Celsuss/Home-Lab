@@ -6,14 +6,14 @@ name: beszel
 image:
   repository: henrygd/beszel
   pullPolicy: IfNotPresent
-  tag: "latest"
+  tag: "v0.18.3"
 
 agent:
   enabled: true
   image:
     repository: henrygd/beszel-agent
     pullPolicy: IfNotPresent
-    tag: "latest"
+    tag: "v0.18.3"
   port: 45876
   env:
     - name: LISTEN

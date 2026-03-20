@@ -6,7 +6,7 @@ namespace: feeds
 image:
   repository: glanceapp/glance
   pullPolicy: IfNotPresent
-  tag: "latest"
+  tag: "v0.8.4"
 
 podSecurityContext: {}
   # fsGroup: 2000
