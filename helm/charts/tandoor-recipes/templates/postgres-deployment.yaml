@@ -43,6 +43,18 @@ spec:
             - name: data
               mountPath: /var/lib/postgresql/data
               subPath: postgres
+          {{- with .Values.postgres.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.postgres.livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.postgres.readinessProbe }}
+          readinessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
       volumes:
         - name: data
           persistentVolumeClaim:

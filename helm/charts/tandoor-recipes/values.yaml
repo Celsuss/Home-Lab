@@ -24,6 +24,23 @@ postgres:
   persistence:
     storageClassName: local-path
     storage: 5Gi
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+  livenessProbe:
+    exec:
+      command: ["pg_isready", "-U", "tandoor"]
+    initialDelaySeconds: 30
+    periodSeconds: 30
+  readinessProbe:
+    exec:
+      command: ["pg_isready", "-U", "tandoor"]
+    initialDelaySeconds: 5
+    periodSeconds: 10
 
 service:
   type: ClusterIP
@@ -48,7 +65,27 @@ vault:
   secretPath: homelab/tandoor-recipes
   secretName: tandoor-recipes-secrets
 
-resources: {}
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+livenessProbe:
+  httpGet:
+    path: /
+    port: http
+  initialDelaySeconds: 60
+  periodSeconds: 30
+
+readinessProbe:
+  httpGet:
+    path: /
+    port: http
+  initialDelaySeconds: 15
+  periodSeconds: 10
 
 nodeSelector: {}
 
