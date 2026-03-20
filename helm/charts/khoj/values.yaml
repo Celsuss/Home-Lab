@@ -168,14 +168,14 @@ terrarium:
       memory: 512Mi
   livenessProbe:
     httpGet:
-      path: /
+      path: /health
       port: 8080
     initialDelaySeconds: 120
     periodSeconds: 30
     timeoutSeconds: 5
   readinessProbe:
     httpGet:
-      path: /
+      path: /health
       port: 8080
     initialDelaySeconds: 60
     periodSeconds: 10
