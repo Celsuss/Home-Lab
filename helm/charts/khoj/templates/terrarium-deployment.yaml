@@ -21,7 +21,7 @@ spec:
     spec:
       containers:
         - name: terrarium
-          image: "{{.Values.terrarium.image.repository }}:{{.Values.terrarium.image.tag }}"
+          image: "{{ if .Values.terrarium.image.digest }}{{ .Values.terrarium.image.repository }}@{{ .Values.terrarium.image.digest }}{{ else }}{{ .Values.terrarium.image.repository }}:{{ .Values.terrarium.image.tag }}{{ end }}"
           imagePullPolicy: {{.Values.terrarium.image.pullPolicy }}
           ports:
             - containerPort: {{.Values.terrarium.service.port }}

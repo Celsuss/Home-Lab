@@ -150,12 +150,11 @@ searxng:
 # Terrarium Code Sandbox Configuration
 terrarium:
   image:
-    # WARNING: Only 'latest' tag is provided by upstream.
-    # For production, it is highly recommended to replace this with an immutable digest.
-    # Example: ghcr.io/khoj-ai/terrarium@sha256:<digest>
+    # Pinned by digest since upstream only publishes :latest
     repository: ghcr.io/khoj-ai/terrarium
     pullPolicy: IfNotPresent
-    tag: "latest"
+    digest: "sha256:caf9356305daf9f7f4e4a63ef1ce3a72dc2c0190cb8fdfa4e0e837d2298f19ce"
+    tag: ""
 
   service:
     port: 8080

@@ -5,7 +5,7 @@ name: mcpo
 image:
   repository: ghcr.io/open-webui/mcpo
   pullPolicy: IfNotPresent
-  tag: "main"
+  tag: "git-788ff92"
 
 service:
   type: ClusterIP
