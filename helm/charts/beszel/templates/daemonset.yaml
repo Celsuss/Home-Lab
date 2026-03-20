@@ -29,6 +29,10 @@ spec:
               hostPort: {{ .Values.agent.port }}
           env:
         {{- toYaml .Values.agent.env | nindent 12 }}
+          {{- with .Values.agent.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
       restartPolicy: Always
       tolerations:
         - effect: NoSchedule

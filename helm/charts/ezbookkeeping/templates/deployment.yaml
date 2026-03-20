@@ -20,7 +20,8 @@ spec:
       - name: {{ .Values.name }}
         image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
         ports:
-        - containerPort: {{ .Values.service.port }}
+        - name: http
+          containerPort: {{ .Values.service.port }}
         env:
           {{- toYaml .Values.env | nindent 10 }}
         securityContext:
@@ -37,6 +38,14 @@ spec:
           limits:
             cpu: {{ .Values.resources.limits.cpu }}
             memory: {{ .Values.resources.limits.memory }}
+        {{- with .Values.livenessProbe }}
+        livenessProbe:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with .Values.readinessProbe }}
+        readinessProbe:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
         volumeMounts:
           - name: data
             mountPath: /ezbookkeeping/data
