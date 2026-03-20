@@ -6,7 +6,7 @@ name: audiobookshelf
 image:
   repository: ghcr.io/advplyr/audiobookshelf
   pullPolicy: IfNotPresent
-  tag: "v2.33.0"
+  tag: "2.33.0"
 
 podSecurityContext: {}
   # fsGroup: 2000
