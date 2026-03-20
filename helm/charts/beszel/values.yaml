@@ -13,7 +13,7 @@ agent:
   image:
     repository: henrygd/beszel-agent
     pullPolicy: IfNotPresent
-    tag: "v0.18.3"
+    tag: "0.18.4"
   port: 45876
   env:
     - name: LISTEN
