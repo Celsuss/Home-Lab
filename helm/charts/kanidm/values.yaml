@@ -2,7 +2,7 @@ namespace: kanidm
 
 image:
   repository: kanidm/server
-  tag: "latest"       # Pin to a specific version e.g. "1.4.2" in production
+  tag: "1.9.2"
   pullPolicy: IfNotPresent
 
 replicaCount: 1
