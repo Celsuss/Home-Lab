@@ -53,12 +53,12 @@ spec:
             - name: KHOJ_ADMIN_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{.Values.secrets.name }}
+                  name: {{ .Values.vault.secretName }}
                   key: KHOJ_ADMIN_PASSWORD
             - name: KHOJ_DJANGO_SECRET_KEY
               valueFrom:
                 secretKeyRef:
-                  name: {{.Values.secrets.name }}
+                  name: {{ .Values.vault.secretName }}
                   key: KHOJ_DJANGO_SECRET_KEY
             - name: POSTGRES_USER
               value: {{ .Values.postgres.user | quote }}
@@ -67,7 +67,7 @@ spec:
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{.Values.secrets.name }}
+                  name: {{ .Values.vault.secretName }}
                   key: POSTGRES_PASSWORD
 
           {{- if .Values.khoj.gpu.enabled }}

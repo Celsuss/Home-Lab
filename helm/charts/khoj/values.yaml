@@ -192,22 +192,9 @@ ingress:
       hosts:
         - khoj.homelab.local
 
-KHOJ_ADMIN_PASSWORD: ""
-KHOJ_DJANGO_SECRET_KEY: ""
-POSTGRES_PASSWORD: ""
-
-secrets:
-  name: "khoj-secrets"
-  # Sensitive values will be populated from the SOPS file.
-  # Example structure for your secrets.yaml file:
-  # khoj:
-  #   config:
-  #     KHOJ_ADMIN_PASSWORD: "your_admin_password"
-  #     KHOJ_DJANGO_SECRET_KEY: "your_django_secret_key"
-  # postgres:
-  #   user: "khoj"
-  #   password: "your_postgres_password"
-  #   db: "khoj"
+vault:
+  secretPath: homelab/khoj
+  secretName: khoj-secrets
 
 tailscale:
   enabled: true
