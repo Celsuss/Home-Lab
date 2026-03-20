@@ -70,10 +70,21 @@ spec:
                   name: {{.Values.secrets.name }}
                   key: POSTGRES_PASSWORD
 
-          {{- if.Values.khoj.gpu.enabled }}
+          {{- if .Values.khoj.gpu.enabled }}
           resources:
             limits:
               nvidia.com/gpu: {{.Values.khoj.gpu.count }}
+          {{- else if .Values.khoj.resources }}
+          resources:
+            {{- toYaml .Values.khoj.resources | nindent 12 }}
+          {{- end }}
+          {{- with .Values.khoj.livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.khoj.readinessProbe }}
+          readinessProbe:
+            {{- toYaml . | nindent 12 }}
           {{- end }}
           volumeMounts:
             - name: data

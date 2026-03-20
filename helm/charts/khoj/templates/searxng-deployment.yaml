@@ -25,3 +25,15 @@ spec:
           imagePullPolicy: {{.Values.searxng.image.pullPolicy }}
           ports:
             - containerPort: {{.Values.searxng.service.port }}
+          {{- with .Values.searxng.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.searxng.livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.searxng.readinessProbe }}
+          readinessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}

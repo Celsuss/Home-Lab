@@ -25,3 +25,15 @@ spec:
           imagePullPolicy: {{.Values.terrarium.image.pullPolicy }}
           ports:
             - containerPort: {{.Values.terrarium.service.port }}
+          {{- with .Values.terrarium.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.terrarium.livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.terrarium.readinessProbe }}
+          readinessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
