@@ -108,9 +108,9 @@ chrome:
       cpu: "1000m"
 
 
-NEXTAUTH_SECRET: ""
-MEILI_MASTER_KEY: ""
-NEXT_PUBLIC_SECRET: ""
+vault:
+  secretPath: homelab/karakeep
+  secretName: karakeep-secrets
 
 ingress:
   enabled: true
