@@ -2,7 +2,7 @@
 apiVersion: secrets.hashicorp.com/v1beta1
 kind: VaultAuth
 metadata:
-  name: default
+  name: khoj-vault-auth
   namespace: {{ .Values.namespace }}
   labels:
     {{- include "khoj.labels" . | nindent 4 }}
