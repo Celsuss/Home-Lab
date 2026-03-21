@@ -1,0 +1,10 @@
+beszel_endpoint          = "https://beszel.homelab.local"
+beszel_admin_email       = "admin@homelab.local"
+beszel_admin_password    = "changeme"
+notification_webhook_url = ""  # Shoutrrr format, e.g. "discord://token@id"
+
+alert_thresholds = {
+  cpu_percent    = 95
+  memory_percent = 90
+  disk_percent   = 85
+}

@@ -1,0 +1,11 @@
+# OpenTofu / Terraform
+.terraform/
+.tofu/
+*.tfstate
+*.tfstate.backup
+*.tfplan
+.terraform.lock.hcl
+
+# Sensitive variable files
+*.tfvars
+!*.tfvars.example

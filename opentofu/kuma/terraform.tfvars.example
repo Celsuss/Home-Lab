@@ -1,0 +1,4 @@
+uptime_kuma_endpoint     = "https://uptime-kuma.homelab.local"
+uptime_kuma_username     = "admin"
+uptime_kuma_password     = "changeme"
+notification_webhook_url = ""  # e.g. "https://discord.com/api/webhooks/..."
