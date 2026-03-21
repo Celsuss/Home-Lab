@@ -28,6 +28,7 @@ vault:
             cluster_address = "[::]:8201"
             tls_disable = "true"
           }
+          service_registration "kubernetes" {}
 
     # Set pragmatic resource limits for a homelab.
     # Monitor this and adjust based on load.
