@@ -1,0 +1,50 @@
+---
+namespace: monitoring
+
+replicaCount: 1
+
+image:
+  repository: ghcr.io/resmoio/kubernetes-event-exporter
+  pullPolicy: IfNotPresent
+  tag: "v1.7"
+
+serviceAccount:
+  create: true
+  name: ""
+
+resources:
+  limits:
+    cpu: 100m
+    memory: 64Mi
+  requests:
+    cpu: 10m
+    memory: 32Mi
+
+podSecurityContext:
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# Event exporter configuration
+# See https://github.com/resmoio/kubernetes-event-exporter for full options
+config:
+  logLevel: warn
+  logFormat: json
+  metricsNamePrefix: event_exporter_
+  route:
+    routes:
+      - match:
+          - receiver: "dump"
+  receivers:
+    - name: "dump"
+      stdout: {}

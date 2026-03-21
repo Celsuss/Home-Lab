@@ -1,0 +1,7 @@
+---
+apiVersion: v2
+name: k8s-event-exporter
+description: Kubernetes Event Exporter - exports cluster events to various outputs for observability and alerting
+type: application
+version: 0.1.0
+appVersion: "1.7"
