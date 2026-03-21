@@ -3,6 +3,23 @@ k8s-gateway:
   domain: homelab.local
   watchedResources:
     - Ingress
+  # Override extraZonePlugins to forward unmatched queries to public DNS
+  # instead of /etc/resolv.conf (which points to CoreDNS and creates a loop
+  # when CoreDNS forwards homelab.local back to k8s-gateway).
+  extraZonePlugins:
+    - name: log
+    - name: errors
+    - name: health
+      configBlock: |-
+        lameduck 5s
+    - name: ready
+    - name: prometheus
+      parameters: 0.0.0.0:9153
+    - name: forward
+      parameters: . 8.8.8.8 1.1.1.1
+    - name: loop
+    - name: reload
+    - name: loadbalance
   # Enable fallthrough so queries not matched by k8s_gateway (e.g. Kanidm
   # which uses IngressRouteTCP) fall through to the file plugin below.
   fallthrough:
