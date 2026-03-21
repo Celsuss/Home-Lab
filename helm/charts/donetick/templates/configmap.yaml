@@ -26,7 +26,7 @@ data:
       # password: "secret"
       # name: "secret"
     jwt:
-      secret: {{ .Values.jwt.secret }}
+      secret: "placeholder-overridden-by-env"
       session_time: 168h
       max_refresh: 168h
     server:
