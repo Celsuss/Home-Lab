@@ -2,14 +2,14 @@
 
 ## Secrets
 
-### Create secrets
-Use `openssl rand -base64 36` to generate the random strings
+Secrets are managed via Vault and synced by the Vault Secrets Operator.
 
-NEXTAUTH_SECRET=generated_secret
-MEILI_MASTER_KEY=generated_secret
-NEXT_PUBLIC_SECRET="my-super-duper-secret-string"
+### Store secrets in Vault
+```bash
+vault kv put secret/homelab/karakeep \
+  NEXTAUTH_SECRET="$(openssl rand -base64 32)" \
+  MEILI_MASTER_KEY="$(openssl rand -base64 32)" \
+  NEXT_PUBLIC_SECRET="$(openssl rand -base64 32)"
+```
 
-### Encrypt secrets
-1. Make sure you have added `.sops.yaml` to the root of the repo with the public keys.
-2. Encrypt secrets by running `sops -e -i values-secrets.yaml`.
-3. Make sure you have added the private key to the argo-cd chart.
+The `VaultStaticSecret` CR syncs the Vault path to a Kubernetes Secret named `karakeep-secrets`. The deployment references this secret via `envFrom.secretRef`.

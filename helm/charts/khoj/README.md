@@ -1,14 +1,17 @@
 # Khoj AI second brain
 
 ## Secrets
-### Create secrets
-Use `openssl rand -base64 36` to generate the random strings
 
-POSTGRES_PASSWORD: "secret-string"
-KHOJ_ADMIN_PASSWORD: "very-secret-string"
-KHOJ_DJANGO_SECRET_KEY: "super-secret-string"
+Secrets are managed via Vault and synced by the Vault Secrets Operator.
 
-### Encrypt secrets
-1. Make sure you have added `.sops.yaml` to the root of the repo with the public keys.
-2. Encrypt secrets by running `sops -e -i values-secrets.yaml`.
-3. Make sure you have added the private key to the argo-cd chart.
+### Store secrets in Vault
+```bash
+vault kv put secret/homelab/khoj \
+  POSTGRES_PASSWORD="$(openssl rand -base64 32)" \
+  KHOJ_ADMIN_PASSWORD="$(openssl rand -base64 32)" \
+  KHOJ_DJANGO_SECRET_KEY="$(openssl rand -base64 32)"
+```
+
+The `VaultStaticSecret` CR syncs the Vault path to a Kubernetes Secret named `khoj-secrets`.
+
+**Note:** Changing `POSTGRES_PASSWORD` requires either resetting the postgres PVC or manually updating the password inside the postgres instance first.

@@ -2,15 +2,12 @@
 
 ## Secrets
 
-### Create secrets
-Use `openssl rand -base64 36` to generate the random strings
+Secrets are managed via Vault and synced by the Vault Secrets Operator.
 
-``` yaml
-jwt:
-    secret: "change_this_to_a_secure_random_string_32_characters_long" 
+### Store secrets in Vault
+```bash
+vault kv put secret/homelab/donetick \
+  jwt_secret="$(openssl rand -base64 32)"
 ```
 
-### Encrypt secrets
-1. Make sure you have added `.sops.yaml` to the root of the repo with the public keys.
-2. Encrypt secrets by running `sops -e -i values-secrets.yaml`.
-3. Make sure you have added the private key to the argo-cd chart.
+The `VaultStaticSecret` CR syncs the Vault path to a Kubernetes Secret named `donetick-secrets`. The deployment injects `DT_JWT_SECRET` from this secret as an env var, which overrides the placeholder value in the ConfigMap.

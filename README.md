@@ -103,9 +103,13 @@ helm upgrade --install tailscale-operator tailscale/tailscale-operator \
   --wait
 ```
 
-## Create secrets
+## Secrets Management
 
-### Encrypt secrets
-1. Make sure you have added `.sops.yaml` to the root of the repo with the public keys.
-2. Encrypt secrets by running `sops -e -i values-secrets.yaml`.
-3. Make sure you have added the private key to the argo-cd chart.
+Secrets are managed via HashiCorp Vault and synced to Kubernetes using the Vault Secrets Operator (VSO). See `helm/charts/hashicorp-vault/README.md` for detailed Vault setup.
+
+### Store a secret in Vault
+```bash
+vault kv put secret/homelab/<app-name> KEY1="$(openssl rand -base64 32)" KEY2="value"
+```
+
+Each chart that needs secrets includes `VaultAuth` and `VaultStaticSecret` CRs that automatically sync Vault secrets into Kubernetes `Secret` resources.
