@@ -46,13 +46,19 @@ spec:
         volumeMounts:
         - name: config
           mountPath: /config
-        - name: media
-          mountPath: /media
+        - name: movies
+          mountPath: /media/movies
+        - name: tvshows
+          mountPath: /media/tvshows
       volumes:
       - name: config
         persistentVolumeClaim:
           claimName: {{ .Values.name }}-config-pvc
-      - name: media
+      - name: movies
         hostPath:
-          path: {{ .Values.persistence.media.hostPath }}
+          path: {{ .Values.persistence.media.movies.hostPath }}
+          type: Directory
+      - name: tvshows
+        hostPath:
+          path: {{ .Values.persistence.media.tvshows.hostPath }}
           type: Directory
