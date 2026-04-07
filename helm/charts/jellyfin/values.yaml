@@ -44,3 +44,17 @@ resources:
   limits:
     cpu: "2"
     memory: 4Gi
+
+plugins:
+  enabled: true
+  overwriteRepositories: false
+  repositories:
+    - name: "Intro Skipper"
+      url: "https://intro-skipper.org/manifest.json"
+      enabled: true
+    - name: "Jellyfin Enhanced"
+      url: "https://raw.githubusercontent.com/n00bcodr/Jellyfin-Enhanced/main/manifest.json"
+      enabled: true
+    - name: "Skin Manager"
+      url: "https://raw.githubusercontent.com/danieladov/JellyfinPluginManifest/master/manifest.json"
+      enabled: true

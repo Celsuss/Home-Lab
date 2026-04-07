@@ -16,6 +16,28 @@ spec:
       labels:
         app: {{ .Values.name }}
     spec:
+      {{- if .Values.plugins.enabled }}
+      initContainers:
+      - name: plugin-repo-setup
+        image: busybox:1.37
+        imagePullPolicy: IfNotPresent
+        command: ["/bin/sh", "-c"]
+        args:
+          - |
+            mkdir -p /config/data
+            if [ ! -f /config/data/repositories.json ] || [ "{{ .Values.plugins.overwriteRepositories }}" = "true" ]; then
+              echo "Configuring plugin repositories..."
+              cp /plugin-repos/repositories.json /config/data/repositories.json
+            else
+              echo "repositories.json already exists, skipping."
+            fi
+        volumeMounts:
+        - name: config
+          mountPath: /config
+        - name: plugin-repositories
+          mountPath: /plugin-repos
+          readOnly: true
+      {{- end }}
       containers:
       - name: {{ .Values.name }}
         image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
@@ -62,3 +84,8 @@ spec:
         hostPath:
           path: {{ .Values.persistence.media.tvshows.hostPath }}
           type: Directory
+      {{- if .Values.plugins.enabled }}
+      - name: plugin-repositories
+        configMap:
+          name: {{ .Values.name }}-plugin-repositories
+      {{- end }}

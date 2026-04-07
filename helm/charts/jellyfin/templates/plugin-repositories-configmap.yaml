@@ -1,0 +1,28 @@
+---
+{{- if .Values.plugins.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.name }}-plugin-repositories
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "jellyfin.labels" . | nindent 4 }}
+data:
+  repositories.json: |
+    [
+      {{- $repos := list }}
+      {{- range .Values.plugins.repositories }}
+      {{- if .enabled }}
+      {{- $repos = append $repos (dict "Name" .name "Url" .url "Enabled" true) }}
+      {{- end }}
+      {{- end }}
+      {{- range $i, $repo := $repos }}
+      {{- if $i }},{{ end }}
+      {
+        "Name": {{ $repo.Name | quote }},
+        "Url": {{ $repo.Url | quote }},
+        "Enabled": true
+      }
+      {{- end }}
+    ]
+{{- end }}
