@@ -1,0 +1,11 @@
+---
+apiVersion: v2
+name: kavita
+description: A Helm chart for Kavita e-book reader
+type: application
+version: 0.1.0
+appVersion: "0.8.4"
+dependencies:
+  - name: homelab-common
+    version: 0.1.0
+    repository: "file://../homelab-common"

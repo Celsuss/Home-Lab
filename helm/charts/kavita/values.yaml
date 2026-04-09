@@ -1,0 +1,42 @@
+---
+replicaCount: 1
+namespace: media
+name: kavita
+
+image:
+  repository: jvmilazz0/kavita
+  pullPolicy: IfNotPresent
+  tag: "0.8.4"
+
+service:
+  type: ClusterIP
+  port: 5000
+
+ingress:
+  enabled: true
+  className: "traefik"
+  host: kavita.homelab.local
+  annotations:
+    cert-manager.io/cluster-issuer: homelab-ca
+  tls:
+    - secretName: kavita-tls
+      hosts:
+        - kavita.homelab.local
+
+tailscale:
+  enabled: false
+
+persistence:
+  storageClass: local-path
+  config:
+    storage: 5Gi
+  books:
+    hostPath: /home/celsuss/Books
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi
