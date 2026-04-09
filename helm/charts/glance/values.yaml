@@ -256,6 +256,9 @@ config:
                 - title: Woodpecker CI
                   url: https://woodpecker.homelab.local/
                   icon: sh:woodpecker-ci
+                - title: Kavita
+                  url: https://kavita.homelab.local/
+                  icon: sh:kavita
 
             - type: bookmarks
               groups:
