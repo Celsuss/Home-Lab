@@ -6,9 +6,6 @@ image:
   pullPolicy: IfNotPresent
   tag: "0.20.5"
 
-strategy:
-  type: Recreate  # GPU workloads often need this instead of RollingUpdate
-
 serviceAccount:
   create: true
   # automount: true

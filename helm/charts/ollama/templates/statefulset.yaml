@@ -1,14 +1,14 @@
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: {{ include "ollama.fullname" . }}
   labels:
     {{- include "ollama.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
-  strategy:
-    type: {{ .Values.strategy.type }}
+  serviceName: {{ include "ollama.fullname" . }}
+  podManagementPolicy: Parallel
   selector:
     matchLabels:
       {{- include "ollama.selectorLabels" . | nindent 6 }}
@@ -29,6 +29,7 @@ spec:
       {{- if .Values.runtimeClassName }}
       runtimeClassName: {{ .Values.runtimeClassName }}
       {{- end }}
+      terminationGracePeriodSeconds: 60
 
       # Init containers run before the main container starts
       # This ensures models are downloaded before Ollama begins serving requests
