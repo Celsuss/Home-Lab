@@ -4,7 +4,7 @@ replicaCount: 1
 image:
   repository: ollama/ollama
   pullPolicy: IfNotPresent
-  tag: "0.18.2"
+  tag: "0.20.5"
 
 strategy:
   type: Recreate  # GPU workloads often need this instead of RollingUpdate
