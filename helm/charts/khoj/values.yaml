@@ -197,3 +197,21 @@ vault:
 
 tailscale:
   enabled: true
+
+gitSync:
+  enabled: true
+  image:
+    repository: registry.k8s.io/git-sync/git-sync
+    tag: "v4.4.0"
+    pullPolicy: IfNotPresent
+  repo: "http://forgejo-http.forgejo.svc.cluster.local:3000/celsuss/second-brain.git"
+  branch: "main"
+  period: "300s"
+  mountPath: "/data/org"
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi

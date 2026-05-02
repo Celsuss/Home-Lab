@@ -89,11 +89,55 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /data
+            {{- if .Values.gitSync.enabled }}
+            - name: git-sync-repo
+              mountPath: {{ .Values.gitSync.mountPath }}
+              subPath: current
+              readOnly: true
+            {{- end }}
+        {{- if .Values.gitSync.enabled }}
+        - name: git-sync
+          image: "{{ .Values.gitSync.image.repository }}:{{ .Values.gitSync.image.tag }}"
+          imagePullPolicy: {{ .Values.gitSync.image.pullPolicy }}
+          env:
+            - name: GITSYNC_REPO
+              value: {{ .Values.gitSync.repo | quote }}
+            - name: GITSYNC_REF
+              value: {{ .Values.gitSync.branch | quote }}
+            - name: GITSYNC_ROOT
+              value: "/git"
+            - name: GITSYNC_LINK
+              value: "current"
+            - name: GITSYNC_PERIOD
+              value: {{ .Values.gitSync.period | quote }}
+            - name: GITSYNC_USERNAME
+              value: "khoj-sync"
+            - name: GITSYNC_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.vault.secretName }}
+                  key: FORGEJO_ACCESS_TOKEN
+          volumeMounts:
+            - name: git-sync-repo
+              mountPath: /git
+          {{- with .Values.gitSync.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          securityContext:
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 65534
+        {{- end }}
       volumes:
         - name: data
         {{- if.Values.khoj.persistence.enabled }}
           persistentVolumeClaim:
             claimName: {{ include "khoj.fullname" . }}-server-pvc
         {{- else }}
+          emptyDir: {}
+        {{- end }}
+        {{- if .Values.gitSync.enabled }}
+        - name: git-sync-repo
           emptyDir: {}
         {{- end }}

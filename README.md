@@ -109,6 +109,7 @@ Secrets are managed via HashiCorp Vault and synced to Kubernetes using the Vault
 
 ### Store a secret in Vault
 ```bash
+vault login
 vault kv put secret/homelab/<app-name> KEY1="$(openssl rand -base64 32)" KEY2="value"
 ```
 
