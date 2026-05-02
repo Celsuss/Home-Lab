@@ -120,6 +120,8 @@ spec:
           volumeMounts:
             - name: git-sync-repo
               mountPath: /git
+            - name: git-sync-tmp
+              mountPath: /tmp
           {{- with .Values.gitSync.resources }}
           resources:
             {{- toYaml . | nindent 12 }}
@@ -139,5 +141,7 @@ spec:
         {{- end }}
         {{- if .Values.gitSync.enabled }}
         - name: git-sync-repo
+          emptyDir: {}
+        - name: git-sync-tmp
           emptyDir: {}
         {{- end }}
