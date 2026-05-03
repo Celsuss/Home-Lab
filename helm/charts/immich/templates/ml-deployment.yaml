@@ -1,0 +1,52 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: immich-machine-learning
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "immich.labels" . | nindent 4 }}
+    app.kubernetes.io/component: machine-learning
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "immich.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: machine-learning
+  template:
+    metadata:
+      labels:
+        {{- include "immich.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: machine-learning
+    spec:
+      containers:
+        - name: immich-machine-learning
+          image: "{{ .Values.ml.image.repository }}:{{ .Values.ml.image.tag }}"
+          imagePullPolicy: {{ .Values.ml.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.ml.service.port }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /ping
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            failureThreshold: 5
+          readinessProbe:
+            httpGet:
+              path: /ping
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.ml.resources | nindent 12 }}
+          volumeMounts:
+            - name: model-cache
+              mountPath: /cache
+      volumes:
+        - name: model-cache
+          persistentVolumeClaim:
+            claimName: immich-model-cache-pvc

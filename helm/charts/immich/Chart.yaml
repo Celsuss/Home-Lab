@@ -1,0 +1,11 @@
+---
+apiVersion: v2
+name: immich
+description: A Helm chart for Immich self-hosted photo management
+type: application
+version: 0.1.0
+appVersion: "v2.7.5"
+dependencies:
+  - name: homelab-common
+    version: 0.1.0
+    repository: "file://../homelab-common"

@@ -1,0 +1,99 @@
+---
+namespace: media
+
+server:
+  image:
+    repository: ghcr.io/immich-app/immich-server
+    pullPolicy: IfNotPresent
+    tag: "v2.7.5"
+  service:
+    type: ClusterIP
+    port: 2283
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      cpu: "2"
+      memory: 2Gi
+
+ml:
+  image:
+    repository: ghcr.io/immich-app/immich-machine-learning
+    pullPolicy: IfNotPresent
+    tag: "v2.7.5"
+  service:
+    type: ClusterIP
+    port: 3003
+  persistence:
+    modelCache:
+      size: 10Gi
+      storageClass: local-path
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      cpu: "2"
+      memory: 4Gi
+
+postgres:
+  image:
+    repository: ghcr.io/immich-app/postgres
+    pullPolicy: IfNotPresent
+    tag: "14-vectorchord0.4.3-pgvectors0.2.0"
+  service:
+    port: 5432
+  user: immich
+  database: immich
+  persistence:
+    size: 10Gi
+    storageClass: local-path
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+
+valkey:
+  image:
+    repository: docker.io/valkey/valkey
+    pullPolicy: IfNotPresent
+    tag: "9"
+  service:
+    port: 6379
+  persistence:
+    size: 1Gi
+    storageClass: local-path
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+persistence:
+  uploads:
+    hostPath: /home/celsuss/Photos
+
+ingress:
+  enabled: true
+  className: traefik
+  host: immich.homelab.local
+  annotations:
+    cert-manager.io/cluster-issuer: homelab-ca
+  tls:
+    - secretName: immich-tls
+      hosts:
+        - immich.homelab.local
+
+tailscale:
+  enabled: true
+  serviceName: immich-server
+
+vault:
+  secretPath: homelab/immich
+  secretName: immich-secrets

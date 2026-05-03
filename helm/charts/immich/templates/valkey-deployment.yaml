@@ -1,0 +1,52 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: immich-valkey
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "immich.labels" . | nindent 4 }}
+    app.kubernetes.io/component: valkey
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "immich.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: valkey
+  template:
+    metadata:
+      labels:
+        {{- include "immich.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: valkey
+    spec:
+      containers:
+        - name: immich-valkey
+          image: "{{ .Values.valkey.image.repository }}:{{ .Values.valkey.image.tag }}"
+          imagePullPolicy: {{ .Values.valkey.image.pullPolicy }}
+          ports:
+            - name: valkey
+              containerPort: {{ .Values.valkey.service.port }}
+              protocol: TCP
+          livenessProbe:
+            exec:
+              command:
+                - valkey-cli
+                - ping
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          readinessProbe:
+            exec:
+              command:
+                - valkey-cli
+                - ping
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.valkey.resources | nindent 12 }}
+          volumeMounts:
+            - name: valkey-data
+              mountPath: /data
+      volumes:
+        - name: valkey-data
+          persistentVolumeClaim:
+            claimName: immich-valkey-pvc
