@@ -259,6 +259,9 @@ config:
                 - title: Kavita
                   url: https://kavita.homelab.local/
                   icon: sh:kavita
+                - title: Immich
+                  url: https://immich.homelab.local/
+                  icon: sh:immich
 
             - type: bookmarks
               groups:
