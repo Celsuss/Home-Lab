@@ -1,0 +1,167 @@
+# Nordea → ezbookkeeping category mapping rules
+#
+# HOW TO USE:
+#   1. Run convert.py on your Nordea export once.
+#   2. Check the output for rows with category "Uncategorized".
+#   3. Add rules below matching the Namn / Mottagare / Rubrik values you see.
+#   4. Re-run until everything is categorized to your satisfaction.
+#
+# FIELDS:
+#   match_field: which Nordea field to search — "namn", "mottagare", "rubrik", or "any"
+#   pattern:     case-insensitive substring to match (or a regex if regex: true)
+#   regex:       optional, default false — set to true to use Python regex syntax
+#
+# Rules are evaluated top-to-bottom; the FIRST match wins.
+
+account_name: "Nordea Checking"   # must match the account name you have in ezbookkeeping
+
+default_category: "Uncategorized"
+default_sub_category: ""
+
+rules:
+  # --- Income ---
+  - category: "Income"
+    sub_category: "Salary"
+    match_field: "rubrik"
+    pattern: "Lön"
+
+  - category: "Income"
+    sub_category: "Transfer In"
+    match_field: "rubrik"
+    pattern: "Swish"
+    # Remove or narrow this rule if you also send money via Swish (expenses)
+
+  # --- Food & Dining ---
+  - category: "Food & Dining"
+    sub_category: "Groceries"
+    match_field: "namn"
+    pattern: "ICA"
+
+  - category: "Food & Dining"
+    sub_category: "Groceries"
+    match_field: "namn"
+    pattern: "Coop"
+
+  - category: "Food & Dining"
+    sub_category: "Groceries"
+    match_field: "namn"
+    pattern: "Hemköp"
+
+  - category: "Food & Dining"
+    sub_category: "Groceries"
+    match_field: "namn"
+    pattern: "Willys"
+
+  - category: "Food & Dining"
+    sub_category: "Restaurants"
+    match_field: "any"
+    pattern: "restaurant"
+
+  # --- Drugs
+  - category: "Food & Drink"
+    sub_category: "Alcohol"
+    match_field: "namn"
+    pattern: "Systembolaget"
+
+  # --- Transport ---
+  - category: "Transport"
+    sub_category: "Public Transit"
+    match_field: "any"
+    pattern: "SL"
+
+  - category: "Transport"
+    sub_category: "Public Transit"
+    match_field: "any"
+    pattern: "Västtrafik"
+
+  - category: "Transport"
+    sub_category: "Taxi"
+    match_field: "namn"
+    pattern: "Uber"
+
+  - category: "Transport"
+    sub_category: "Taxi"
+    match_field: "namn"
+    pattern: "Bolt"
+
+  - category: "Transport"
+    sub_category: "Fuel"
+    match_field: "any"
+    pattern: "Preem"
+
+  - category: "Transport"
+    sub_category: "Fuel"
+    match_field: "any"
+    pattern: "OKQ8"
+
+  - category: "Transport"
+    sub_category: "Fuel"
+    match_field: "any"
+    pattern: "Circle K"
+
+  # --- Housing ---
+  - category: "Housing"
+    sub_category: "Rent"
+    match_field: "rubrik"
+    pattern: "hyra"
+    regex: false
+
+  - category: "Housing"
+    sub_category: "Electricity"
+    match_field: "any"
+    pattern: "Vattenfall"
+
+  - category: "Housing"
+    sub_category: "Internet"
+    match_field: "any"
+    pattern: "Telia"
+
+  - category: "Housing"
+    sub_category: "Internet"
+    match_field: "any"
+    pattern: "Bahnhof"
+
+  # --- Health ---
+  - category: "Health"
+    sub_category: "Pharmacy"
+    match_field: "namn"
+    pattern: "Apotek"
+
+  # --- Entertainment & Subscriptions ---
+  - category: "Entertainment"
+    sub_category: "Streaming"
+    match_field: "namn"
+    pattern: "Netflix"
+
+  - category: "Entertainment"
+    sub_category: "Streaming"
+    match_field: "namn"
+    pattern: "Spotify"
+
+  - category: "Entertainment"
+    sub_category: "Streaming"
+    match_field: "namn"
+    pattern: "HBO"
+
+  - category: "Entertainment"
+    sub_category: "Streaming"
+    match_field: "namn"
+    pattern: "Disney"
+
+  - category: "Entertainment"
+    sub_category: "Toys & Games"
+    match_field: "namn"
+    pattern: "Steam"
+
+  - category: "Entertainment"
+    sub_category: "Toys & Games"
+    match_field: "namn"
+    pattern: "Steam"
+
+  # --- Savings & Investments ---
+  - category: "Savings"
+    sub_category: "Transfer Out"
+    match_field: "rubrik"
+    pattern: "Överföring"
+
+  # Add your own rules below this line:
