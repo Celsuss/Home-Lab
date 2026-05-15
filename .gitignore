@@ -33,3 +33,6 @@ ansible/secrets/*
 
 # Binaries
 *.tgz
+
+# Data
+output.csv

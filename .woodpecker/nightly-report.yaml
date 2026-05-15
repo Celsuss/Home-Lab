@@ -1,0 +1,108 @@
+---
+when:
+  - event: cron
+    cron: nightly
+
+steps:
+  - name: gitleaks
+    image: zricethezav/gitleaks:latest
+    failure: ignore
+    commands:
+      - mkdir -p .ci-reports
+      - |
+        gitleaks detect --source . --no-git --config .gitleaks.toml \
+          --report-format markdown --report-path .ci-reports/gitleaks.md 2>&1 || true
+        [ -s .ci-reports/gitleaks.md ] || echo "_No secrets detected_" > .ci-reports/gitleaks.md
+
+  - name: helm-lint
+    image: alpine/helm:latest
+    failure: ignore
+    commands:
+      - mkdir -p .ci-reports
+      - |
+        for chart in helm/charts/*/; do
+          echo "### $(basename $chart)"
+          helm lint "$chart" 2>&1
+          echo ""
+        done > .ci-reports/helm-lint.txt || true
+
+  - name: helm-render
+    image: alpine/helm:latest
+    failure: ignore
+    commands:
+      - mkdir -p .ci-reports/rendered
+      - |
+        for name in k8s-event-exporter kanidm mcpo root-app searxng volsync-backups; do
+          chart="helm/charts/$name"
+          [ -d "$chart" ] || continue
+          helm template "$name" "$chart" --namespace default \
+            > ".ci-reports/rendered/${name}.yaml" 2>/dev/null || \
+            echo "# Failed to render $name" > ".ci-reports/rendered/${name}.yaml"
+        done || true
+
+  - name: kubeconform
+    image: ghcr.io/yannh/kubeconform:latest-musl
+    failure: ignore
+    commands:
+      - |
+        kubeconform -ignore-missing-schemas -summary .ci-reports/rendered/ \
+          > .ci-reports/kubeconform.txt 2>&1 || true
+
+  - name: kubesec
+    image: kubesec/kubesec:v2
+    failure: ignore
+    commands:
+      - |
+        {
+          for f in .ci-reports/rendered/*.yaml; do
+            [ -s "$f" ] || continue
+            echo "=== $(basename $f .yaml) ==="
+            kubesec scan "$f" 2>/dev/null
+            echo ""
+          done
+        } > .ci-reports/kubesec.txt 2>&1 || true
+
+  - name: trivy
+    image: aquasec/trivy:latest
+    failure: ignore
+    commands:
+      - |
+        trivy fs --severity HIGH,CRITICAL --skip-dirs .git,.ci-reports \
+          --format table helm/ > .ci-reports/trivy.txt 2>&1 || true
+
+  - name: create-issue
+    image: alpine:latest
+    failure: ignore
+    environment:
+      FORGEJO_TOKEN:
+        from_secret: forgejo_token
+    commands:
+      - apk add --no-cache curl jq
+      - |
+        DATE=$(date +%Y-%m-%d)
+        TITLE="[Nightly] Security & Health Report - $DATE"
+
+        read_report() {
+          local file=$1
+          if [ -f "$file" ] && [ -s "$file" ]; then
+            head -c 3000 "$file"
+          else
+            echo "_No report generated_"
+          fi
+        }
+
+        GITLEAKS=$(read_report .ci-reports/gitleaks.md)
+        HELM=$(read_report .ci-reports/helm-lint.txt)
+        KUBECONFORM=$(read_report .ci-reports/kubeconform.txt)
+        KUBESEC=$(read_report .ci-reports/kubesec.txt)
+        TRIVY=$(read_report .ci-reports/trivy.txt)
+
+        BODY=$(printf \
+          "## Gitleaks\n\`\`\`\n%s\n\`\`\`\n\n## Helm Lint\n\`\`\`\n%s\n\`\`\`\n\n## Kubeconform\n\`\`\`\n%s\n\`\`\`\n\n## Kubesec\n\`\`\`\n%s\n\`\`\`\n\n## Trivy\n\`\`\`\n%s\n\`\`\`" \
+          "$GITLEAKS" "$HELM" "$KUBECONFORM" "$KUBESEC" "$TRIVY")
+
+        curl --insecure -sf -X POST \
+          -H "Authorization: token $FORGEJO_TOKEN" \
+          -H "Content-Type: application/json" \
+          "https://forgejo.homelab.local/api/v1/repos/${CI_REPO_OWNER}/${CI_REPO_NAME}/issues" \
+          --data "$(jq -n --arg title "$TITLE" --arg body "$BODY" '{title: $title, body: $body}')"

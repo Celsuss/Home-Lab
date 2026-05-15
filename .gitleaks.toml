@@ -1,0 +1,33 @@
+title = "gitleaks config"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Homelab values files — contain placeholder and example values, not real secrets"
+paths = [
+  '''helm/charts/.*/values\.yaml''',
+  '''helm/charts/.*/values\..*\.yaml''',
+]
+
+[[allowlists]]
+description = "Known safe patterns in homelab configs"
+regexes = [
+  '''changeme''',
+  '''example\.[a-z]+''',
+  '''homelab\.local''',
+  '''localhost''',
+  '''127\.0\.0\.1''',
+  '''192\.168\.\d+\.\d+''',
+]
+
+[[allowlists]]
+description = "Ansible and OpenTofu variable references — not literal values"
+paths = [
+  '''ansible/.*''',
+  '''opentofu/.*''',
+]
+regexes = [
+  '''\{\{.*\}\}''',
+  '''\$\{.*\}''',
+]

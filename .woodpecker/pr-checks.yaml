@@ -1,0 +1,60 @@
+---
+when:
+  - event: push
+    branch: main
+  - event: pull_request
+
+steps:
+  - name: gitleaks
+    image: zricethezav/gitleaks:latest
+    commands:
+      - gitleaks detect --source . --no-git --config .gitleaks.toml
+
+  - name: helm-lint
+    image: alpine/helm:latest
+    commands:
+      - |
+        failed=0
+        for chart in helm/charts/*/; do
+          echo "--- $(basename $chart) ---"
+          helm lint "$chart" || failed=1
+        done
+        exit $failed
+
+  - name: helm-render
+    image: alpine/helm:latest
+    commands:
+      - mkdir -p .ci-reports/rendered
+      - |
+        for name in k8s-event-exporter kanidm mcpo root-app searxng volsync-backups; do
+          chart="helm/charts/$name"
+          [ -d "$chart" ] || continue
+          helm template "$name" "$chart" --namespace default \
+            > ".ci-reports/rendered/${name}.yaml" 2>/dev/null || \
+            echo "# Failed to render $name" > ".ci-reports/rendered/${name}.yaml"
+        done
+
+  - name: kubeconform
+    image: ghcr.io/yannh/kubeconform:latest-musl
+    commands:
+      - kubeconform -ignore-missing-schemas -summary .ci-reports/rendered/
+
+  - name: kubesec
+    image: kubesec/kubesec:v2
+    commands:
+      - |
+        failed=0
+        for f in .ci-reports/rendered/*.yaml; do
+          [ -s "$f" ] || continue
+          result=$(kubesec scan "$f" 2>/dev/null)
+          echo "$result" | grep -qE '"score":\s*-' && {
+            echo "FAIL: $(basename $f) has negative kubesec score"
+            failed=1
+          }
+        done
+        exit $failed
+
+  - name: trivy
+    image: aquasec/trivy:latest
+    commands:
+      - trivy fs --exit-code 1 --severity HIGH,CRITICAL --skip-dirs .git,.ci-reports helm/
