@@ -21,6 +21,10 @@ woodpecker:
               pathType: Prefix
       annotations:
         cert-manager.io/cluster-issuer: homelab-ca
+      tls:
+        - secretName: woodpecker-tls
+          hosts:
+            - woodpecker.homelab.local
     persistentVolume:
       enabled: true
       storageClass: local-path
