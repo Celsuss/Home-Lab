@@ -8,6 +8,7 @@ woodpecker:
       WOODPECKER_HOST: https://woodpecker.homelab.local
       WOODPECKER_FORGEJO: "true"
       WOODPECKER_FORGEJO_URL: https://forgejo.homelab.local
+      WOODPECKER_FORGEJO_SKIP_VERIFY: "true"
       WOODPECKER_ADMIN: celsuss
     extraSecretNamesForEnvFrom:
       - woodpecker-secret
