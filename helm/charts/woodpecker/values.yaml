@@ -7,7 +7,7 @@ woodpecker:
     env:
       WOODPECKER_HOST: https://woodpecker.homelab.local
       WOODPECKER_FORGEJO: "true"
-      WOODPECKER_FORGEJO_URL: http://forgejo-http.forgejo.svc.cluster.local:3000
+      WOODPECKER_FORGEJO_URL: https://forgejo.homelab.local
       WOODPECKER_ADMIN: celsuss
     extraSecretNamesForEnvFrom:
       - woodpecker-secret
