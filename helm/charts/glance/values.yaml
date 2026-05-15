@@ -104,6 +104,14 @@ config:
                 - url: https://xkcd.com/rss.xml
                   title: xkcd
                   limit: 2
+            - type: rss
+              title: Arch Linux News
+              limit: 5
+              collapse-after: 3
+              feeds:
+                - url: https://archlinux.org/feeds/news/
+                - url: https://security.archlinux.org/advisory/feed.atom
+                  title: Arch Security
             # Removed Twitch channels widget
         - size: full
           widgets:
@@ -113,15 +121,6 @@ config:
               widgets:
                 - type: hacker-news
                 - type: lobsters
-                # Added Arch Linux News
-                - type: rss
-                  title: Arch Linux News
-                  limit: 5
-                  collapse-after: 3
-                  feeds:
-                    - url: https://archlinux.org/feeds/news/
-                    - url: https://security.archlinux.org/advisory/feed.atom
-                      title: Arch Security
                 - type: rss
                   title: emacs
                   limit: 5
@@ -189,6 +188,25 @@ config:
                 - argoproj/argo-cd
                 - traefik/traefik
                 - ollama/ollama
+                - advplyr/audiobookshelf
+                - henrygd/beszel
+                - Donetick/donetick
+                - mayswind/ezbookkeeping
+                - forgejo/forgejo
+                - immich-app/immich
+                - jellyfin/jellyfin
+                - kanidm/kanidm
+                - karakeep-app/karakeep
+                - Kareadita/Kavita
+                - khoj-ai/khoj
+                - open-webui/open-webui
+                - TandoorRecipes/recipes
+                - louislam/uptime-kuma
+                - woodpecker-ci/woodpecker
+                - hashicorp/vault
+                - longhorn/longhorn
+                - backube/volsync
+                - tailscale/tailscale
     - name: Links
       width: slim
       # hide-desktop-navigation: true
