@@ -36,10 +36,11 @@ ingress:
 
 persistence:
   storageClass: local-path
-  audiobooks:
-    storage: 10Gi
-  podcasts:
-    storage: 10Gi
+  media:
+    audiobooks:
+      hostPath: /home/celsuss/Audio-books
+    podcasts:
+      hostPath: /home/celsuss/Podcasts
   metadata:
     storage: 4Gi
   config:

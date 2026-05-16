@@ -55,11 +55,13 @@ spec:
           mountPath: /config
       volumes:
       - name: audiobooks
-        persistentVolumeClaim:
-          claimName: {{ .Values.name }}-audiobooks-pvc
+        hostPath:
+          path: {{ .Values.persistence.media.audiobooks.hostPath }}
+          type: Directory
       - name: podcasts
-        persistentVolumeClaim:
-          claimName: {{ .Values.name }}-podcasts-pvc
+        hostPath:
+          path: {{ .Values.persistence.media.podcasts.hostPath }}
+          type: Directory
       - name: metadata
         persistentVolumeClaim:
           claimName: {{ .Values.name }}-metadata-pvc
