@@ -55,7 +55,14 @@ spec:
           - name: config
             mountPath: "/app/config"
             readOnly: true
+          - name: homelab-ca-bundle
+            mountPath: /etc/ssl/certs/ca-certificates.crt
+            subPath: ca-certificates.crt
+            readOnly: true
       volumes:
         - name: config
           configMap:
             name: {{ .Values.name }}-cm
+        - name: homelab-ca-bundle
+          configMap:
+            name: homelab-ca-bundle
