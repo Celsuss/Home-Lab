@@ -48,6 +48,9 @@ spec:
         readinessProbe:
           {{- toYaml . | nindent 10 }}
         {{- end }}
+        envFrom:
+          - secretRef:
+              name: glance-secrets
         volumeMounts:
           - name: config
             mountPath: "/app/config"

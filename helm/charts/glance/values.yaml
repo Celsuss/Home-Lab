@@ -78,9 +78,10 @@ config:
         negative-color: 209 88 54
 
   pages:
+    # ────────────────────────────────────────
+    # HOME
+    # ────────────────────────────────────────
     - name: Home
-      # Optionally, if you only have a single page you can hide the desktop navigation for a cleaner look
-      # hide-desktop-navigation: true
       columns:
         - size: small
           widgets:
@@ -112,7 +113,6 @@ config:
                 - url: https://archlinux.org/feeds/news/
                 - url: https://security.archlinux.org/advisory/feed.atom
                   title: Arch Security
-            # Removed Twitch channels widget
         - size: full
           widgets:
             - type: search
@@ -162,8 +162,6 @@ config:
               location: Stockholm, Sweden
               units: metric
               hour-format: 24h
-              # Optionally hide the location from being displayed in the widget
-              # hide-location: true
             - type: markets
               markets:
                 - symbol: SPY
@@ -207,16 +205,185 @@ config:
                 - longhorn/longhorn
                 - backube/volsync
                 - tailscale/tailscale
-    - name: Links
-      width: slim
-      # hide-desktop-navigation: true
-      center-vertically: true
+
+    # ────────────────────────────────────────
+    # HOMELAB
+    # ────────────────────────────────────────
+    - name: Homelab
       columns:
+        - size: small
+          widgets:
+            - type: custom-api
+              title: Uptime Kuma
+              title-url: https://uptime-kuma.homelab.local
+              url: https://uptime-kuma.homelab.local/api/status-page/homelab
+              subrequests:
+                heartbeats:
+                  url: https://uptime-kuma.homelab.local/api/status-page/heartbeat/homelab
+              cache: 10m
+              template: |
+                {{ $hb := .Subrequest "heartbeats" }}
+
+                {{ if not (.JSON.Exists "publicGroupList") }}
+                <p class="color-negative">Error reading response</p>
+                {{ else if eq (len (.JSON.Array "publicGroupList")) 0 }}
+                <p>No monitors found</p>
+                {{ else }}
+
+                <ul class="dynamic-columns list-gap-8">
+                  {{ range .JSON.Array "publicGroupList" }}
+                  {{ range .Array "monitorList" }}
+                  {{ $id := .String "id" }}
+                  {{ $hbArray := $hb.JSON.Array (print "heartbeatList." $id) }}
+                  <div class="flex items-center gap-12">
+                    <a class="size-title-dynamic color-highlight text-truncate block grow" href="https://uptime-kuma.homelab.local/dashboard/{{ $id }}"
+                      target="_blank" rel="noreferrer">
+                      {{ .String "name" }} </a>
+
+                    {{ if gt (len $hbArray) 0 }}
+                      {{ $latest := index $hbArray (sub (len $hbArray) 1) }}
+                      {{ if eq ($latest.Int "status") 1 }}
+                      <div>{{ $latest.Int "ping" }}ms</div>
+                      <div class="monitor-site-status-icon-compact" title="OK">
+                        <svg fill="var(--color-positive)" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                          <path fill-rule="evenodd"
+                            d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm3.857-9.809a.75.75 0 0 0-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 1 0-1.06 1.061l2.5 2.5a.75.75 0 0 0 1.137-.089l4-5.5Z"
+                            clip-rule="evenodd"></path>
+                        </svg>
+                      </div>
+                      {{ else }}
+                      <div><span class="color-negative">DOWN</span></div>
+                      <div class="monitor-site-status-icon-compact" title="{{ if $latest.Exists "msg" }}{{ $latest.String "msg" }}{{ else }}Error{{ end }}">
+                        <svg fill="var(--color-negative)" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                          <path fill-rule="evenodd"
+                            d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495ZM10 5a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 10 5Zm0 9a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"
+                            clip-rule="evenodd"></path>
+                        </svg>
+                      </div>
+                      {{ end }}
+                    {{ else }}
+                      <div><span class="color-negative">No data</span></div>
+                      <div class="monitor-site-status-icon-compact" title="No data available">
+                        <svg fill="var(--color-negative)" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                          <path d="M10 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16zm0-2a6 6 0 1 0 0-12 6 6 0 0 0 0 12zm-.75-8a.75.75 0 0 1 1.5 0v3a.75.75 0 0 1-1.5 0V8zm.75 5a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/>
+                        </svg>
+                      </div>
+                    {{ end }}
+                  </div>
+                  {{ end }}
+                  {{ end }}
+                </ul>
+                {{ end }}
+
+            - type: custom-api
+              title: Tailscale Devices
+              title-url: https://login.tailscale.com/admin/machines
+              url: https://api.tailscale.com/api/v2/tailnet/-/devices
+              headers:
+                Authorization: Bearer ${TAILSCALE_API_KEY}
+              cache: 10m
+              options:
+                collapseAfter: 4
+              template: |
+                <style>
+                  .device-info-container-tailscale {
+                    position: relative;
+                    overflow: hidden;
+                    height: 1.5em;
+                  }
+                  .device-info-tailscale {
+                    display: flex;
+                    transition: transform 0.2s ease, opacity 0.2s ease;
+                  }
+                  .device-ip-tailscale {
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    transform: translateY(-100%);
+                    opacity: 0;
+                    transition: transform 0.2s ease, opacity 0.2s ease;
+                  }
+                  .device-info-container-tailscale:hover .device-info-tailscale {
+                    transform: translateY(100%);
+                    opacity: 0;
+                  }
+                  .device-info-container-tailscale:hover .device-ip-tailscale {
+                    transform: translateY(0);
+                    opacity: 1;
+                  }
+                  .update-indicator-tailscale {
+                    width: 8px;
+                    height: 8px;
+                    border-radius: 50%;
+                    background-color: var(--color-primary);
+                    display: inline-block;
+                    margin-left: 4px;
+                    vertical-align: middle;
+                  }
+                  .offline-indicator-tailscale {
+                    width: 8px;
+                    height: 8px;
+                    border-radius: 50%;
+                    background-color: var(--color-negative);
+                    display: inline-block;
+                    margin-left: 4px;
+                    vertical-align: middle;
+                  }
+                  .device-name-container-tailscale {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                  }
+                  .indicators-container-tailscale {
+                    display: flex;
+                    align-items: center;
+                    gap: 4px;
+                  }
+                </style>
+                <ul class="list list-gap-10 collapsible-container" data-collapse-after="{{ .Options.IntOr "collapseAfter" 3 }}">
+                  {{ range .JSON.Array "devices" }}
+                  <li>
+                    <div class="flex items-center gap-10">
+                      <div class="device-name-container-tailscale grow">
+                        <span class="size-h4 block text-truncate color-primary">
+                          {{ findMatch "^([^.]+)" (.String "name") }}
+                        </span>
+                        <div class="indicators-container-tailscale">
+                          {{ if and (not ($.Options.BoolOr "disableUpdateIndicator" false)) (.Bool "updateAvailable") }}
+                          <span class="update-indicator-tailscale" data-popover-type="text" data-popover-text="Update Available"></span>
+                          {{ end }}
+                          {{ if not ($.Options.BoolOr "disableOfflineIndicator" false) }}
+                          {{ $lastSeen := .String "lastSeen" | parseTime "rfc3339" }}
+                          {{ if not ($lastSeen.After (offsetNow "-10s")) }}
+                          {{ $lastSeenTimezoned := $lastSeen.In now.Location }}
+                          <span class="offline-indicator-tailscale" data-popover-type="text"
+                            data-popover-text="Offline - Last seen {{ $lastSeenTimezoned.Format "Jan 2 3:04pm" }}"></span>
+                          {{ end }}
+                          {{ end }}
+                        </div>
+                      </div>
+                    </div>
+                    <div class="device-info-container-tailscale">
+                      <ul class="list-horizontal-text device-info-tailscale">
+                        <li>{{ .String "os" }}</li>
+                        <li>
+                          {{ if and ($.Options.BoolOr "prioritiseTags" false) (.Exists "tags.0") }}
+                            {{ trimPrefix "tag:" (.String "tags.0") }}
+                          {{ else }}
+                            {{ .String "user" }}
+                          {{ end }}
+                        </li>
+                      </ul>
+                      <div class="device-ip-tailscale">
+                        {{ .String "addresses.0" }}
+                      </div>
+                    </div>
+                  </li>
+                  {{ end }}
+                </ul>
+
         - size: full
           widgets:
-            - type: search
-              autofocus: true
-
             - type: monitor
               cache: 1m
               title: Services
@@ -280,6 +447,852 @@ config:
                 - title: Immich
                   url: https://immich.homelab.local/
                   icon: sh:immich
+
+            - type: custom-api
+              title: Beszel Metrics
+              # POST credentials to PocketBase auth endpoint; token extracted in template
+              url: https://beszel.homelab.local/api/collections/users/auth-with-password
+              method: POST
+              headers:
+                Content-Type: application/json
+              body: '{"identity":"${BESZEL_USERNAME}","password":"${BESZEL_PASSWORD}"}'
+              cache: 5m
+              options:
+                redirect-url: https://beszel.homelab.local
+                collapsible: true
+              template: |
+                {{ if ne .Response.StatusCode 200 }}
+                <p class="color-negative">Beszel auth failed ({{ .Response.StatusCode }}). Check BESZEL_USERNAME / BESZEL_PASSWORD.</p>
+                {{ else }}
+                {{ $token := .JSON.String "token" }}
+                {{ $systemsCall := newRequest "https://beszel.homelab.local/api/collections/systems/records"
+                    | withHeader "Authorization" (printf "Bearer %s" $token)
+                    | withHeader "Accept" "application/json"
+                    | getResponse }}
+                {{ $redirect := .Options.StringOr "redirect-url" "" }}
+                {{ $newTab := .Options.BoolOr "in-new-tab" false }}
+                {{ $hideKernel := .Options.BoolOr "hide-kernel" false }}
+                {{ $hideUptime := .Options.BoolOr "hide-uptime" false }}
+                {{ $hideCPUInfo := .Options.BoolOr "hide-cpu-info" false }}
+                {{ $hideIP := .Options.BoolOr "hide-ip" false }}
+                {{ $collapsible := .Options.BoolOr "collapsible" false }}
+                {{ $items := $systemsCall.JSON.Array "items" }}
+                {{ range $items }}
+                  {{ $info := .Get "info" }}
+                  {{ $name := .String "name" }}
+                  {{ $link := "" }}
+                  {{ if ne $redirect "" }}
+                    {{ $link = printf "%s/system/%s" $redirect $name }}
+                  {{ end }}
+                  <div style="font-size: 1.15em;">
+                    {{ if eq (.String "status") "up" }}
+                      <span class="status-dot color-positive">●</span>
+                    {{ else }}
+                      <span class="status-dot color-negative">●</span>
+                    {{ end }}
+                    {{ if ne $redirect "" }}
+                      <a class="color-highlight text-truncate" href="{{ printf "%s/system/%s" $redirect $name | safeURL }}" {{ if $newTab }}target="_blank" rel="noopener"{{ end }}>
+                        {{ $name }}{{ if not $hideIP }} ({{ .String "host" }}){{ end }}
+                      </a>
+                    {{ else }}
+                      <span class="color-highlight text-truncate">
+                        {{ $name }}{{ if not $hideIP }} ({{ .String "host" }}){{ end }}
+                      </span>
+                    {{ end }}
+                  </div>
+                  {{ if $collapsible }}
+                    <details class="margin-top-5">
+                      <summary class="size-h5 color-subtle" style="cursor: pointer;">Metrics</summary>
+                      <div class="margin-top-5">
+                        {{ if not $hideKernel }}
+                          <p style="font-size: 1em;">Kernel: {{ $info.String "k" }}</p>
+                        {{ end }}
+                        {{ if not $hideUptime }}
+                          {{ $uptimeSec := $info.Float "u" }}
+                          {{ if ge $uptimeSec 86400.0 }}
+                            <p style="font-size: 1em;">Uptime: {{ printf "%.2f" (mul $uptimeSec 0.000011574) }}d</p>
+                          {{ else }}
+                            <p style="font-size: 1em;">Uptime: {{ printf "%.2f" (mul $uptimeSec 0.000277778) }}h</p>
+                          {{ end }}
+                        {{ end }}
+                        {{ if not $hideCPUInfo }}
+                          <p style="font-size: 1em;">CPU: {{ replaceAll "CPU " "" ($info.String "m") }}</p>
+                        {{ end }}
+                        <p style="font-size: 1em; margin-top: 0.5em;">📊 Cpu: {{ $info.Float "cpu" }}%</p>
+                        <p style="font-size: 1em;">🧠 Memory: {{ $info.Float "mp" }}%</p>
+                        <p style="font-size: 1em;">💾 Disk: {{ $info.Float "dp" }}%</p>
+                      </div>
+                    </details>
+                  {{ else }}
+                    <div class="margin-top-5">
+                      {{ if not $hideKernel }}
+                        <p style="font-size: 1em;">Kernel: {{ $info.String "k" }}</p>
+                      {{ end }}
+                      {{ if not $hideUptime }}
+                        {{ $uptimeSec := $info.Float "u" }}
+                        {{ if ge $uptimeSec 86400.0 }}
+                          <p style="font-size: 1em;">Uptime: {{ printf "%.2f" (mul $uptimeSec 0.000011574) }}d</p>
+                        {{ else }}
+                          <p style="font-size: 1em;">Uptime: {{ printf "%.2f" (mul $uptimeSec 0.000277778) }}h</p>
+                        {{ end }}
+                      {{ end }}
+                      {{ if not $hideCPUInfo }}
+                        <p style="font-size: 1em;">CPU: {{ replaceAll "CPU " "" ($info.String "m") }}</p>
+                      {{ end }}
+                      <p style="font-size: 1em; margin-top: 0.5em;">📊 Cpu: {{ $info.Float "cpu" }}%</p>
+                      <p style="font-size: 1em;">🧠 Memory: {{ $info.Float "mp" }}%</p>
+                      <p style="font-size: 1em;">💾 Disk: {{ $info.Float "dp" }}%</p>
+                    </div>
+                  {{ end }}
+                {{ end }}
+                {{ end }}
+
+    # ────────────────────────────────────────
+    # MEDIA
+    # ────────────────────────────────────────
+    - name: Media
+      columns:
+        - size: small
+          widgets:
+            - type: custom-api
+              title: Immich Stats
+              hide-header: true
+              cache: 10m
+              url: https://immich.homelab.local/api/server/statistics
+              headers:
+                x-api-key: ${IMMICH_KEY}
+              subrequests:
+                storage:
+                  url: https://immich.homelab.local/api/server/storage
+                  headers:
+                    x-api-key: ${IMMICH_KEY}
+              options:
+                show-cards: true
+                show-storage-bar: true
+              template: |
+                {{ $photos := .JSON.Int "photos" }}
+                {{ $videos := .JSON.Int "videos" }}
+                {{ $usageBytes := .JSON.Int "usage" }}
+                {{ $usageGiB := div (toFloat $usageBytes) 1073741824.0 }}
+                {{ $storage := .Subrequest "storage" }}
+                {{ $storage_ok := and (ge $storage.Response.StatusCode 200) (le $storage.Response.StatusCode 299) }}
+                {{ $totalGiB := 0.0 }}
+                {{ $percentage := 0.0 }}
+                {{ $storageError := "" }}
+                {{ if $storage_ok }}
+                  {{ $totalGiB = div (toFloat ($storage.JSON.Int "diskSizeRaw")) 1073741824.0 }}
+                  {{ $percentage = $storage.JSON.Float "diskUsagePercentage" }}
+                {{ else }}
+                  {{ $storageError = printf "%d %s" $storage.Response.StatusCode $storage.Response.Status }}
+                {{ end }}
+                {{ $showCards := .Options.BoolOr "show-cards" true }}
+                {{ $showStorageBar := .Options.BoolOr "show-storage-bar" true }}
+
+                {{ if $showCards }}
+                <div style="display: flex; gap: 16px; flex-wrap: wrap;{{ if $showStorageBar }} margin-bottom: 16px;{{ end }}">
+                  <!-- Photos Card -->
+                  <div style="display: flex; flex-direction: column; justify-content: space-between; background-color: var(--color-widget-background-highlight); border-radius: 12px; padding: 20px; flex: 1; min-width: 200px;">
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+                      <svg style="width: 40px; height: 40px; color: var(--color-primary); flex-shrink: 0;" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M13.73,15L9.83,21.76C10.53,21.91 11.25,22 12,22C14.4,22 16.6,21.15 18.32,19.75L14.66,13.4M2.46,15C3.38,17.92 5.61,20.26 8.45,21.34L12.12,15M8.54,12L4.64,5.25C3,7 2,9.39 2,12C2,12.68 2.07,13.35 2.2,14H9.69M21.8,10H14.31L14.6,10.5L19.36,18.75C21,16.97 22,14.6 22,12C22,11.31 21.93,10.64 21.8,10M21.54,9C20.62,6.07 18.39,3.74 15.55,2.66L11.88,9M9.4,10.5L14.17,2.24C13.47,2.09 12.75,2 12,2C9.6,2 7.4,2.84 5.68,4.25L9.34,10.6L9.4,10.5Z"/>
+                      </svg>
+                      <span style="font-weight: 600; font-size: 1.8rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--color-text-highlight);">Photos</span>
+                    </div>
+                    <div style="font-family: ui-monospace, monospace; font-size: 1.85rem; font-weight: 700; color: var(--color-text-highlight); word-break: break-all;">
+                      {{ if lt $photos 10 }}<span style="color: var(--color-text-subdue); font-weight: 400; opacity: 0.6;">000000000</span>{{ else if lt $photos 100 }}<span style="color: var(--color-text-subdue); font-weight: 400; opacity: 0.6;">00000000</span>{{ else if lt $photos 1000 }}<span style="color: var(--color-text-subdue); font-weight: 400; opacity: 0.6;">0000000</span>{{ else if lt $photos 10000 }}<span style="color: var(--color-text-subdue); font-weight: 400; opacity: 0.6;">000000</span>{{ else if lt $photos 100000 }}<span style="color: var(--color-text-subdue); font-weight: 400; opacity: 0.6;">00000</span>{{ else if lt $photos 1000000 }}<span style="color: var(--color-text-subdue); font-weight: 400; opacity: 0.6;">0000</span>{{ end }}{{ $photos }}
+                    </div>
+                  </div>
+
+                  <!-- Videos Card -->
+                  <div style="display: flex; flex-direction: column; justify-content: space-between; background-color: var(--color-widget-background-highlight); border-radius: 12px; padding: 20px; flex: 1; min-width: 200px;">
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+                      <svg style="width: 40px; height: 40px; color: var(--color-primary); flex-shrink: 0;" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M10,16.5V7.5L16,12M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z"/>
+                      </svg>
+                      <span style="font-weight: 600; font-size: 1.8rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--color-text-highlight);">Videos</span>
+                    </div>
+                    <div style="font-family: ui-monospace, monospace; font-size: 1.85rem; font-weight: 700; color: var(--color-text-highlight); word-break: break-all;">
+                      {{ if lt $videos 10 }}<span style="color: var(--color-text-subdue); font-weight: 400; opacity: 0.6;">000000000</span>{{ else if lt $videos 100 }}<span style="color: var(--color-text-subdue); font-weight: 400; opacity: 0.6;">00000000</span>{{ else if lt $videos 1000 }}<span style="color: var(--color-text-subdue); font-weight: 400; opacity: 0.6;">0000000</span>{{ else if lt $videos 10000 }}<span style="color: var(--color-text-subdue); font-weight: 400; opacity: 0.6;">000000</span>{{ else if lt $videos 100000 }}<span style="color: var(--color-text-subdue); font-weight: 400; opacity: 0.6;">00000</span>{{ else if lt $videos 1000000 }}<span style="color: var(--color-text-subdue); font-weight: 400; opacity: 0.6;">0000</span>{{ end }}{{ $videos }}
+                    </div>
+                  </div>
+
+                  <!-- Storage GiB Card -->
+                  <div style="display: flex; flex-direction: column; justify-content: space-between; background-color: var(--color-widget-background-highlight); border-radius: 12px; padding: 20px; flex: 1; min-width: 200px;">
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+                      <svg style="width: 40px; height: 40px; color: var(--color-primary); flex-shrink: 0;" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M11,2V22C5.9,21.5 2,17.2 2,12C2,6.8 5.9,2.5 11,2M13,2V11H22C21.5,6.2 17.8,2.5 13,2M13,13V22C17.7,21.5 21.5,17.8 22,13H13Z"/>
+                      </svg>
+                      <span style="font-weight: 600; font-size: 1.8rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--color-text-highlight);">Storage</span>
+                    </div>
+                    <div style="font-family: ui-monospace, monospace; font-size: 1.85rem; font-weight: 700; color: var(--color-text-highlight); word-break: break-all;">
+                      {{ $gib := printf "%.0f" $usageGiB }}
+                      {{ if lt $usageGiB 10.0 }}<span style="color: var(--color-text-subdue); font-weight: 400; opacity: 0.6;">000000000</span>{{ else if lt $usageGiB 100.0 }}<span style="color: var(--color-text-subdue); font-weight: 400; opacity: 0.6;">00000000</span>{{ else if lt $usageGiB 1000.0 }}<span style="color: var(--color-text-subdue); font-weight: 400; opacity: 0.6;">0000000</span>{{ end }}{{ $gib }}<span style="font-size: 1.5rem; font-weight: 500; color: var(--color-text-subdue); margin-left: 8px;">GiB</span>
+                    </div>
+                  </div>
+                </div>
+                {{ end }}
+
+                {{ if $showStorageBar }}
+                <div style="background-color: var(--color-widget-background-highlight); border-radius: 12px; padding: 20px;">
+                  <div style="font-weight: 600; color: var(--color-text-highlight); margin-bottom: 8px; font-size: 1.6rem;">Storage space</div>
+                  {{ if gt $totalGiB 0.0 }}
+                    <div style="color: var(--color-text-highlight); font-size: 1.4rem; margin-bottom: 12px; font-weight: 500;">{{ printf "%.1f" $usageGiB }} GiB of {{ printf "%.1f" $totalGiB }} GiB used</div>
+                    <div style="color: var(--color-text-subdue); font-size: 1.35rem; margin-bottom: 12px;">{{ printf "%.1f" $percentage }}% full</div>
+                  {{ else }}
+                    <div style="color: var(--color-text-highlight); font-size: 1.4rem; margin-bottom: 12px; font-weight: 500;">{{ printf "%.1f" $usageGiB }} GiB used</div>
+                    <div style="color: var(--color-text-negative); font-size: 1.35rem; margin-bottom: 12px;">Total storage unavailable ({{ $storageError }}). Ensure API key has permissions for /api/server/storage.</div>
+                  {{ end }}
+                  <div style="height: 12px; width: 100%; background-color: var(--color-text-subdue); border-radius: 6px; overflow: hidden; opacity: 0.2;">
+                    <div style="height: 100%; background-color: var(--color-primary); border-radius: 6px; transition: width 0.3s ease; width: {{ if gt $totalGiB 0.0 }}{{ printf "%.1f" $percentage }}%{{ else }}0%{{ end }};"></div>
+                  </div>
+                </div>
+                {{ end }}
+
+        - size: full
+          widgets:
+            - type: custom-api
+              title: Media Server History
+              frameless: true
+              cache: 5m
+              options:
+                media-server: jellyfin
+                base-url: https://jellyfin.homelab.local
+                api-key: ${JELLYFIN_KEY}
+                user-name: Celsuss
+                history-length: "10"
+                small-column: false
+                compact: true
+                show-thumbnail: true
+                thumbnail-aspect-ratio: portrait
+                show-user: true
+                time-absolute: false
+                time-format: "Jan 02 15:04"
+              template: |
+                {{ $mediaServer := .Options.StringOr "media-server" "" }}
+                {{ $baseURL := .Options.StringOr "base-url" "" }}
+                {{ $apiKey := .Options.StringOr "api-key" "" }}
+                {{ $userName := .Options.StringOr "user-name" "" }}
+
+                {{ define "errorMsg" }}
+                  <div class="widget-error-header">
+                    <div class="color-negative size-h3">ERROR</div>
+                    <svg class="widget-error-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"></path>
+                    </svg>
+                  </div>
+                  <p class="break-all">{{ . }}</p>
+                {{ end }}
+
+                {{ if or
+                  (eq $mediaServer "")
+                  (eq $baseURL "")
+                  (eq $apiKey "")
+                  (and (eq $mediaServer "jellyfin") (eq $userName ""))
+                }}
+                  {{ template "errorMsg" "Some required options are not set" }}
+                {{ else }}
+
+                {{ $historyLength := .Options.StringOr "history-length" "10" }}
+                {{ $mediaTypes := .Options.StringOr "media-types" "" }}
+                {{ if eq $mediaServer "tautulli" }}
+                  {{ $mediaTypes = .Options.StringOr "media-types" "movie,episode,track" }}
+                {{ else if or (eq $mediaServer "jellyfin") (eq $mediaServer "emby") }}
+                  {{ $mediaTypes = .Options.StringOr "media-types" "Movie,Episode,Audio" }}
+                {{ end }}
+                {{ $isSmallColumn := .Options.BoolOr "small-column" false }}
+                {{ $isCompact := .Options.BoolOr "compact" true }}
+                {{ $showThumbnail := .Options.BoolOr "show-thumbnail" false }}
+                {{ $thumbAspectRatio := .Options.StringOr "thumbnail-aspect-ratio" "" }}
+                {{ $showUser := .Options.BoolOr "show-user" true }}
+                {{ $timeAbsolute := .Options.BoolOr "time-absolute" false }}
+                {{ $timeFormat := .Options.StringOr "time-format" "Jan 02 15:04" }}
+
+                {{ $userID := "" }}
+                {{ $historyRequestURL := "" }}
+                {{ $historyCall := "" }}
+                {{ $usersCall := "" }}
+                {{ $history := "" }}
+
+                {{ if eq $mediaServer "plex" }}
+                  {{ $historyRequestURL = concat $baseURL "/status/sessions/history/all" }}
+                  {{ $historyCall = newRequest $historyRequestURL
+                    | withParameter "limit" $historyLength
+                    | withParameter "sort" "viewedAt:desc"
+                    | withHeader "Accept" "application/json"
+                    | withHeader "X-Plex-Token" $apiKey
+                    | getResponse }}
+
+                  {{ if $historyCall.JSON.Exists "MediaContainer" }}
+                    {{ $history = $historyCall.JSON.Array "MediaContainer.Metadata" }}
+                  {{ else }}
+                    {{ template "errorMsg" (concat "Could not fetch " $mediaServer " API.") }}
+                  {{ end }}
+
+                {{ else if eq $mediaServer "tautulli" }}
+                  {{ $historyRequestURL = concat $baseURL "/api/v2" }}
+                  {{ $historyCall = newRequest $historyRequestURL
+                    | withParameter "apikey" $apiKey
+                    | withParameter "cmd" "get_history"
+                    | withParameter "length" $historyLength
+                    | withParameter "media_type" $mediaTypes
+                    | withHeader "Accept" "application/json"
+                    | getResponse }}
+
+                  {{ if eq $historyCall.Response.StatusCode 200 }}
+                    {{ $history = $historyCall.JSON.Array "response.data.data" }}
+                  {{ else }}
+                    {{ template "errorMsg" (concat "Could not fetch " $mediaServer " API.") }}
+                  {{ end }}
+
+                {{ else if or (eq $mediaServer "jellyfin") (eq $mediaServer "emby") }}
+                  {{ $usersCall = newRequest (concat $baseURL "/Users")
+                    | withParameter "api_key" $apiKey
+                    | withHeader "Accept" "application/json"
+                    | getResponse }}
+
+                  {{ $usersList := $usersCall.JSON.Array "" }}
+                  {{ range $i, $user := $usersList }}
+                    {{ if eq ($user.String "Name") $userName }}
+                      {{ $userID = $user.String "Id" }}
+                      {{ break }}
+                    {{ end }}
+                  {{ end }}
+                  {{ if eq $userID "" }}
+                    {{ template "errorMsg" (concat "User '" $userName "' not found.") }}
+                  {{ end }}
+
+                  {{ $historyRequestURL = concat $baseURL "/Users/" $userID "/Items" }}
+                  {{ $historyCall = newRequest $historyRequestURL
+                    | withParameter "api_key" $apiKey
+                    | withParameter "Limit" $historyLength
+                    | withParameter "IncludeItemTypes" $mediaTypes
+                    | withParameter "Recursive" "true"
+                    | withParameter "isPlayed" "true"
+                    | withParameter "sortBy" "DatePlayed"
+                    | withParameter "sortOrder" "Descending"
+                    | withParameter "Fields" "UserDataLastPlayedDate"
+                    | withHeader "Accept" "application/json"
+                    | getResponse }}
+
+                  {{ $history = $historyCall.JSON.Array "Items" }}
+                {{ end }}
+
+                {{ if and (eq $historyCall.Response.StatusCode 200) (eq (len $history) 0) }}
+                  <p>Nothing has been played. Start streaming something!</p>
+                {{ else }}
+                  <div class="carousel-container show-right-cutoff">
+                    <div class="cards-horizontal carousel-items-container">
+                      {{ range $n, $item := $history }}
+                        {{ $mediaType := "" }}
+                        {{ $isMovie := false }}
+                        {{ $isShows := false }}
+                        {{ $isMusic := false }}
+                        {{ $title := "" }}
+                        {{ $showTitle := "" }}
+                        {{ $showSeason := "" }}
+                        {{ $showEpisode := "" }}
+                        {{ $artist := "" }}
+                        {{ $albumTitle := "" }}
+                        {{ $thumbURL := "" }}
+                        {{ $playedAt := "" }}
+
+                        {{ if eq $mediaServer "plex" }}
+                          {{ $mediaType = $item.String "type" }}
+                          {{ $isMovie = eq $mediaType "movie" }}
+                          {{ $isShows = eq $mediaType "episode" }}
+                          {{ $isMusic = eq $mediaType "track" }}
+                          {{ $title = $item.String "title" }}
+                          {{ if $isShows }}
+                            {{ $showTitle = $item.String "grandparentTitle" }}
+                            {{ $showSeason = $item.String "parentIndex" }}
+                            {{ $showEpisode = $item.String "index" }}
+                          {{ else if $isMusic }}
+                            {{ $artist = $item.String "grandparentTitle" }}
+                            {{ $albumTitle = $item.String "parentTitle" }}
+                          {{ end }}
+                          {{ $thumbID := $item.String "thumb" }}
+                          {{ if or $isShows $isMusic }}
+                            {{ $thumbID = $item.String "parentThumb" }}
+                          {{ end }}
+                          {{ $thumbURL = concat $baseURL $thumbID "?X-Plex-Token=" $apiKey }}
+                          {{ $time := $item.String "viewedAt" }}
+                          {{ if $timeAbsolute }}
+                            {{ $playedAt = $time | parseLocalTime "unix" | formatTime $timeFormat }}
+                          {{ else }}
+                            {{ $playedAt = $time | parseRelativeTime "unix" }}
+                          {{ end }}
+
+                        {{ else if eq $mediaServer "tautulli" }}
+                          {{ $mediaType = $item.String "media_type" }}
+                          {{ $isMovie = eq $mediaType "movie" }}
+                          {{ $isShows = eq $mediaType "episode" }}
+                          {{ $isMusic = eq $mediaType "track" }}
+                          {{ $title = $item.String "title" }}
+                          {{ if $isShows }}
+                            {{ $showTitle = $item.String "grandparent_title" }}
+                            {{ $showSeason = $item.String "parent_media_index" }}
+                            {{ $showEpisode = $item.String "media_index" }}
+                          {{ else if $isMusic }}
+                            {{ $artist = $item.String "grandparent_title" }}
+                            {{ $albumTitle = $item.String "parent_title" }}
+                          {{ end }}
+                          {{ $thumbID := $item.String "thumb" }}
+                          {{ $thumbURL = concat $baseURL "/api/v2?apikey=" $apiKey "&cmd=pms_image_proxy&img=" $thumbID }}
+                          {{ $time := $item.String "date" }}
+                          {{ if $timeAbsolute }}
+                            {{ $playedAt = $time | parseLocalTime "unix" | formatTime $timeFormat }}
+                          {{ else }}
+                            {{ $playedAt = $time | parseRelativeTime "unix" }}
+                          {{ end }}
+
+                        {{ else if or (eq $mediaServer "jellyfin") (eq $mediaServer "emby") }}
+                          {{ $mediaType = $item.String "Type" }}
+                          {{ $isMovie = eq $mediaType "Movie" }}
+                          {{ $isShows = eq $mediaType "Episode" }}
+                          {{ $isMusic = eq $mediaType "Audio" }}
+                          {{ $title = $item.String "Name" }}
+                          {{ if $isShows }}
+                            {{ $showTitle = $item.String "SeriesName" }}
+                            {{ $showSeason = $item.String "ParentIndexNumber" }}
+                            {{ $showEpisode = $item.String "IndexNumber" }}
+                          {{ else if $isMusic }}
+                            {{ $artist = $item.String "AlbumArtist" }}
+                            {{ $albumTitle = $item.String "Album" }}
+                          {{ end }}
+                          {{ $thumbID := $item.String "Id" }}
+                          {{ if $isShows }}
+                            {{ $thumbID = $item.String "SeasonId" }}
+                          {{ end }}
+                          {{ $thumbURL = concat $baseURL "/Items/" $thumbID "/Images/Primary?api_key=" $apiKey }}
+                          {{ $time := $item.String "UserData.LastPlayedDate" }}
+                          {{ if $timeAbsolute }}
+                            {{ $playedAt = $time | parseLocalTime "rfc3339" | formatTime $timeFormat }}
+                          {{ else }}
+                            {{ $playedAt = $time | parseRelativeTime "rfc3339" }}
+                          {{ end }}
+                        {{ end }}
+
+                        {{ $showInfoFormat := concat "Season " $showSeason " Episode " $showEpisode }}
+                        {{ if $isCompact }}
+                          {{ $showInfoFormat = concat "S" $showSeason "E" $showEpisode }}
+                        {{ end }}
+
+                        <div class="card widget-content-frame">
+                          {{ if $showThumbnail }}
+                            <img src="{{ $thumbURL | safeURL }}"
+                              alt="{{ $title }} thumbnail"
+                              loading="lazy"
+                              class="media-server-thumbnail shrink-0"
+                              style="
+                                object-fit: cover;
+                                border-radius: var(--border-radius) var(--border-radius) 0 0;
+                                {{ if eq $thumbAspectRatio "square" }}aspect-ratio: 1;
+                                {{ else if eq $thumbAspectRatio "portrait" }}aspect-ratio: 3/4;
+                                {{ else if eq $thumbAspectRatio "landscape" }}aspect-ratio: 4/3;
+                                {{ else }}aspect-ratio: initial;
+                                {{ end }}
+                              "
+                            />
+                          {{ end }}
+                          <div class="grow padding-inline-widget margin-top-10 margin-bottom-10">
+                            <ul class="flex flex-column justify-evenly margin-bottom-3 {{ if $isSmallColumn }}size-h6{{ end }}" style="height: 100%;">
+                              {{ if $isCompact }}
+                                <ul class="list-horizontal-text flex-nowrap">
+                                  {{ if $showUser }}
+                                    <li class="color-primary text-truncate">{{ $userName }}</li>
+                                  {{ end }}
+                                  {{ if $timeAbsolute }}
+                                    <li class="text-truncate">{{ $playedAt }}</li>
+                                  {{ else }}
+                                    <li class="shrink-0">
+                                      <span {{ $playedAt }}></span>
+                                      {{ if not $showUser }}<span> ago</span>{{ end }}
+                                    </li>
+                                  {{ end }}
+                                </ul>
+                                {{ if $isShows }}
+                                  <ul class="list-horizontal-text flex-nowrap">
+                                    <li class="text-truncate">{{ $showInfoFormat }}</li>
+                                    <li class="text-truncate">{{ $showTitle }}</li>
+                                  </ul>
+                                {{ else if $isMusic }}
+                                  <ul class="list-horizontal-text flex-nowrap">
+                                    <li class="text-truncate">{{ $artist }}</li>
+                                    <li class="text-truncate">{{ $albumTitle }}</li>
+                                  </ul>
+                                {{ end }}
+                                <li class="text-truncate">{{ $title }}</li>
+                              {{ else }}
+                                {{ if $showUser }}
+                                  <li class="color-primary text-truncate">{{ $userName }}</li>
+                                {{ end }}
+                                {{ if $timeAbsolute }}
+                                  <li class="text-truncate">{{ $playedAt }}</li>
+                                {{ else }}
+                                  <li class="text-truncate">
+                                    <span {{ $playedAt }}></span>
+                                    <span> ago</span>
+                                  </li>
+                                {{ end }}
+                                {{ if $isShows }}
+                                  <li class="text-truncate">{{ $showTitle }}</li>
+                                  <li class="text-truncate">{{ $showInfoFormat }}</li>
+                                {{ else if $isMusic }}
+                                  <li class="text-truncate">{{ $artist }}</li>
+                                  <li class="text-truncate">{{ $albumTitle }}</li>
+                                {{ end }}
+                                <li class="text-truncate">{{ $title }}</li>
+                              {{ end }}
+                            </ul>
+                          </div>
+                        </div>
+                      {{ end }}
+                    </div>
+                  </div>
+                {{ end }}
+                {{ end }}
+
+            - type: custom-api
+              title: Continue Listening
+              frameless: true
+              cache: 5m
+              options:
+                base-url: https://audiobookshelf.homelab.local
+                api-key: ${AUDIOBOOKSHELF_KEY}
+                library: "Audiobooks"
+                shelf: "continue-listening"
+                small-column: false
+                show-thumbnail: true
+                thumbnail-aspect-ratio: "portrait"
+              template: |
+                {{ $baseURL := .Options.StringOr "base-url" "" }}
+                {{ $apiKey := .Options.StringOr "api-key" "" }}
+                {{ $library := .Options.StringOr "library" "" }}
+                {{ $shelf := .Options.StringOr "shelf" "" }}
+                {{ $isSmallColumn := .Options.BoolOr "small-column" false }}
+                {{ $thumbAspectRatio := .Options.StringOr "thumbnail-aspect-ratio" "" }}
+                {{ $showThumbnail := .Options.BoolOr "show-thumbnail" false }}
+                {{ $showProgressBar := .Options.BoolOr "progress-bar" true }}
+
+                {{ define "errorMsg" }}
+                  <div class="widget-error-header">
+                    <div class="color-negative size-h3">ERROR</div>
+                    <svg class="widget-error-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"></path>
+                    </svg>
+                  </div>
+                  <p class="break-all">{{ . }}</p>
+                {{ end }}
+
+                {{ if or (eq $baseURL "") (eq $apiKey "") (eq $library "") (eq $shelf "") }}
+                  {{ template "errorMsg" "Some required options are not set." }}
+                {{ else }}
+
+                  {{ $token := concat "Bearer " $apiKey }}
+                  {{ $librariesCall := newRequest (print $baseURL "/api/libraries")
+                      | withHeader "Authorization" $token
+                      | getResponse }}
+                  {{ $libraries := $librariesCall.JSON.Array "libraries" }}
+                  {{ $items := "" }}
+                  {{ range $libraries }}
+                    {{ $libraryName := .String "name" }}
+                    {{ if eq $libraryName $library }}
+                      {{ $libraryId := .String "id" }}
+                      {{ $personalizedViewCall := newRequest (print $baseURL "/api/libraries/" $libraryId "/personalized?include=rssfeed,numEpisodesIncomplete,share")
+                          | withHeader "Authorization" $token
+                          | getResponse }}
+                      {{ $shelfs := $personalizedViewCall.JSON.Array "" }}
+                      {{ range $shelfs }}
+                        {{ $shelfId := .String "id" }}
+                        {{ if eq $shelfId $shelf }}
+                          {{ $items = .Array "entities" }}
+                        {{ end }}
+                      {{ end }}
+                    {{ end }}
+                  {{ end }}
+
+                  {{ if eq (len $items) 0 }}
+                    <p>No items found, start streaming something!</p>
+                  {{ else }}
+                    <div class="carousel-container show-right-cutoff">
+                      <div class="cards-horizontal carousel-items-container">
+                        {{ range $n, $item := $items }}
+                          {{ $mediaType := $item.String "mediaType" }}
+                          {{ $itemID := $item.String "id" }}
+                          {{ $linkURL := print $baseURL "/audiobookshelf/item/" $itemID }}
+                          {{ $thumbURL := print $baseURL "/api/items/" $itemID "/cover?token=" $apiKey }}
+                          {{ $title := "" }}
+                          {{ $subtitle := "" }}
+                          {{ $newEpisodes := 0 }}
+
+                          {{ if eq $mediaType "book" }}
+                            {{ $title = $item.String "media.metadata.title" }}
+                            {{ $subtitle = $item.String "media.metadata.authorName" }}
+                          {{ else if eq $mediaType "podcast" }}
+                            {{ $title = $item.String "recentEpisode.title" }}
+                            {{ $subtitle = $item.String "media.metadata.title" }}
+                            {{ $newEpisodes = $item.Int "numEpisodesIncomplete" }}
+                          {{ end }}
+
+                          {{ $progressPercent := "" }}
+                          {{ if and $showThumbnail (or (eq $shelf "continue-listening") (eq $shelf "listen-again")) }}
+                            {{ if eq $mediaType "book" }}
+                              {{ $getMediaProgressCall := newRequest (print $baseURL "/api/me/progress/" $itemID)
+                                  | withHeader "Authorization" $token
+                                  | getResponse }}
+                              {{ $progress := $getMediaProgressCall.JSON.Float "progress" }}
+                              {{ $progressPercent = printf "%f" (mul 100 $progress) }}
+                            {{ else if eq $mediaType "podcast" }}
+                              {{ $libraryItemID := $item.String "recentEpisode.libraryItemId" }}
+                              {{ $getMediaProgressCall := newRequest (print $baseURL "/api/me/progress/" $libraryItemID)
+                                  | withHeader "Authorization" $token
+                                  | getResponse }}
+                              {{ $progress := $getMediaProgressCall.JSON.Float "progress" }}
+                              {{ $progressPercent = printf "%f" (mul 100 $progress) }}
+                            {{ end }}
+                          {{ end }}
+
+                          <a class="card widget-content-frame" href="{{ $linkURL | safeURL }}">
+                            {{ if $showThumbnail }}
+                              <div style="position: relative;">
+                                <img src="{{ $thumbURL | safeURL }}"
+                                  alt="{{ $title }} thumbnail"
+                                  loading="lazy"
+                                  class="media-server-thumbnail shrink-0"
+                                  style="
+                                    object-fit: fill;
+                                    border-radius: var(--border-radius) var(--border-radius) 0 0;
+                                    width: 100%;
+                                    display: block;
+                                    {{ if eq $thumbAspectRatio "square" }}aspect-ratio: 1;
+                                    {{ else if eq $thumbAspectRatio "portrait" }}aspect-ratio: 2/3;
+                                    {{ else if eq $thumbAspectRatio "landscape" }}aspect-ratio: 16/9;
+                                    {{ else }}aspect-ratio: initial;
+                                    {{ end }}
+                                  "
+                                />
+                                {{ if and ($showProgressBar) (not (eq $progressPercent "")) }}
+                                  <div style="
+                                    position: absolute;
+                                    bottom: 8px;
+                                    left: 8px;
+                                    right: 8px;
+                                    height: 6px;
+                                    border-radius: var(--border-radius);
+                                    overflow: hidden;
+                                    background-color: rgba(255, 255, 255, 0.2);
+                                  ">
+                                    <div style="
+                                      width: {{ print $progressPercent "%" }};
+                                      height: 100%;
+                                      border-radius: var(--border-radius) 0 0 var(--border-radius);
+                                      background-color: var(--color-primary)
+                                    "></div>
+                                  </div>
+                                {{ end }}
+                              </div>
+                            {{ end }}
+                            <div class="grow padding-inline-widget margin-top-10 margin-bottom-10">
+                              <ul class="flex flex-column justify-evenly margin-bottom-3 {{ if $isSmallColumn }}size-h6{{ end }}" style="height: 100%;">
+                                {{ if eq $newEpisodes 0 }}
+                                  <li class="color-primary text-truncate">{{ $title }}</li>
+                                  <li class="text-truncate">{{ $subtitle }}</li>
+                                {{ else }}
+                                  <ul class="list-horizontal-text flex-nowrap">
+                                    <li class="color-primary shrink-0">{{ $newEpisodes }}</li>
+                                    <li class="text-truncate">{{ $subtitle }}</li>
+                                  </ul>
+                                {{ end }}
+                              </ul>
+                            </div>
+                          </a>
+                        {{ end }}
+                      </div>
+                    </div>
+                  {{ end }}
+                {{ end }}
+
+    # ────────────────────────────────────────
+    # DEV
+    # ────────────────────────────────────────
+    - name: Dev
+      columns:
+        - size: full
+          widgets:
+            - type: custom-api
+              title: Forgejo Activity
+              title-url: https://forgejo.homelab.local
+              cache: 5m
+              url: https://forgejo.homelab.local/api/v1/repos/search
+              query:
+                limit: "10"
+              headers:
+                Authorization: "token ${FORGEJO_TOKEN}"
+              template: |
+                <style>
+                .header { display: flex; justify-content: space-between; margin-bottom: 12px; }
+                .repo { font-weight: bold; margin-top: 8px; color: var(--color-accent); }
+                .meta { font-size: 0.8em; color: var(--color-text-secondary); display: flex; justify-content: space-between; }
+                .error { color: var(--color-negative); text-align: center; }
+                </style>
+
+                {{ if ne .Response.StatusCode 200 }}
+                <div class="error">
+                    Error: {{ .Response.StatusCode }} - {{ .Response.Status }}
+                </div>
+                {{ else }}
+                {{ $data := .JSON }}
+                {{ $repos := $data.Array "data" }}
+
+                <div class="header">
+                    <div>Forgejo Server</div>
+                    {{ if gt (len $repos) 0 }}
+                    <div>{{ (index $repos 0).String "owner.login" }}</div>
+                    {{ end }}
+                </div>
+
+                {{ if eq (len $repos) 0 }}
+                    <div class="error">No repositories found</div>
+                {{ else }}
+                    {{ range $repo := $repos }}
+                    <div class="repo">{{ $repo.String "full_name" }}</div>
+                    <div class="meta">Updated: {{ ($repo.String "updated_at" | parseTime "2006-01-02T15:04:05Z07:00").Format "2006-01-02 15:04:05" }}</div>
+                    {{ end }}
+                {{ end }}
+                {{ end }}
+
+    # ────────────────────────────────────────
+    # GAMING
+    # ────────────────────────────────────────
+    - name: Gaming
+      columns:
+        - size: full
+          widgets:
+            - type: custom-api
+              title: Steam Top Sellers
+              cache: 12h
+              url: https://store.steampowered.com/api/featuredcategories?cc=us
+              template: |
+                <ul class="list list-gap-10 collapsible-container" data-collapse-after="15">
+                    {{ range .JSON.Array "top_sellers.items" }}
+                    {{ if ne (.String "name") "Steam Deck" }}
+                    <li style="display: flex; align-items: center; gap: 1rem;">
+                        <img src="{{ .String "small_capsule_image" }}" alt="{{ .String "name" }}"
+                            style="width: 120px; height: auto; border-radius: 4px; flex-shrink: 0;">
+                        <div style="min-width: 0;">
+                            <a class="size-h4 color-highlight text-truncate" style="display: block;"
+                                href="https://store.steampowered.com/app/{{ .Int "id" }}/">
+                                {{ .String "name" }}
+                            </a>
+                            <ul class="list-horizontal-text">
+                                <li>{{ div (.Int "final_price" | toFloat) 100 | printf "$%.2f" }}</li>
+                                {{ $discount := .Int "discount_percent" }}
+                                {{ if gt $discount 0 }}
+                                <li{{ if ge $discount 40 }} class="color-positive"{{ end }}>
+                                    {{ $discount }}% off
+                                </li>
+                                {{ end }}
+                            </ul>
+                        </div>
+                    </li>
+                    {{ end }}
+                    {{ end }}
+                </ul>
+
+        - size: full
+          widgets:
+            - type: custom-api
+              title: Steam Specials
+              cache: 12h
+              url: https://store.steampowered.com/api/featuredcategories?cc=us
+              template: |
+                <ul class="list list-gap-10 collapsible-container" data-collapse-after="5">
+                {{ range .JSON.Array "specials.items" }}
+                  {{ $header := .String "header_image" }}
+                  {{ $urlPrefix := "https://store.steampowered.com/sub/" }}
+                  {{ if findMatch "/steam/apps/" $header }}
+                    {{ $urlPrefix = "https://store.steampowered.com/app/" }}
+                  {{ end }}
+                  <li>
+                    <a class="size-h4 color-highlight block text-truncate" href="{{ $urlPrefix }}{{ .Int "id" }}/">{{ .String "name" }}</a>
+                    <ul class="list-horizontal-text">
+                      <li>{{ .Int "final_price" | toFloat | mul 0.01 | printf "$%.2f" }}</li>
+                      {{ $discount := .Int "discount_percent" }}
+                      <li{{ if ge $discount 40 }} class="color-positive"{{ end }}>{{ $discount }}% off</li>
+                    </ul>
+                  </li>
+                {{ end }}
+                </ul>
+
+    # ────────────────────────────────────────
+    # LINKS
+    # ────────────────────────────────────────
+    - name: Links
+      width: slim
+      center-vertically: true
+      columns:
+        - size: full
+          widgets:
+            - type: search
+              autofocus: true
+
+            - type: custom-api
+              title: Karakeep Dashboard
+              cache: 30m
+              method: GET
+              options:
+                limit: 10
+                collapse-after: 6
+                in-new-tab: true
+              headers:
+                Authorization: Bearer ${KARAKEEP_API_KEY}
+                Accept: application/json
+              url: https://karakeep.homelab.local/api/v1/users/me/stats
+              template: |
+                <div class="flex justify-center gap-10 text-center" style="margin-bottom:1rem;">
+                  <div>
+                    <div class="color-highlight size-h3">{{ .JSON.Int "numBookmarks" | formatNumber }}</div>
+                    <div class="size-h6">BOOKMARKS</div>
+                  </div>
+                  <div style="width:1px; height:40px; background-color: rgba(255,255,255,0.2);"></div>
+                  <div>
+                    <div class="color-highlight size-h3">{{ .JSON.Int "numTags" | formatNumber }}</div>
+                    <div class="size-h6">TAGS</div>
+                  </div>
+                </div>
+
+                {{ $limit := .Options.IntOr "limit" 10 }}
+                {{ $collapseAfter := .Options.IntOr "collapse-after" 6 }}
+                {{ $newTab := .Options.BoolOr "in-new-tab" false }}
+                {{ $urlBookmarks := printf "https://karakeep.homelab.local/api/v1/bookmarks?limit=%d" $limit }}
+
+                {{ $respBookmarks := newRequest $urlBookmarks
+                  | withHeader "Authorization" (printf "Bearer %s" "${KARAKEEP_API_KEY}")
+                  | withHeader "Accept" "application/json"
+                  | getResponse }}
+                {{ $bookmarks := $respBookmarks.JSON.Array "bookmarks" }}
+
+                <ul class="list list-gap-10 collapsible-container" data-collapse-after="{{ $collapseAfter }}" style="max-width: 100%; overflow-x: hidden; font-size: 1em; line-height: 1.3em; padding-left: 0; margin: 0;">
+                  {{ range $b := $bookmarks }}
+                    {{ $content := $b.Get "content" }}
+                    {{ $title := $content.String "title" }}
+                    {{ $url := $content.String "url" }}
+                    {{ $maxLength := 60 }}
+                    {{ $displayTitle := $title }}
+                    {{ if gt (len $title) $maxLength }}
+                      {{ $displayTitle = print (slice $title 0 $maxLength) "…" }}
+                    {{ end }}
+                    <li style="list-style: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                      <a href="{{ $url }}"
+                         title="{{ $title }}"
+                         {{ if $newTab }} target="_blank" rel="noopener"{{ end }}
+                         class="color-highlight"
+                         style="text-decoration: none; cursor: pointer;">
+                        {{ $displayTitle }}
+                      </a>
+                    </li>
+                  {{ end }}
+                </ul>
 
             - type: bookmarks
               groups:
