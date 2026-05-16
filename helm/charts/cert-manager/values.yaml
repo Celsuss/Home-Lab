@@ -8,3 +8,19 @@ cert-manager:
     limits:
       cpu: 200m
       memory: 256Mi
+
+trust-manager:
+  crds:
+    enabled: true
+  namespace: cert-manager
+  secretTargets:
+    enabled: true
+    authorizedSecrets:
+      - homelab-ca-tls
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
