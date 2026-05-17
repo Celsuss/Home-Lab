@@ -36,14 +36,14 @@ steps:
           chart="helm/charts/$name"
           [ -d "$chart" ] || continue
           helm template "$name" "$chart" --namespace default \
-            > ".ci-reports/rendered/${name}.yaml" 2>/dev/null || \
-            echo "# Failed to render $name" > ".ci-reports/rendered/${name}.yaml"
+            > ".ci-reports/rendered/$name.yaml" 2>/dev/null || \
+            echo "# Failed to render $name" > ".ci-reports/rendered/$name.yaml"
         done
 
   - name: kubeconform
     image: ghcr.io/yannh/kubeconform:latest-alpine
     commands:
-      - kubeconform -ignore-missing-schemas -summary .ci-reports/rendered/
+      - /kubeconform -ignore-missing-schemas -summary .ci-reports/rendered/
 
   - name: kubesec
     image: kubesec/kubesec:v2

@@ -45,8 +45,8 @@ steps:
           [ -d "$chart" ] || continue
           helm dependency update "$chart" 2>/dev/null || true
           helm template "$name" "$chart" --namespace default \
-            > ".ci-reports/rendered/${name}.yaml" 2>/dev/null || \
-            echo "# Failed to render $name" > ".ci-reports/rendered/${name}.yaml"
+            > ".ci-reports/rendered/$name.yaml" 2>/dev/null || \
+            echo "# Failed to render $name" > ".ci-reports/rendered/$name.yaml"
         done || true
 
   - name: kubeconform
@@ -54,7 +54,7 @@ steps:
     failure: ignore
     commands:
       - |
-        kubeconform -ignore-missing-schemas -summary .ci-reports/rendered/ \
+        /kubeconform -ignore-missing-schemas -summary .ci-reports/rendered/ \
           > .ci-reports/kubeconform.txt 2>&1 || true
 
   - name: kubesec
@@ -62,13 +62,17 @@ steps:
     failure: ignore
     commands:
       - |
+        found=0
         {
           for f in .ci-reports/rendered/*.yaml; do
+            [ -f "$f" ] || continue
             [ -s "$f" ] || continue
+            found=1
             echo "=== $(basename $f .yaml) ==="
             kubesec scan "$f" 2>/dev/null
             echo ""
           done
+          [ "$found" = "0" ] && echo "_No rendered files to scan_"
         } > .ci-reports/kubesec.txt 2>&1 || true
 
   - name: trivy
