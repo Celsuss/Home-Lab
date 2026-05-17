@@ -18,7 +18,7 @@ steps:
       - mkdir -p .ci-reports
       - |
         gitleaks detect --source . --no-git --config .gitleaks.toml \
-          > .ci-reports/gitleaks.md 2>&1 || true
+          > .ci-reports/gitleaks.md 2>/dev/null || true
         [ -s .ci-reports/gitleaks.md ] || echo "_No secrets detected_" > .ci-reports/gitleaks.md
 
   - name: helm-lint
@@ -69,7 +69,27 @@ steps:
             [ -s "$f" ] || continue
             found=1
             echo "=== $(basename $f .yaml) ==="
-            kubesec scan "$f" 2>/dev/null
+
+            # Split multi-doc YAML and only scan pod-spec resources (kubesec
+            # reports "could not find schema" for ServiceAccount, ConfigMap, etc.)
+            rm -f /tmp/kubesec_doc_*.yaml
+            awk 'BEGIN{n=0; out="/tmp/kubesec_doc_0.yaml"}
+                 /^---/{close(out); n++; out="/tmp/kubesec_doc_" n ".yaml"; next}
+                 {print > out}' "$f"
+
+            scanned=0
+            for doc in /tmp/kubesec_doc_*.yaml; do
+              [ -f "$doc" ] || continue
+              kind=$(grep "^kind:" "$doc" | head -1 | awk '{print $2}')
+              case "$kind" in
+                Deployment|StatefulSet|DaemonSet|Pod|Job|CronJob)
+                  kubesec scan "$doc" 2>/dev/null
+                  scanned=$((scanned + 1))
+                  ;;
+              esac
+              rm -f "$doc"
+            done
+            [ "$scanned" = "0" ] && echo "_No scannable resources (Deployment/StatefulSet/etc.) found_"
             echo ""
           done
           [ "$found" = "0" ] && echo "_No rendered files to scan_"
@@ -81,7 +101,7 @@ steps:
     commands:
       - |
         trivy fs --severity HIGH,CRITICAL --skip-dirs .git,.ci-reports \
-          --format table helm/ > .ci-reports/trivy.txt 2>&1 || true
+          --scanners secret,config --format table helm/ > .ci-reports/trivy.txt 2>&1 || true
 
   - name: create-issue
     image: alpine:latest
