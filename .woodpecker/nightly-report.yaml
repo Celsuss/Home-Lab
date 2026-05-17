@@ -48,7 +48,7 @@ steps:
         done || true
 
   - name: kubeconform
-    image: ghcr.io/yannh/kubeconform:latest-musl
+    image: ghcr.io/yannh/kubeconform:latest-alpine
     failure: ignore
     commands:
       - |

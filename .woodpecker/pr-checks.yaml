@@ -41,7 +41,7 @@ steps:
         done
 
   - name: kubeconform
-    image: ghcr.io/yannh/kubeconform:latest-musl
+    image: ghcr.io/yannh/kubeconform:latest-alpine
     commands:
       - kubeconform -ignore-missing-schemas -summary .ci-reports/rendered/
 
