@@ -4,6 +4,12 @@ when:
     cron: nightly
   - event: manual
 
+clone:
+  git:
+    image: woodpeckerci/plugin-git
+    settings:
+      git_ssl_no_verify: "true"
+
 steps:
   - name: gitleaks
     image: zricethezav/gitleaks:latest

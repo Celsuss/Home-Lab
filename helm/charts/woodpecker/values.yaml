@@ -8,10 +8,18 @@ woodpecker:
       WOODPECKER_HOST: https://woodpecker.homelab.local
       WOODPECKER_FORGEJO: "true"
       WOODPECKER_FORGEJO_URL: https://forgejo.homelab.local
-      WOODPECKER_FORGEJO_SKIP_VERIFY: "true"
       WOODPECKER_ADMIN: celsuss
     extraSecretNamesForEnvFrom:
       - woodpecker-secret
+    extraVolumes:
+      - name: homelab-ca-bundle
+        configMap:
+          name: homelab-ca-bundle
+    extraVolumeMounts:
+      - name: homelab-ca-bundle
+        mountPath: /etc/ssl/certs/ca-certificates.crt
+        subPath: ca-certificates.crt
+        readOnly: true
     ingress:
       enabled: true
       ingressClassName: traefik
@@ -41,6 +49,15 @@ woodpecker:
       WOODPECKER_BACKEND_K8S_VOLUME_SIZE: 1G
     extraSecretNamesForEnvFrom:
       - woodpecker-secret
+    extraVolumes:
+      - name: homelab-ca-bundle
+        configMap:
+          name: homelab-ca-bundle
+    extraVolumeMounts:
+      - name: homelab-ca-bundle
+        mountPath: /etc/ssl/certs/ca-certificates.crt
+        subPath: ca-certificates.crt
+        readOnly: true
     replicaCount: 1
 
 tailscale:

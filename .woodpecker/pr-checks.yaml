@@ -4,6 +4,12 @@ when:
     branch: main
   - event: pull_request
 
+clone:
+  git:
+    image: woodpeckerci/plugin-git
+    settings:
+      git_ssl_no_verify: "true"
+
 steps:
   - name: gitleaks
     image: zricethezav/gitleaks:latest
