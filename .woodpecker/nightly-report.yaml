@@ -34,6 +34,16 @@ steps:
           echo ""
         done > .ci-reports/helm-lint.txt || true
 
+  - name: helm-deps
+    image: alpine/helm:latest
+    failure: ignore
+    commands:
+      - |
+        for chart in helm/charts/*/; do
+          echo "### $(basename $chart)"
+          helm dependency update "$chart" 2>&1 || echo "  (dep update failed)"
+        done > .ci-reports/helm-deps.txt 2>&1 || true
+
   - name: helm-render
     image: alpine/helm:latest
     failure: ignore
@@ -109,14 +119,13 @@ steps:
         } > .ci-reports/kubesec.txt 2>&1 || true
 
   - name: trivy
-    image: aquasec/trivy:latest
+    image: aquasec/trivy:0.70.0
     failure: ignore
     commands:
       - |
-        trivy fs --severity HIGH,CRITICAL --skip-dirs .git,.ci-reports \
+        trivy fs --severity MEDIUM,HIGH,CRITICAL --skip-dirs .git,.ci-reports \
           --scanners misconfig,secret \
-          --skip-check KSV0068 \
-          --format table helm/ > .ci-reports/trivy.txt 2>&1 || true
+          --format table helm/charts/ > .ci-reports/trivy.txt 2>&1 || true
 
   - name: create-issue
     image: alpine:latest
