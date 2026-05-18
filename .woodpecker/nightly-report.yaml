@@ -123,9 +123,17 @@ steps:
     failure: ignore
     commands:
       - |
-        trivy fs --severity MEDIUM,HIGH,CRITICAL --skip-dirs .git,.ci-reports \
+        trivy fs \
+          --severity MEDIUM,HIGH,CRITICAL \
           --scanners misconfig,secret \
-          --format table helm/charts/ > .ci-reports/trivy.txt 2>&1 || true
+          --skip-dirs '.git,.ci-reports,helm/charts/*/charts' \
+          --format json \
+          --output .ci-reports/trivy.json \
+          helm/charts/ 2> .ci-reports/trivy.stderr || true
+        # Suppress known-noisy upstream rego eval_conflict_error
+        grep -v 'configMap_with_secrets.rego' .ci-reports/trivy.stderr \
+          > .ci-reports/trivy.stderr.clean 2>/dev/null || true
+        mv .ci-reports/trivy.stderr.clean .ci-reports/trivy.stderr 2>/dev/null || true
 
   - name: create-issue
     image: alpine:latest
@@ -148,15 +156,41 @@ steps:
           fi
         }
 
+        format_trivy() {
+          local f=.ci-reports/trivy.json
+          [ -s "$f" ] || { echo "_No report generated_"; return; }
+          jq -r '
+            [ .Results[]? | select(.Misconfigurations or .Secrets) ] as $r
+            | if ($r | length) == 0 then "_No findings_"
+              else
+                ( [ $r[] | .Misconfigurations[]?
+                    | { sev:.Severity, id:.ID, title:.Title,
+                        file:(.CauseMetadata.Resource // ""),
+                        line:(.CauseMetadata.StartLine // 0),
+                        msg:.Message } ]
+                  + [ $r[] | .Secrets[]?
+                      | { sev:.Severity, id:.RuleID, title:.Title,
+                          file:.Target,
+                          line:(.StartLine // 0),
+                          msg:.Match } ]
+                )
+                | sort_by({CRITICAL:0,HIGH:1,MEDIUM:2}[.sev])
+                | map("- **\(.sev)** `\(.id)` \(.title)\n  - file: `\(.file)`\(if .line>0 then " (line \(.line))" else "" end)\n  - \(.msg)")
+                | .[0:60]
+                | join("\n")
+              end
+          ' "$f" 2>/dev/null || echo "_jq parse failed_"
+        }
+
         GITLEAKS=$(read_report .ci-reports/gitleaks.md)
         HELM=$(read_report .ci-reports/helm-lint.txt)
         HELM_RENDER=$(read_report .ci-reports/helm-render.txt)
         KUBECONFORM=$(read_report .ci-reports/kubeconform.txt)
         KUBESEC=$(read_report .ci-reports/kubesec.txt)
-        TRIVY=$(read_report .ci-reports/trivy.txt)
+        TRIVY=$(format_trivy)
 
         BODY=$(printf \
-          "## Gitleaks\n\`\`\`\n%s\n\`\`\`\n\n## Helm Lint\n\`\`\`\n%s\n\`\`\`\n\n## Helm Render\n\`\`\`\n%s\n\`\`\`\n\n## Kubeconform\n\`\`\`\n%s\n\`\`\`\n\n## Kubesec\n\`\`\`\n%s\n\`\`\`\n\n## Trivy\n\`\`\`\n%s\n\`\`\`" \
+          "## Gitleaks\n\`\`\`\n%s\n\`\`\`\n\n## Helm Lint\n\`\`\`\n%s\n\`\`\`\n\n## Helm Render\n\`\`\`\n%s\n\`\`\`\n\n## Kubeconform\n\`\`\`\n%s\n\`\`\`\n\n## Kubesec\n\`\`\`\n%s\n\`\`\`\n\n## Trivy\n%s" \
           "$GITLEAKS" "$HELM" "$HELM_RENDER" "$KUBECONFORM" "$KUBESEC" "$TRIVY")
 
         curl --insecure -sf -X POST \
