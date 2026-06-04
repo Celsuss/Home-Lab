@@ -68,6 +68,5 @@ format-check:
 
 # Install git hooks from scripts/hooks/ into .git/hooks/
 install-hooks:
-    cp scripts/hooks/pre-commit .git/hooks/pre-commit
-    chmod +x .git/hooks/pre-commit
+    pre-commit install
     echo "Git hooks installed"

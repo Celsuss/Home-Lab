@@ -23,6 +23,9 @@ k3s-ca.crt
 # Secrets
 .sops.yaml
 
+# Python
+__pycache__/
+
 # Ansible
 ansible/secrets/*
 *.retry
@@ -30,9 +33,22 @@ ansible/secrets/*
 
 # Direnv
 .envrc
+.env
 
 # Binaries
 *.tgz
 
 # Data
 output.csv
+
+# Repomix output
+repomix-output.xml
+repomix-output.md
+repomix.config.json
+
+# AI
+.agent-shell/
+.claude/
+.claudeignore/
+docs/plans/
+docs/superpowers/
