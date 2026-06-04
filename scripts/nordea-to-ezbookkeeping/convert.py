@@ -68,7 +68,7 @@ def determine_type(amount: Decimal) -> str:
 
 def build_comment(row: dict) -> str:
     """Combine Namn and Rubrik into a readable comment, skipping empty values."""
-    parts = [row.get("Namn", ""), row.get("Rubrik", "")]
+    parts = [row.get("Mottagare", ""), row.get("Namn", ""), row.get("Rubrik", "")]
     non_empty = [p.strip() for p in parts if p.strip()]
     return " - ".join(non_empty)
 
@@ -80,10 +80,10 @@ def build_comment(row: dict) -> str:
 def _field_value(row: dict, field: str) -> str:
     """Return the value of the requested Nordea field (lowercased for matching)."""
     mapping = {
-        "namn": row.get("Namn", ""),
-        "mottagare": row.get("Mottagare", ""),
-        "rubrik": row.get("Rubrik", ""),
-        "avsändare": row.get("Avsändare", ""),
+        "namn":      (row.get("Namn") or ""),
+        "mottagare": (row.get("Mottagare") or ""),
+        "rubrik":    (row.get("Rubrik") or ""),
+        "avsändare": (row.get("Avsändare") or ""),
     }
     return mapping.get(field.lower(), "").lower()
 
@@ -121,7 +121,7 @@ def apply_rules(rules: list, row: dict) -> tuple[str, str]:
 # Conversion
 # ---------------------------------------------------------------------------
 
-def convert(input_path: Path, output_path: Path, categories_path: Path) -> None:
+def convert(input_path: Path, output_path: Path, categories_path: Path, uncategorized_only: bool = False) -> None:
     config = load_categories(categories_path)
     rules = config["rules"]
     default_category = config["default_category"]
@@ -130,6 +130,7 @@ def convert(input_path: Path, output_path: Path, categories_path: Path) -> None:
 
     output_rows = []
     skipped = 0
+    skipped_pending = 0
 
     with open(input_path, encoding="utf-8-sig", newline="") as f:
         reader = csv.DictReader(f, delimiter=";")
@@ -139,8 +140,14 @@ def convert(input_path: Path, output_path: Path, categories_path: Path) -> None:
 
         for line_num, row in enumerate(reader, start=2):
             # Skip completely empty rows
-            if not any(v.strip() for v in row.values()):
+            if not any((v or "").strip() for v in row.values()):
                 skipped += 1
+                continue
+
+            # Skip pending (not yet settled) transactions
+            booking_date = (row.get("Bokföringsdag") or "").strip()
+            if booking_date.lower() == "reserverat":
+                skipped_pending += 1
                 continue
 
             raw_amount = row.get("Belopp", "").strip()
@@ -174,6 +181,9 @@ def convert(input_path: Path, output_path: Path, categories_path: Path) -> None:
                 "Comment": comment,
             })
 
+    if uncategorized_only:
+        output_rows = [r for r in output_rows if r["Category"] == default_category]
+
     with open(output_path, "w", encoding="utf-8", newline="") as f:
         fieldnames = ["Time", "Type", "Category", "Sub Category", "Account", "Amount", "Comment"]
         writer = csv.DictWriter(f, fieldnames=fieldnames)
@@ -182,9 +192,11 @@ def convert(input_path: Path, output_path: Path, categories_path: Path) -> None:
 
     uncategorized = sum(1 for r in output_rows if r["Category"] == default_category)
     print(f"Converted {len(output_rows)} transactions → {output_path}")
+    if skipped_pending:
+        print(f"  Skipped: {skipped_pending} pending (\"Reserverat\") rows — re-import after they settle")
     if skipped:
         print(f"  Skipped: {skipped} rows (empty or unparseable)")
-    if uncategorized:
+    if uncategorized and not uncategorized_only:
         print(f"  Uncategorized: {uncategorized} rows — update categories.yaml to reduce this")
 
 
@@ -204,6 +216,11 @@ def main() -> None:
         default=Path(__file__).parent / "categories.yaml",
         help="Path to categories.yaml (default: same directory as this script)",
     )
+    parser.add_argument(
+        "--uncategorized-only",
+        action="store_true",
+        help="Only export rows that could not be categorized (Category == default).",
+    )
     args = parser.parse_args()
 
     if not args.input.exists():
@@ -213,7 +230,7 @@ def main() -> None:
         print(f"Error: categories file not found: {args.categories}", file=sys.stderr)
         sys.exit(1)
 
-    convert(args.input, args.output, args.categories)
+    convert(args.input, args.output, args.categories, uncategorized_only=args.uncategorized_only)
 
 
 if __name__ == "__main__":
