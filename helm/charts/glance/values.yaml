@@ -447,6 +447,9 @@ config:
                 - title: Immich
                   url: https://immich.homelab.local/
                   icon: sh:immich
+                - title: Navidrome
+                  url: https://navidrome.homelab.local/
+                  icon: sh:navidrome
 
             - type: custom-api
               title: Beszel Metrics
