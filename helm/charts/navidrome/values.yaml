@@ -1,0 +1,63 @@
+---
+replicaCount: 1
+namespace: media
+name: navidrome
+
+image:
+  repository: deluan/navidrome
+  pullPolicy: IfNotPresent
+  tag: "0.61.2"
+
+podSecurityContext: {}
+
+securityContext: {}
+
+service:
+  type: ClusterIP
+  port: 4533
+
+ingress:
+  enabled: true
+  className: "traefik"
+  host: navidrome.homelab.local
+  annotations:
+    cert-manager.io/cluster-issuer: homelab-ca
+  tls:
+    - secretName: navidrome-tls
+      hosts:
+        - navidrome.homelab.local
+
+persistence:
+  storageClass: local-path
+  media:
+    music:
+      hostPath: /home/celsuss/Music
+  data:
+    storage: 4Gi
+
+env:
+  ND_MUSICFOLDER: /music
+  ND_DATAFOLDER: /data
+  ND_LOGLEVEL: info
+  ND_SCANSCHEDULE: "@every 1h"
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 1Gi
+
+livenessProbe:
+  httpGet:
+    path: /ping
+    port: http
+readinessProbe:
+  httpGet:
+    path: /ping
+    port: http
+
+tailscale:
+  enabled: true
+  serviceName: navidrome
