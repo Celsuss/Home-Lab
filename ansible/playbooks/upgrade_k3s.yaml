@@ -1,0 +1,20 @@
+---
+- name: Upgrade K3s on server nodes
+  hosts: k3s_servers
+  become: yes
+  serial: 1
+  tasks:
+    - name: Re-run K3s installer with pinned version (server)
+      ansible.builtin.shell: curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="server" sh -
+      environment:
+        INSTALL_K3S_VERSION: "{{ k3s_version }}"
+
+- name: Upgrade K3s on agent nodes
+  hosts: k3s_agents
+  become: yes
+  serial: 1
+  tasks:
+    - name: Re-run K3s installer with pinned version (agent)
+      ansible.builtin.shell: curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="agent" sh -
+      environment:
+        INSTALL_K3S_VERSION: "{{ k3s_version }}"

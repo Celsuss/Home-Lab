@@ -1,4 +1,4 @@
-# site.yml
+# site.yaml
 ---
 - name: Baseline all Arch Linux nodes
   hosts: k3s_cluster
@@ -17,6 +17,8 @@
 
 - name: Perform post-installation and GitOps bootstrapping
   hosts: k3s_servers
+  # gather_facts is off because this play only reads inventory vars
+  # (e.g. ansible_host). Re-enable if you start using gathered facts.
   gather_facts: no
   roles:
     - role: post-install

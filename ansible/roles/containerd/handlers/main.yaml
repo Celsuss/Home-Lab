@@ -1,4 +1,4 @@
-# roles/containerd/handlers/main.yml
+# roles/containerd/handlers/main.yaml
 
 - name: Restart containerd
   ansible.builtin.systemd:

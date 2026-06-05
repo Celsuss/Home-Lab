@@ -1,4 +1,4 @@
-# roles/containerd/tasks/nvidia.yml
+# roles/containerd/tasks/nvidia.yaml
 
 - name: Install NVIDIA drivers
   community.general.pacman:
@@ -17,8 +17,8 @@
     mode: '0755'
 
 - name: Generate default containerd config if it does not exist
-  ansible.builtin.command:
-    cmd: containerd config default > /etc/containerd/config.toml
+  ansible.builtin.shell: containerd config default > /etc/containerd/config.toml
+  args:
     creates: /etc/containerd/config.toml
 
 - name: Configure containerd to use the NVIDIA runtime

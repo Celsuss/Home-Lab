@@ -1,4 +1,4 @@
-# roles/k3s/tasks/install.yml
+# roles/k3s/tasks/install.yaml
 
 - name: Install K3s on server nodes
   ansible.builtin.shell: >
@@ -7,6 +7,8 @@
     sh -
   args:
     creates: /usr/local/bin/k3s
+  environment:
+    INSTALL_K3S_VERSION: "{{ k3s_version }}"
   when: inventory_hostname in groups['k3s_servers']
 
 - name: Install K3s on agent nodes
@@ -16,4 +18,6 @@
     sh -
   args:
     creates: /usr/local/bin/k3s
+  environment:
+    INSTALL_K3S_VERSION: "{{ k3s_version }}"
   when: inventory_hostname in groups['k3s_agents']

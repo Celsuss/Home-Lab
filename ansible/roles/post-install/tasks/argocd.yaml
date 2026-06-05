@@ -1,17 +1,37 @@
-# roles/post-install/tasks/argocd.yml
-- name: Ensure argocd namespace exists
-  community.kubernetes.k8s:
-    # TODO Update namesapce name
-    name: argocd
+# roles/post-install/tasks/argocd.yaml
+# Bootstraps ArgoCD from the in-repo chart at helm/charts/argo-cd. Runs on the
+# Ansible controller (kubeconfig + helm binary live there, not on the cluster
+# nodes). Requires: `helm` in PATH and the `kubernetes` Python package on the
+# controller (already pulled in by the kubernetes.core collection).
+#
+# Follow-up: the chart references a `sops-age-key` Secret and the legacy
+# deploy script (helm/scripts/deploy-argo-cd.sh) also creates a `k3s-ca-cert`
+# Secret in the argo-cd namespace. Both are still bootstrapped manually
+# pending the Vault-based secrets migration (see CLAUDE.md).
+
+- name: Ensure argo-cd namespace exists
+  kubernetes.core.k8s:
+    name: argo-cd
     api_version: v1
     kind: Namespace
     state: present
+  delegate_to: localhost
+  run_once: true
 
-# TODO Use my custom argo-cd helm chart.
-- name: Apply ArgoCD installation manifest
-  community.kubernetes.k8s:
-    state: present
-    src: https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
-    namespace: argocd
-    wait: yes
-    wait_timeout: 300
+- name: Build argo-cd chart dependencies
+  ansible.builtin.command:
+    cmd: helm dependency build {{ playbook_dir }}/../../helm/charts/argo-cd
+    creates: "{{ playbook_dir }}/../../helm/charts/argo-cd/charts"
+  delegate_to: localhost
+  run_once: true
+
+- name: Install argo-cd via Helm chart
+  kubernetes.core.helm:
+    release_name: argo-cd
+    chart_ref: "{{ playbook_dir }}/../../helm/charts/argo-cd"
+    release_namespace: argo-cd
+    values_files:
+      - "{{ playbook_dir }}/../../helm/charts/argo-cd/values.yaml"
+    wait: true
+  delegate_to: localhost
+  run_once: true

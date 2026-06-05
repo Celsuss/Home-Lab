@@ -1,9 +1,12 @@
-# roles/common/tasks/main.yml
+# roles/common/tasks/main.yaml
 
 - name: Update and upgrade all pacman packages
   community.general.pacman:
     update_cache: yes
     upgrade: yes
+  tags:
+    - upgrade
+    - never
 
 - name: Install essential system packages
   community.general.pacman:
@@ -17,20 +20,6 @@
       - yay  # AUR helper, installed via AUR in a later step
       - openssh
     state: present
-
-- name: Create a non-root administrative user
-  ansible.builtin.user:
-    name: homelab_admin
-    groups: wheel
-    append: yes
-    create_home: yes
-    shell: /bin/bash
-
-- name: Deploy SSH public key for the admin user
-  ansible.builtin.authorized_key:
-    user: homelab_admin
-    state: present
-    key: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
 
 - name: Allow 'wheel' group to have passwordless sudo
   ansible.builtin.lineinfile:

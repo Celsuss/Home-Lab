@@ -28,6 +28,7 @@ __pycache__/
 
 # Ansible
 ansible/secrets/*
+!ansible/secrets/.gitkeep
 *.retry
 .aider*
 

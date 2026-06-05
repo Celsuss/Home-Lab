@@ -1,4 +1,4 @@
-# roles/common/tasks/aur.yml
+# roles/common/tasks/aur.yaml
 
 - name: Ensure group "aur_builder" exists
   ansible.builtin.group:
@@ -10,7 +10,7 @@
     name: aur_builder
     system: yes
     create_home: yes
-    group: wheel
+    group: aur_builder
 
 - name: Allow "aur_builder" user to run pacman without a password
   ansible.builtin.lineinfile:

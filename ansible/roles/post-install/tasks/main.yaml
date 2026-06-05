@@ -1,4 +1,4 @@
-# roles/post-install/tasks/main.yml
+# roles/post-install/tasks/main.yaml
 
 - name: Fetch the kubeconfig file from the master node
   ansible.builtin.fetch:
