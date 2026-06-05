@@ -1,0 +1,7 @@
+---
+apiVersion: v2
+name: gateway-api-crds
+description: Vendored Gateway API CRDs (v1.1.0 experimental channel) pinned because k8s-gateway v0.4.0 requires v1alpha2 GRPCRoute
+type: application
+version: 0.1.0
+appVersion: "1.1.0"
