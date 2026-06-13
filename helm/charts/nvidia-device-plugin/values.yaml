@@ -11,6 +11,14 @@ nvidia-device-plugin:
   # can talk to the NVIDIA container runtime.
   runtimeClassName: nvidia
 
+  # NOTE: the upstream chart's default DaemonSet nodeAffinity requires a GPU feature
+  # label (nvidia.com/gpu.present / feature.node.kubernetes.io/pci-10de.present) that
+  # is normally stamped by Node Feature Discovery / the GPU Operator. This cluster
+  # runs neither, so the GPU node must carry `nvidia.com/gpu.present=true` itself
+  # (set as a k3s node-label via Ansible — see roles/k3s/templates/config.yaml.j2).
+  # Without it the DaemonSet resolves to desiredNumberScheduled=0 and the node
+  # advertises nvidia.com/gpu=0.
+
   # Match the upstream image already running in the cluster.
   image:
     tag: v0.17.1

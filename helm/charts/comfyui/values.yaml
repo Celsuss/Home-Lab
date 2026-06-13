@@ -8,7 +8,9 @@ image:
   # comfy user via WANTED_UID/WANTED_GID and bootstraps a venv on first run).
   repository: mmartial/comfyui-nvidia-docker
   pullPolicy: IfNotPresent
-  tag: "latest"
+  # Pin to a dated build, not bare "latest" — a "latest" entrypoint change is
+  # what broke the pod (it now starts as the comfytoo user, not root).
+  tag: "ubuntu24_cuda12.9-20260605"
 
 serviceAccount:
   create: true
@@ -29,12 +31,13 @@ env:
 podSecurityContext:
   fsGroup: 1000
 
-# The entrypoint starts as root to adjust the comfy user, then drops privileges
-# itself — so we must allow it to start as root (mirrors the ollama pattern).
+# The image starts as its built-in "comfytoo" user (UID/GID 1025), which uses
+# sudo to remap the "comfy" user to WANTED_UID/WANTED_GID and re-execs as it.
+# Starting as root breaks this flow, so run as comfytoo and let it drop down.
 securityContext:
-  runAsNonRoot: false
-  runAsUser: 0
-  runAsGroup: 0
+  runAsNonRoot: true
+  runAsUser: 1025
+  runAsGroup: 1025
 
 service:
   type: ClusterIP
