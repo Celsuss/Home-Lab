@@ -31,6 +31,22 @@ spec:
       runtimeClassName: {{ .Values.runtimeClassName }}
       {{- end }}
       terminationGracePeriodSeconds: 60
+      {{- if .Values.persistence.enabled }}
+      # local-path PVC dirs are created root-owned; fsGroup fixes the group but
+      # not the owner UID. The image validates /basedir and /comfy/mnt as "mount"
+      # dirs requiring exact 1000:1000 ownership and refuses to chown them itself,
+      # so fix ownership here before the main container's entrypoint validates it.
+      initContainers:
+        - name: fix-permissions
+          image: busybox:1.37
+          command: ["sh", "-c", "mkdir -p /data/basedir /data/run && chown 1000:1000 /data/basedir /data/run"]
+          securityContext:
+            runAsUser: 0
+            runAsNonRoot: false
+          volumeMounts:
+            - name: comfyui-data
+              mountPath: /data
+      {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           image: {{ include "comfyui.image" . }}
