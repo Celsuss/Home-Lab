@@ -1,0 +1,14 @@
+apiVersion: v2
+name: comfyui
+description: A Helm chart for ComfyUI, a node-based AI image generation tool (GPU)
+
+type: application
+
+version: 0.1.0
+
+appVersion: "latest"
+
+dependencies:
+  - name: homelab-common
+    version: 0.1.0
+    repository: "file://../homelab-common"

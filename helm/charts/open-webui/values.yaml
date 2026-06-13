@@ -38,6 +38,13 @@ env:
     value: "5"
   - name: ENABLE_SEARCH_QUERY
     value: "True"
+  # --- Image Generation (ComfyUI) ---
+  - name: ENABLE_IMAGE_GENERATION
+    value: "True"
+  - name: IMAGE_GENERATION_ENGINE
+    value: "comfyui"
+  - name: COMFYUI_BASE_URL
+    value: "http://comfyui.ai-workloads.svc.cluster.local:8188"
 
 vault:
   secretPath: homelab/open-webui

@@ -1,0 +1,37 @@
+---
+# Passthrough configuration for the upstream nvidia-device-plugin chart.
+# https://github.com/NVIDIA/k8s-device-plugin/tree/main/deployments/helm/nvidia-device-plugin
+nvidia-device-plugin:
+  # The upstream chart refuses to render into the "default" namespace; the repo's
+  # `just template` hook renders every chart with `--namespace default`, so allow
+  # it here. ArgoCD still deploys this into kube-system (see the Application).
+  allowDefaultNamespace: true
+
+  # k3s auto-creates the "nvidia" RuntimeClass; the plugin pod must use it so it
+  # can talk to the NVIDIA container runtime.
+  runtimeClassName: nvidia
+
+  # Match the upstream image already running in the cluster.
+  image:
+    tag: v0.17.1
+
+  # Tolerate the GPU taint (kept for parity with the previous static daemonset).
+  tolerations:
+    - key: nvidia.com/gpu
+      operator: Exists
+      effect: NoSchedule
+
+  # GPU time-slicing: advertise the single physical GPU as 4 schedulable
+  # "nvidia.com/gpu" units so ollama + comfyui (and headroom) can co-schedule.
+  # NOTE: time-slicing shares COMPUTE, not VRAM — concurrent large models can OOM.
+  config:
+    map:
+      config: |
+        version: v1
+        flags:
+          migStrategy: none
+        sharing:
+          timeSlicing:
+            resources:
+              - name: nvidia.com/gpu
+                replicas: 4

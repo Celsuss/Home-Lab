@@ -1,0 +1,91 @@
+---
+replicaCount: 1
+
+namespace: ai-workloads
+
+image:
+  # Actively maintained NVIDIA/CUDA ComfyUI image (entrypoint manages the
+  # comfy user via WANTED_UID/WANTED_GID and bootstraps a venv on first run).
+  repository: mmartial/comfyui-nvidia-docker
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+env:
+  # Map the in-container "comfy" user to the fsGroup below so the mounted
+  # volumes are writable.
+  - name: WANTED_UID
+    value: "1000"
+  - name: WANTED_GID
+    value: "1000"
+  # ComfyUI-Manager security policy (normal = allow installing custom nodes).
+  - name: SECURITY_LEVEL
+    value: "normal"
+
+podSecurityContext:
+  fsGroup: 1000
+
+# The entrypoint starts as root to adjust the comfy user, then drops privileges
+# itself — so we must allow it to start as root (mirrors the ollama pattern).
+securityContext:
+  runAsNonRoot: false
+  runAsUser: 0
+  runAsGroup: 0
+
+service:
+  type: ClusterIP
+  port: 8188
+  targetPort: 8188
+
+ingress:
+  enabled: true
+  className: "traefik"
+  annotations:
+    cert-manager.io/cluster-issuer: homelab-ca
+  host: comfyui.homelab.local
+  tls:
+    - secretName: comfyui-tls
+      hosts:
+        - comfyui.homelab.local
+
+resources:
+  limits:
+    nvidia.com/gpu: 1   # one time-sliced GPU share
+    memory: "16Gi"
+    cpu: "4"
+  requests:
+    nvidia.com/gpu: 1
+    memory: "4Gi"
+    cpu: "1"
+
+gpu:
+  enabled: true
+  resourceName: "nvidia.com/gpu"
+  count: 1
+
+persistence:
+  enabled: true
+  storageClass: ""          # K3s default (local-path)
+  accessMode: ReadWriteOnce
+  size: 80Gi
+  # The image keeps user data (models, custom_nodes, input/output, workflows)
+  # in /basedir and the venv/source/HF cache in /comfy/mnt. Both are persisted
+  # via subPaths on a single PVC so restarts don't re-download torch/models.
+  baseDir: /basedir
+  runDir: /comfy/mnt
+
+tolerations: []
+
+affinity: {}
+
+nodeSelector: {}
+
+runtimeClassName: "nvidia"
+
+tailscale:
+  enabled: true
+  serviceName: comfyui

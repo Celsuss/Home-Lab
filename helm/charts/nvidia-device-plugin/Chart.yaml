@@ -1,0 +1,18 @@
+apiVersion: v2
+name: nvidia-device-plugin
+description: >-
+  Wrapper chart for the NVIDIA Kubernetes device plugin. Brings the
+  (previously hand-applied) device plugin under GitOps management and enables
+  GPU time-slicing so multiple pods (e.g. ollama + comfyui) can share the
+  single physical GPU.
+
+type: application
+
+version: 0.1.0
+
+appVersion: "0.17.1"
+
+dependencies:
+  - name: nvidia-device-plugin
+    version: 0.17.1
+    repository: "https://nvidia.github.io/k8s-device-plugin"
