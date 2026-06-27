@@ -3,11 +3,14 @@
 # HOW TO USE:
 #   1. Run convert.py on your Nordea export once.
 #   2. Check the output for rows with category "Uncategorized".
-#   3. Add rules below matching the Namn / Mottagare / Rubrik values you see.
-#   4. Re-run until everything is categorized to your satisfaction.
+#   3. Look at the "Comment" column in out.csv — it shows the full Rubrik text.
+#   4. Add rules below matching the keywords you see in those Rubrik values.
+#   5. Re-run until everything is categorized to your satisfaction.
 #
 # FIELDS:
-#   match_field: which Nordea field to search — "namn", "mottagare", "rubrik", or "any"
+#   match_field: which Nordea field to search — "rubrik" (recommended), or "any"
+#                For Nordea card purchases, the merchant name is embedded in Rubrik,
+#                e.g. "Kortköp STEAMGAMES.COM" or "Reservation Kortköp ICA SUPERMARKET".
 #   pattern:     case-insensitive substring to match (or a regex if regex: true)
 #   regex:       optional, default false — set to true to use Python regex syntax
 #
@@ -34,129 +37,204 @@ rules:
   # --- Food & Dining ---
   - category: "Food & Dining"
     sub_category: "Groceries"
-    match_field: "namn"
+    match_field: "rubrik"
     pattern: "ICA"
 
   - category: "Food & Dining"
     sub_category: "Groceries"
-    match_field: "namn"
+    match_field: "rubrik"
     pattern: "Coop"
 
   - category: "Food & Dining"
     sub_category: "Groceries"
-    match_field: "namn"
+    match_field: "rubrik"
     pattern: "Hemköp"
 
   - category: "Food & Dining"
     sub_category: "Groceries"
-    match_field: "namn"
+    match_field: "rubrik"
     pattern: "Willys"
 
   - category: "Food & Dining"
+    sub_category: "Groceries"
+    match_field: "rubrik"
+    pattern: "HAGALUNDS LIVS"
+
+  - category: "Food & Dining"
+    sub_category: "Groceries"
+    match_field: "rubrik"
+    pattern: "ASIAN FOOD MARKET"
+
+  - category: "Food & Dining"
+    sub_category: "Groceries"
+    match_field: "rubrik"
+    pattern: "huel"
+
+  - category: "Food & Dining"
     sub_category: "Restaurants"
-    match_field: "any"
+    match_field: "rubrik"
     pattern: "restaurant"
 
-  # --- Drugs
+  - category: "Food & Dining"
+    sub_category: "Restaurants"
+    match_field: "rubrik"
+    pattern: "sushi"
+
+  - category: "Food & Dining"
+    sub_category: "Restaurants"
+    match_field: "rubrik"
+    pattern: "ramen"
+
+  - category: "Food & Dining"
+    sub_category: "Restaurants"
+    match_field: "rubrik"
+    pattern: "KFC"
+
+  - category: "Food & Dining"
+    sub_category: "Coffee"
+    match_field: "rubrik"
+    pattern: "Kahls Kaffe"
+
+  - category: "Food & Dining"
+    sub_category: "Coffee"
+    match_field: "rubrik"
+    pattern: "K*Baristasho"
+
+  # --- Drinks ---
   - category: "Food & Drink"
     sub_category: "Alcohol"
-    match_field: "namn"
+    match_field: "rubrik"
     pattern: "Systembolaget"
 
   # --- Transport ---
   - category: "Transport"
     sub_category: "Public Transit"
-    match_field: "any"
+    match_field: "rubrik"
     pattern: "SL"
 
   - category: "Transport"
     sub_category: "Public Transit"
-    match_field: "any"
+    match_field: "rubrik"
     pattern: "Västtrafik"
 
   - category: "Transport"
     sub_category: "Taxi"
-    match_field: "namn"
+    match_field: "rubrik"
     pattern: "Uber"
 
   - category: "Transport"
     sub_category: "Taxi"
-    match_field: "namn"
+    match_field: "rubrik"
     pattern: "Bolt"
 
   - category: "Transport"
     sub_category: "Fuel"
-    match_field: "any"
+    match_field: "rubrik"
     pattern: "Preem"
 
   - category: "Transport"
     sub_category: "Fuel"
-    match_field: "any"
+    match_field: "rubrik"
     pattern: "OKQ8"
 
   - category: "Transport"
     sub_category: "Fuel"
-    match_field: "any"
+    match_field: "rubrik"
     pattern: "Circle K"
 
   # --- Housing ---
-  - category: "Housing"
+  - category: "Housing & Houseware"
     sub_category: "Rent"
     match_field: "rubrik"
     pattern: "hyra"
-    regex: false
 
-  - category: "Housing"
-    sub_category: "Electricity"
-    match_field: "any"
+  - category: "Housing & Houseware"
+    sub_category: "Utilities Expense"
+    match_field: "rubrik"
     pattern: "Vattenfall"
 
-  - category: "Housing"
+  - category: "Housing & Houseware"
     sub_category: "Internet"
-    match_field: "any"
+    match_field: "rubrik"
     pattern: "Telia"
 
-  - category: "Housing"
+  - category: "Housing & Houseware"
     sub_category: "Internet"
-    match_field: "any"
+    match_field: "rubrik"
     pattern: "Bahnhof"
+
+  - category: "Housing & Houseware"
+    sub_category: "Utility"
+    match_field: "rubrik"
+    pattern: "CLAS OHLSON"
+
+  - category: "Housing & Houseware"
+    sub_category: "Houseware"
+    match_field: "rubrik"
+    pattern: "RUSTA"
+
+  # --- Finance & Insurance
+  - category: "Finance & Insurance"
+    sub_category: "Insurance Expense"
+    match_field: "rubrik"
+    pattern: "IF SKADEFÖRS"
+
+  - category: "Finance & Insurance"
+    sub_category: "Bank"
+    match_field: "rubrik"
+    pattern: "Nordea"
+
+  - category: "Finance & Insurance"
+    sub_category: "Union"
+    match_field: "rubrik"
+    pattern: "ALFA KASSAN"
 
   # --- Health ---
   - category: "Health"
     sub_category: "Pharmacy"
-    match_field: "namn"
+    match_field: "rubrik"
     pattern: "Apotek"
 
   # --- Entertainment & Subscriptions ---
   - category: "Entertainment"
     sub_category: "Streaming"
-    match_field: "namn"
+    match_field: "rubrik"
     pattern: "Netflix"
 
   - category: "Entertainment"
     sub_category: "Streaming"
-    match_field: "namn"
+    match_field: "rubrik"
     pattern: "Spotify"
 
   - category: "Entertainment"
     sub_category: "Streaming"
-    match_field: "namn"
+    match_field: "rubrik"
     pattern: "HBO"
 
   - category: "Entertainment"
     sub_category: "Streaming"
-    match_field: "namn"
+    match_field: "rubrik"
     pattern: "Disney"
 
   - category: "Entertainment"
+    sub_category: "Streaming"
+    match_field: "rubrik"
+    pattern: "Patreon*"
+
+  - category: "Entertainment"
     sub_category: "Toys & Games"
-    match_field: "namn"
+    match_field: "rubrik"
     pattern: "Steam"
 
   - category: "Entertainment"
     sub_category: "Toys & Games"
-    match_field: "namn"
-    pattern: "Steam"
+    match_field: "rubrik"
+    pattern: "OCULUS"
+
+  - category: "Entertainment"
+    sub_category: "Toys & Games"
+    match_field: "rubrik"
+    pattern: "HP*GAMIVO"
 
   # --- Savings & Investments ---
   - category: "Savings"
@@ -164,4 +242,50 @@ rules:
     match_field: "rubrik"
     pattern: "Överföring"
 
-  # Add your own rules below this line:
+  # --- Clothing & Apperance ---
+  - category: "Clothing & Apperance"
+    sub_category: "Clothing"
+    match_field: "namn"
+    pattern: "DRESSMANN"
+
+  - category: "Clothing & Apperance"
+    sub_category: "Clothing"
+    match_field: "namn"
+    pattern: "LAGER 157"
+
+  - category: "Clothing & Apperance"
+    sub_category: "Hair Cuts & Salon"
+    match_field: "namn"
+    pattern: "HAIR SCIENCE"
+
+  # --- Gym & Sports ---
+  - category: "Gym & Sports"
+    sub_category: "Gym"
+    match_field: "rubrik"
+    pattern: "SATS"
+
+  - category: "Gym & Sports"
+    sub_category: "Sports"
+    match_field: "rubrik"
+    pattern: "Bruce"
+
+  - category: "Gym & Sports"
+    sub_category: "Sports"
+    match_field: "rubrik"
+    pattern: "CLASSPASS*"
+
+  # Miscellaneous
+  - category: "Miscellaneous"
+    sub_category: "Ciggarets, Snuff & paper"
+    match_field: "rubrik"
+    pattern: "DIREKTEN CIGARR & SP"
+
+  - category: "Miscellaneous"
+    sub_category: "Ciggarets, Snuff & paper"
+    match_field: "rubrik"
+    pattern: "Pressbyran"
+
+  - category: "Miscellaneous"
+    sub_category: "Ciggarets, Snuff & paper"
+    match_field: "rubrik"
+    pattern: "Bankomat"
