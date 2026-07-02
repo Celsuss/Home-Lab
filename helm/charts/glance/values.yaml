@@ -181,6 +181,7 @@ config:
               # token: ...
               repositories:
                 - glanceapp/glance
+                - home-assistant/core
                 - hyprwm/Hyprland
                 - k3s-io/k3s
                 - argoproj/argo-cd
@@ -450,6 +451,9 @@ config:
                 - title: Navidrome
                   url: https://navidrome.homelab.local/
                   icon: sh:navidrome
+                - title: Home Assistant
+                  url: https://home-assistant.homelab.local/
+                  icon: sh:home-assistant
 
             - type: custom-api
               title: Beszel Metrics
