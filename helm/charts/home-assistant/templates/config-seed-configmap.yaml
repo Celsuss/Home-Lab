@@ -1,0 +1,21 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "home-assistant.fullname" . }}-config-seed
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "home-assistant.labels" . | nindent 4 }}
+data:
+  configuration.yaml: |
+    # Seeded by the home-assistant Helm chart on first boot.
+    # Home Assistant manages this file after initial creation — edit freely.
+    default_config:
+
+    # Required so HA accepts requests forwarded by the Traefik ingress.
+    http:
+      use_x_forwarded_for: true
+      trusted_proxies:
+      {{- range .Values.trustedProxies }}
+        - {{ . }}
+      {{- end }}

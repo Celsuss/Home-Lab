@@ -1,0 +1,10 @@
+apiVersion: v2
+name: home-assistant
+description: Home Assistant home automation platform
+type: application
+version: 0.1.0
+appVersion: "stable"
+dependencies:
+  - name: homelab-common
+    version: 0.1.0
+    repository: "file://../homelab-common"

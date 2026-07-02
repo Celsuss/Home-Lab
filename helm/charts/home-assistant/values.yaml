@@ -1,0 +1,71 @@
+---
+replicaCount: 1                     # Home Assistant is single-instance; PVC is RWO
+namespace: home-assistant
+
+image:
+  repository: ghcr.io/home-assistant/home-assistant
+  pullPolicy: IfNotPresent
+  tag: "stable"                     # pin a dated tag (e.g. 2026.6) for controlled upgrades
+
+# Put the pod directly on the node's LAN so mDNS/DHCP device auto-discovery
+# works (Chromecast, HomeKit, ESPHome, etc.). Disable to run as a normal
+# ClusterIP pod (discovery of most devices will not work).
+hostNetwork: true
+
+# Sets the TZ env var inside the container.
+timezone: "Europe/Stockholm"
+
+# HA runs an s6-overlay init and writes to /config, so it needs to run as root.
+securityContext:
+  runAsNonRoot: false
+
+service:
+  type: ClusterIP
+  port: 8123
+
+ingress:
+  enabled: true
+  className: "traefik"
+  annotations:
+    cert-manager.io/cluster-issuer: homelab-ca
+  host: home-assistant.homelab.local
+  tls:
+    - secretName: home-assistant-tls
+      hosts:
+        - home-assistant.homelab.local
+
+tailscale:
+  enabled: true
+  serviceName: home-assistant
+
+persistence:
+  storageClassName: "local-path"
+  configStorage: 10Gi               # holds SQLite recorder DB + config
+
+# Reverse-proxy CIDRs HA will trust for X-Forwarded-For (k3s default pod CIDR
+# plus loopback). Used by the seeded configuration.yaml. Update if your pod
+# CIDR differs.
+trustedProxies:
+  - 10.42.0.0/16
+  - 127.0.0.1
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 512Mi
+  limits:
+    cpu: "2"
+    memory: 2Gi
+
+livenessProbe:
+  httpGet:
+    path: /
+    port: http
+  initialDelaySeconds: 60
+  periodSeconds: 15
+readinessProbe:
+  httpGet:
+    path: /
+    port: http
+  initialDelaySeconds: 30
+  periodSeconds: 10
