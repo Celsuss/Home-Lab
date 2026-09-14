@@ -1,0 +1,55 @@
+---
+replicaCount: 1
+namespace: home-assistant
+
+image:
+  repository: rhasspy/wyoming-openwakeword
+  pullPolicy: IfNotPresent
+  tag: "2.1.0"
+
+openwakeword:
+  # Detection threshold 0.0-1.0. Raise if you get false wakes, lower if the
+  # wake word is missed. Built-in models (2.x, always loaded, no download):
+  # okay_nabu, hey_jarvis, hey_mycroft, hey_rhasspy, alexa. The wake word is
+  # chosen per satellite in Home Assistant, not here.
+  threshold: 0.5
+  # Number of consecutive activations before a detection fires.
+  triggerLevel: 1
+  # Seconds before the same wake word can fire again.
+  refractorySeconds: 2
+  # Custom .tflite wake words (e.g. trained at
+  # https://github.com/dscripka/openWakeWord) — keys are file names, values
+  # are base64 of the model file. Mounted at /custom and passed with
+  # --custom-model-dir. Empty = built-in models only.
+  customModels: {}
+  # Extra CLI flags appended verbatim (see `--help` in the README).
+  extraArgs: []
+
+service:
+  type: ClusterIP
+  port: 10400
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: "1"
+    memory: 512Mi
+
+# The image ships no health check; the Wyoming server accepts TCP as soon
+# as the models are loaded.
+livenessProbe:
+  tcpSocket:
+    port: wyoming
+  initialDelaySeconds: 30
+  periodSeconds: 30
+readinessProbe:
+  tcpSocket:
+    port: wyoming
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

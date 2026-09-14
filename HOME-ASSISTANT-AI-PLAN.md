@@ -18,6 +18,7 @@ Progress is tracked with checkboxes in this file. Mark a phase `✅ DONE` with a
 | `helm/charts/mcpo` | Deployed in `ai-workloads` | MCP→OpenAPI proxy (fetch + memory servers) for Open WebUI. Not usable by HA directly (HA speaks MCP/SSE, not OpenAPI). |
 | GPU | RTX 4070 Ti SUPER, 16 GB VRAM | Time-sliced 4 ways by `nvidia-device-plugin`. Shared with ComfyUI. VRAM is the real budget, not GPU slots. |
 | Cluster | Single node (192.168.0.142) | Two Raspberry Pis available. See Phase 6 on how to use them. |
+| Google Home speaker | Discovered in HA (Google Cast) | A `media_player` entity. **Output only** — HA can play TTS/announcements/media on it, but Google exposes no mic stream, so it can never be an Assist satellite. See Phase 2 note. |
 | Secrets | Vault + VSO | HA manages its own `.storage`/`secrets.yaml`; Vault is used for anything we deploy alongside HA. |
 
 Constraints to keep in mind for every phase:
@@ -74,7 +75,7 @@ The LLM only sees entities that are **exposed** to Assist. Quality of answers de
 
 ---
 
-## Phase 2: Voice pipeline — speech-to-text, text-to-speech, wake word
+## Phase 2: Voice pipeline — speech-to-text, text-to-speech, wake word — 🔶 cluster side DONE 2026-09-14, HA UI wiring pending
 **Priority**: High — this is the "talk like Google Home" goal
 **Estimated sessions**: 2
 
@@ -82,34 +83,45 @@ Outcome: A full Assist pipeline (wake word → STT → conversation → TTS) wor
 
 HA talks to these services with the **Wyoming** protocol. Each becomes a small standalone chart following the repo layout (`_helpers.tpl`, deployment, service, values, `namespace` at top level). Suggested namespace: `home-assistant` (same as HA) so ArgoCD app boundaries stay simple; add each to `root-app`.
 
+**Google Home speaker (added 2026-09-14):** the existing Google Home is a Cast `media_player` in HA. It changes the *output* half of this phase only — Piper's speech can be played on it, so voice answers come from the room instead of the phone. It changes nothing about STT/wake word: Google gives HA no microphone stream, so 2.1/2.3 and the Phase 3 satellites are still required for hands-free input. **Explicit non-goal:** routing "Hey Google …" into HA via the Google Assistant integration is possible but goes through Google's cloud NLU (needs Nabu Casa or a Google Cloud project + public HTTPS) and bypasses Ollama — not what this plan is for.
+
 ### 2.1 `helm/charts/wyoming-whisper` (STT)
-- [ ] Image options:
-  - `rhasspy/wyoming-whisper` — CPU, simplest, official. Fine for `small`/`base` models; try this first.
-  - GPU-enabled faster-whisper image if CPU latency is too high (e.g. `lscr.io/linuxserver/faster-whisper` with `nvidia.com/gpu: 1` share and `runtimeClassName: nvidia`, mirroring the Ollama chart).
-- [ ] Args: `--model small` (or `medium` on GPU), `--language sv` if Swedish-first (Whisper auto-detect is slower and worse). Beam size 1–2 for latency.
-- [ ] Service port `10300`. PVC for model cache (~1–3 GB) so restarts don't re-download.
-- [ ] Health: TCP probe on 10300.
+- [x] Image options:
+  - `rhasspy/wyoming-whisper` — CPU, simplest, official. Fine for `small`/`base` models; try this first. _(2026-09-14: `3.8.1`, CPU. 0.5–0.7 s per command — no need for GPU.)_
+  - [ ] ~~GPU-enabled faster-whisper image if CPU latency is too high~~ — upstream's GPU image is **not published** (build-it-yourself, ~10.7 GB). Chart is GPU-ready (`gpu.enabled` → nvidia runtime class + GPU share + `--device cuda`) but needs a GHCR build of `Dockerfile.gpu` first. Deferred; CPU is fast enough.
+- [x] Args: `--model small-int8`, `--language sv` (fallback only — HA sends the pipeline language per request, so one instance does sv+en), `--beam-size 1`, `--vad-filter`.
+- [x] Service port `10300`. 2Gi PVC for model cache.
+- [x] Health: the image's own `wyoming_faster_whisper.health_check` (Describe/Info round trip) as liveness/readiness, TCP startup probe for the first model download.
+- [ ] **Optional:** `hass.enabled: true` — Whisper 3.x biases decoding toward the names of exposed entities/areas (fetched from HA's API). Needs a long-lived HA token in Vault (`secret/homelab/wyoming-whisper HASS_TOKEN=…`). Recommended once real devices exist; it targets exactly the Swedish room-name errors seen in testing.
 
 ### 2.2 `helm/charts/wyoming-piper` (TTS)
-- [ ] Image `rhasspy/wyoming-piper`, `--voice <voice>`. Pick a Swedish voice (`sv_SE-nst-medium`) and/or an English one (`en_US-lessac-medium`); Piper serves one default voice per instance, so either run two instances or pick the primary language.
-- [ ] Service port `10200`. PVC for voice files.
-- [ ] CPU is fine for Piper.
+- [x] Image `rhasspy/wyoming-piper:2.5.2`, `--voice sv_SE-nst-medium` as default. ~~Piper serves one default voice per instance~~ — **wrong for current Piper**: one instance advertises all 174 voices, downloads on first use, and HA picks the voice per assistant pipeline. One deployment covers Swedish + English.
+- [x] Service port `10200`. 1Gi PVC for voice files.
+- [x] CPU is fine for Piper (2 s of Swedish rendered in 0.8 s; 12m CPU / 286 MB idle).
+- [ ] **Output on the Google Home:** _(HA-side; automation YAML ready in `docs/home-assistant/announcements.md`)_ once Piper is the TTS engine, `tts.speak` with `media_player_entity_id: media_player.<google_home>` plays it on the speaker. Cast devices fetch the audio over plain HTTP from HA's `internal_url`. The chart does not seed one and HA auto-detects `http://192.168.0.142:8123` (works thanks to `hostNetwork: true`) — **keep it that way**. Do not set `internal_url` to `home-assistant.homelab.local`: Cast devices are widely reported to bypass LAN DNS, and TTS on the speaker would fail silently.
 
 ### 2.3 `helm/charts/wyoming-openwakeword` (wake word)
-- [ ] Image `rhasspy/wyoming-openwakeword`, `--preload-model ok_nabu` (or `hey_jarvis`; custom wake words can be added later).
-- [ ] Service port `10400`. Only needed for satellites that stream audio to HA for wake-word detection (Wyoming satellites on Pis do this; Voice PE detects on-device).
+- [x] Image `rhasspy/wyoming-openwakeword:2.1.0`. ~~`--preload-model ok_nabu`~~ — deprecated in 2.x; `okay_nabu`, `hey_jarvis`, `hey_mycroft`, `hey_rhasspy`, `alexa` are built in and always loaded, no PVC. Custom `.tflite` wake words via `openwakeword.customModels` (mounted from a Secret) for Phase 7.
+- [x] Service port `10400`. Only needed for satellites that stream audio to HA for wake-word detection (Wyoming satellites on Pis do this; Voice PE detects on-device).
 
-### 2.4 Wire it up in HA
-- [ ] Add the **Wyoming Protocol** integration three times (whisper, piper, openwakeword) using the cluster DNS names, e.g. `wyoming-whisper.home-assistant.svc.cluster.local:10300`.
+### 2.4 Wire it up in HA — _manual, HA UI; step-by-step in `helm/charts/home-assistant/README.md` → "Voice pipeline"_
+- [ ] Add the **Wyoming Protocol** integration three times (whisper, piper, openwakeword) using the cluster DNS names, e.g. `wyoming-whisper.home-assistant.svc.cluster.local:10300`. _(Charts are in `root-app`; ArgoCD deploys them on the next push.)_
 - [ ] Settings → Voice assistants → create/edit the assistant: STT = Whisper, TTS = Piper, conversation = Ollama (from Phase 1), wake word = openWakeWord.
 - [ ] Test with the microphone button in the HA web UI and in the Companion app (Assist → tap-to-talk).
+- [ ] Expose the Google Home `media_player` to Assist (with an alias like "kitchen speaker") so volume/pause/play work by voice. Add a first announcement automation (e.g. `tts.speak` → Google Home on HA start) as a smoke test — put it in the seeded `packages/` mechanism from 4.2 once that exists, otherwise `automations.yaml` for now. _(YAML written: `docs/home-assistant/announcements.md` — paste into the UI; move into `packages/` in 4.2.)_
 
 ### 2.5 Validate
 - [ ] Say "turn on the living room lights" → light turns on, spoken confirmation.
-- [ ] Record end-to-end latency (wake → response audio). Tune: Whisper model size, prompt length, exposed-entity count. This is the point where `OLLAMA_KEEP_ALIVE` (deferred from 1.1) becomes worth turning on if the cold start dominates.
-- [ ] Document per-language tradeoffs in the chart READMEs.
+- [ ] `tts.speak` (Piper voice) plays on the Google Home; note the delay between service call and audio start (Cast buffering adds ~1–2 s on top of Piper).
+- [ ] Record end-to-end latency (wake → response audio). Tune: Whisper model size, prompt length, exposed-entity count. This is the point where `OLLAMA_KEEP_ALIVE` (deferred from 1.1) becomes worth turning on if the cold start dominates. _Component budget measured 2026-09-14 (protocol-level, CPU): wake 0.3 s + STT 0.5–0.7 s + LLM 0.44 s warm / 4 s cold + TTS ~0.5 s → **~2 s warm** before Cast buffering; the Ollama cold start is the only thing that would push it past 5 s._
+- [x] Document per-language tradeoffs in the chart READMEs. _(`wyoming-whisper/README.md`: small vs medium, beam size, leading-silence gotcha; `wyoming-piper/README.md`: sv/en voices.)_
 
-**Discoveries**: _(fill in)_
+**Discoveries**:
+- 2026-09-14: **Cluster side of Phase 2 done.** Three charts (`wyoming-whisper` 3.8.1, `wyoming-piper` 2.5.2, `wyoming-openwakeword` 2.1.0) in namespace `home-assistant`, `root-app` Applications added. All three were installed with `helm install`, exercised with a Wyoming test client from the host (ClusterIP) and uninstalled again; ArgoCD will deploy them from git. Results: Piper sv/en synthesis OK; Whisper `small-int8` transcribed the Piper output back correctly in both languages in 0.5–0.7 s; openWakeWord detected a synthesized "Okay Nabu" in 0.3 s and did not fire on a Swedish sentence. Resource use: whisper ~525 MB RSS with `small-int8` loaded (~850 MB with medium), piper 12m/286 MB idle, openwakeword 1m/26 MB idle.
+- 2026-09-14: The upstream images changed a lot since the plan was written: Whisper 3.x has a real health check, env-var config (`WYO_WHISPER_*`), several STT backends (sherpa/Parakeet, which supports `sv`, is auto-picked only for `en`) and HA name-biasing; Piper serves all voices from one instance; openWakeWord 2.x bundles its models. The plan's "two Piper instances" and "`--preload-model`" ideas are obsolete. No official GPU image for Whisper.
+- 2026-09-14: `medium-int8` is 2.5× slower than `small-int8` and was not more accurate on Swedish test audio, so small stays. Beam 5 vs 1: no difference, 1 stays. Whisper drops the first consonant of a clip that starts mid-word — real mics always have leading silence, but pad synthetic test audio.
+- 2026-09-14: **Remaining for Phase 2 (all manual, HA UI):** add the three Wyoming integrations, build the assistant pipeline(s), test tap-to-talk in web UI (HTTPS ingress needed for the mic) / Companion app, expose the Google Home + paste the announcement automation, then record real end-to-end latency in 2.5. Optional: create the HA long-lived token → Vault → `hass.enabled: true` on Whisper.
+- 2026-09-14: Google Home speaker is visible in HA (Cast). Scope impact: output only (TTS/announcements/media target). No change to STT, wake word or satellite hardware. Cloud "Hey Google" bridge recorded as a non-goal.
 
 ---
 
@@ -124,6 +136,7 @@ Two viable routes, not mutually exclusive:
 - [ ] **Home Assistant Voice Preview Edition** — purpose-built, on-device wake word, best mic array, plugs straight into the Phase 2 pipeline via ESPHome. Recommended for the main rooms. Zero cluster work.
 - [ ] **Raspberry Pi as a Wyoming satellite** — one of the two Pis + a USB mic/speaker or a ReSpeaker HAT running `wyoming-satellite`. Cheaper if the Pi already exists; more fiddly audio setup. Wake-word detection runs either on the Pi (`wyoming-openwakeword` locally) or streams to the cluster's openWakeWord (2.3).
 - [ ] Decide which Pi (if any) is a satellite vs. a cluster node (see Phase 6). Recommendation: **one Pi as satellite, one as k3s agent** — or both as satellites if Voice PE turns out too expensive.
+- [ ] The Google Home does not reduce the satellite count (no mic access). Optional trick for the room it sits in: a mic-only Pi satellite plus an automation that plays the pipeline's response on the Google Home via `tts.speak` — non-standard (a Wyoming satellite normally plays its own audio), so only if the Pi's speaker output is poor.
 
 ### 3.2 Provision satellites as code
 - [ ] Voice PE: keep the ESPHome YAML in `docs/` or a new `esphome/` dir once you adopt it (ESPHome add-on doesn't exist under HA Container — run `esphome` CLI locally or as a small chart later).
@@ -233,7 +246,7 @@ Not a cluster change — a client choice. Document the decision in `helm/charts/
 **Priority**: Low — after everything above is stable
 
 - [ ] **Multiple assistants**: a fast voice assistant (small model, few tools) and a capable text assistant (larger model, all tools) — HA supports several pipelines, and Telegram can target the text one.
-- [ ] **Proactive agent**: scheduled/triggered automations that ask the LLM to summarise (morning briefing to Telegram: calendar, weather, chores due, anything down in the lab).
+- [ ] **Proactive agent**: scheduled/triggered automations that ask the LLM to summarise (morning briefing to Telegram: calendar, weather, chores due, anything down in the lab). Same briefing can be spoken on the Google Home via `tts.speak` (Phase 2).
 - [ ] **Long-term memory**: `mcp-server-memory` (or a small Postgres-backed one) so the assistant remembers preferences.
 - [ ] **HA as an MCP server**: HA's *MCP Server* integration exposes the home to other clients — lets Open WebUI (via mcpo) or a desktop agent control the house with the same entity permissions.
 - [ ] **Custom wake word** trained with openWakeWord for the assistant's name.
@@ -246,6 +259,8 @@ Not a cluster change — a client choice. Document the decision in `helm/charts/
 
 | Date | Phase | What was done |
 |---|---|---|
+| 2026-09-14 | 2.1–2.3 ✅, 2.4/2.5 pending | Charts `wyoming-whisper`, `wyoming-piper`, `wyoming-openwakeword` written, test-deployed, validated end-to-end over the Wyoming protocol (TTS→WAV→STT round trip in sv+en, wake-word detection) and removed again; added to `root-app`. HA README gained the "Voice pipeline" UI steps; announcement automation in `docs/home-assistant/announcements.md`; Whisper chart has opt-in HA name-biasing via Vault. **Next session:** do 2.4 in the HA UI, then 2.5 latency measurement with a real mic. |
+| 2026-09-14 | 2 (scoping) | Google Home speaker discovered in HA. Plan updated: Cast speaker becomes the TTS/announcement output for Phase 2 (2.2, 2.4, 2.5), `internal_url` gotcha noted, cloud "Hey Google" bridge recorded as a non-goal; STT/wake word/satellite scope unchanged. Phase 2 not started. |
 | 2026-09-14 | 1 ✅ | HA side done in UI: Ollama integration, Assist control, default agent, GLaDOS prompt. Verified a general question in Assist. Phase 1 closed; next session starts Phase 2 (Wyoming Whisper/Piper charts). |
 | 2026-09-14 | 1.1–1.3 | 1.1 done: all 3 PVC models listed in `ollama/values.yaml` (init container left **disabled**, manual pulls for now) in `ollama/values.yaml`; fixed init-container readiness probe (no curl in image); gemma4 tool-call gate passed (warm 0.44 s, 5.3 GB VRAM). System prompt versioned in `docs/home-assistant/system-prompt.md`; Ollama setup steps + Assist conventions in HA README. **Remaining (manual, HA UI):** 1.2 add the Ollama integration, 1.3 expose entities, 1.4 validate & record round-trip. |
 | 2026-09-14 | 1.1 | Checked gemma4 capabilities (tools ✓); API tool-call test deferred. Next session: start Phase 1.1 model pinning in `ollama/values.yaml`. |

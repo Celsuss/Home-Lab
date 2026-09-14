@@ -1,0 +1,104 @@
+---
+replicaCount: 1                     # single instance; model cache PVC is RWO
+namespace: home-assistant
+
+image:
+  repository: rhasspy/wyoming-whisper
+  pullPolicy: IfNotPresent
+  tag: "3.8.1"                      # CPU-only image; see README for GPU
+
+whisper:
+  # faster-whisper model. On CPU use the int8 conversions:
+  # tiny-int8 | base-int8 | small-int8 | medium-int8 (or any HF model id,
+  # e.g. Systran/faster-whisper-large-v3 on a GPU). "auto" picks a per-language
+  # default (base-int8 on x86 CPU).
+  model: "small-int8"
+  # Default language when the Wyoming client does not send one. Home Assistant
+  # always sends the pipeline's language, so this only matters for other
+  # clients. "auto" = let Whisper detect (slower, worse on short commands).
+  language: "sv"
+  # Beam size: 1 is fastest, 5 is the x86 default. Voice commands are short
+  # enough that 1-2 is the right trade for latency.
+  beamSize: 1
+  # cpu, cuda or cuda:N. cuda needs a CUDA-enabled image (gpu.enabled below).
+  device: "cpu"
+  cpuThreads: 4
+  # Silero VAD: drops non-speech from the transcript and reduces
+  # hallucinations on silence. Cheap, keep on.
+  vadFilter: true
+  # Extra CLI flags appended verbatim (see `--help` in the README).
+  extraArgs: []
+
+# Bias transcription toward the names of entities, areas and floors exposed
+# to Assist ("vardagsrummet", "kitchen ceiling light"), fetched live from
+# HA's REST API. Whisper 3.x feature; the biggest accuracy win for short
+# device commands. Needs a long-lived access token in Vault (see README):
+#   vault kv put secret/homelab/wyoming-whisper HASS_TOKEN=<token>
+hass:
+  enabled: false
+  apiUrl: "http://home-assistant.home-assistant.svc.cluster.local:8123/api"
+  # Minimum seconds between name refreshes (0 = every utterance).
+  refreshSeconds: 60
+
+vault:
+  secretPath: homelab/wyoming-whisper
+  secretName: wyoming-whisper-secrets
+
+# GPU acceleration. The official rhasspy image is CPU-only; the upstream
+# Dockerfile.gpu must be built and pushed to GHCR first (see README). When
+# enabled: nvidia runtime class, one time-sliced GPU share, --device cuda.
+gpu:
+  enabled: false
+  runtimeClassName: "nvidia"
+  resourceName: "nvidia.com/gpu"
+  count: 1
+
+service:
+  type: ClusterIP
+  port: 10300
+
+# Model cache (/data). small-int8 is ~250 MB, medium-int8 ~1.5 GB,
+# large-v3 ~3 GB.
+persistence:
+  enabled: true
+  storageClassName: "local-path"
+  storage: 2Gi
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 1Gi
+  limits:
+    cpu: "4"
+    memory: 2Gi
+
+# The image's own health check: a Wyoming Describe/Info round trip, which
+# proves the event loop is serving (a TCP connect alone would not).
+livenessProbe:
+  exec:
+    command:
+      - /usr/src/.venv/bin/python3
+      - -m
+      - wyoming_faster_whisper.health_check
+  initialDelaySeconds: 60
+  periodSeconds: 30
+  timeoutSeconds: 20
+readinessProbe:
+  exec:
+    command:
+      - /usr/src/.venv/bin/python3
+      - -m
+      - wyoming_faster_whisper.health_check
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 20
+# First start downloads the model, which can take minutes on a slow link.
+startupProbe:
+  tcpSocket:
+    port: wyoming
+  periodSeconds: 10
+  failureThreshold: 60
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

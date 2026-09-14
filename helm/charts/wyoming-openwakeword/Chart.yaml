@@ -1,0 +1,6 @@
+apiVersion: v2
+name: wyoming-openwakeword
+description: Wyoming wake word detection server (openWakeWord) for Home Assistant Assist
+type: application
+version: 0.1.0
+appVersion: "2.1.0"

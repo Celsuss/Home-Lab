@@ -77,6 +77,41 @@ them by name, area and aliases. Answer quality depends on keeping this tidy:
   Voice assistants → Assist debug) — the debug view shows whether a command
   hit a local intent or fell through to the LLM.
 
+## Voice pipeline (Wyoming)
+
+Speech-to-text, text-to-speech and wake word run as their own charts in this
+namespace (HA Container has no add-ons): `wyoming-whisper`, `wyoming-piper`,
+`wyoming-openwakeword`. Each README documents its options; this is the HA
+side, again a UI config flow (repeat after a `/config` rebuild):
+
+1. **Settings → Devices & services → Add integration → Wyoming Protocol**,
+   three times:
+   | Host                                                    | Port    | Provides                |
+   |---------------------------------------------------------|---------|-------------------------|
+   | `wyoming-whisper.home-assistant.svc.cluster.local`      | `10300` | STT (faster-whisper)    |
+   | `wyoming-piper.home-assistant.svc.cluster.local`        | `10200` | TTS (Piper, all voices) |
+   | `wyoming-openwakeword.home-assistant.svc.cluster.local` | `10400` | Wake word               |
+2. **Settings → Voice assistants → Home Assistant** (or add a second
+   assistant for the other language — HA sends the assistant's language to
+   Whisper and the chosen voice to Piper, so one deployment of each serves
+   both):
+   - Language: Swedish (or English)
+   - Conversation agent: **Ollama** (Phase 1)
+   - Speech-to-text: **faster-whisper**
+   - Text-to-speech: **piper**, voice `sv_SE-nst-medium` (`en_US-lessac-medium`
+     for English)
+   - Wake word: **openWakeWord** → `okay_nabu` (only used by streaming
+     satellites / the "always listening" browser mode)
+3. Test: the microphone icon in the Assist dialog (web UI, needs HTTPS — use
+   the Traefik or Tailscale URL, not plain `http://192.168.0.142:8123`) and
+   the Companion app (Assist → tap-to-talk). Settings → Voice assistants →
+   ⋮ → **Debug** shows each stage's timing (STT / intent / TTS).
+4. Optional accuracy boost: create a long-lived token for Whisper's
+   name-biasing (`helm/charts/wyoming-whisper/README.md`).
+5. Google Home as output: expose the Cast `media_player` to Assist with an
+   alias ("kitchen speaker") so volume/play/pause work by voice, and add the
+   smoke-test announcement from `docs/home-assistant/announcements.md`.
+
 ## Future: Zigbee / Z-Wave USB coordinators
 
 When you add a USB coordinator stick you'll need a `hostPath` device volume

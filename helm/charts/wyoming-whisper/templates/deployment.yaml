@@ -1,0 +1,110 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "wyoming-whisper.fullname" . }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "wyoming-whisper.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "wyoming-whisper.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "wyoming-whisper.labels" . | nindent 8 }}
+    spec:
+      {{- if .Values.gpu.enabled }}
+      runtimeClassName: {{ .Values.gpu.runtimeClassName }}
+      {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          # The image entrypoint (docker_run.sh) already passes
+          # --uri tcp://0.0.0.0:10300 --data-dir /data --device cpu; args
+          # here are appended and an explicit --device overrides its default.
+          args:
+            - --model
+            - {{ .Values.whisper.model | quote }}
+            - --language
+            - {{ .Values.whisper.language | quote }}
+            - --beam-size
+            - {{ .Values.whisper.beamSize | quote }}
+            - --cpu-threads
+            - {{ .Values.whisper.cpuThreads | quote }}
+            - --device
+            - {{ ternary "cuda" .Values.whisper.device .Values.gpu.enabled | quote }}
+            {{- if .Values.whisper.vadFilter }}
+            - --vad-filter
+            {{- end }}
+            {{- if .Values.hass.enabled }}
+            - --hass-api
+            - {{ .Values.hass.apiUrl | quote }}
+            - --hass-refresh-seconds
+            - {{ .Values.hass.refreshSeconds | quote }}
+            {{- end }}
+            {{- range .Values.whisper.extraArgs }}
+            - {{ . | quote }}
+            {{- end }}
+          {{- if .Values.hass.enabled }}
+          # Every CLI flag can be given as WYO_WHISPER_<FLAG>; the token is
+          # passed this way so it never shows up in the pod spec's args.
+          env:
+            - name: WYO_WHISPER_HASS_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.vault.secretName }}
+                  key: HASS_TOKEN
+          {{- end }}
+          ports:
+            - name: wyoming
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          {{- with .Values.livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.readinessProbe }}
+          readinessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.startupProbe }}
+          startupProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          resources:
+            requests:
+              {{- toYaml .Values.resources.requests | nindent 14 }}
+            limits:
+              {{- toYaml .Values.resources.limits | nindent 14 }}
+              {{- if .Values.gpu.enabled }}
+              {{ .Values.gpu.resourceName }}: {{ .Values.gpu.count }}
+              {{- end }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "wyoming-whisper.fullname" . }}-pvc
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

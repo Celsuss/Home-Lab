@@ -1,0 +1,17 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "wyoming-whisper.fullname" . }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "wyoming-whisper.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: wyoming
+      protocol: TCP
+      name: wyoming
+  selector:
+    {{- include "wyoming-whisper.selectorLabels" . | nindent 4 }}

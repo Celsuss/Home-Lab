@@ -1,0 +1,6 @@
+apiVersion: v2
+name: wyoming-piper
+description: Wyoming text-to-speech server (Piper) for Home Assistant Assist
+type: application
+version: 0.1.0
+appVersion: "2.5.2"

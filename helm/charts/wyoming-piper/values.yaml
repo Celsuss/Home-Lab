@@ -1,0 +1,74 @@
+---
+replicaCount: 1                     # single instance; voice cache PVC is RWO
+namespace: home-assistant
+
+image:
+  repository: rhasspy/wyoming-piper
+  pullPolicy: IfNotPresent
+  tag: "2.5.2"
+
+piper:
+  # Default voice, used when the client does not ask for one. One Piper
+  # instance serves *every* voice in voices.json (downloaded on first use),
+  # and Home Assistant picks the voice per assistant pipeline, so a single
+  # instance covers Swedish and English. Swedish: sv_SE-nst-medium,
+  # sv_SE-lisa-medium, sv_SE-alma-medium. English: en_US-lessac-medium,
+  # en_GB-alan-medium. ~63 MB each.
+  voice: "sv_SE-nst-medium"
+  # Speaking rate; >1 slower, <1 faster.
+  lengthScale: 1.0
+  # Seconds of silence between sentences.
+  sentenceSilence: 0.2
+  # Refresh voices.json from Hugging Face on every start (needs internet;
+  # otherwise the copy embedded in the image is used).
+  updateVoices: false
+  # Extra CLI flags appended verbatim (see `--help` in the README).
+  extraArgs: []
+
+service:
+  type: ClusterIP
+  port: 10200
+
+# Voice cache (/data). ~63 MB per medium voice.
+persistence:
+  enabled: true
+  storageClassName: "local-path"
+  storage: 1Gi
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: "2"
+    memory: 1Gi
+
+# The image's own health check: a Wyoming Describe/Info round trip.
+livenessProbe:
+  exec:
+    command:
+      - /usr/src/.venv/bin/python3
+      - -m
+      - wyoming_piper.health_check
+  initialDelaySeconds: 30
+  periodSeconds: 30
+  timeoutSeconds: 20
+readinessProbe:
+  exec:
+    command:
+      - /usr/src/.venv/bin/python3
+      - -m
+      - wyoming_piper.health_check
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 20
+# First start downloads the default voice.
+startupProbe:
+  tcpSocket:
+    port: wyoming
+  periodSeconds: 10
+  failureThreshold: 30
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

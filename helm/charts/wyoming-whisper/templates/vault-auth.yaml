@@ -1,0 +1,22 @@
+{{- if .Values.hass.enabled }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: vso-service-account
+  namespace: {{ .Values.namespace }}
+---
+# Named (not "default") because the namespace is shared with Home Assistant
+# and the other Wyoming charts.
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultAuth
+metadata:
+  name: wyoming-whisper-vault-auth
+  namespace: {{ .Values.namespace }}
+spec:
+  method: kubernetes
+  mount: kubernetes
+  kubernetes:
+    role: vso-role
+    serviceAccount: vso-service-account
+{{- end }}

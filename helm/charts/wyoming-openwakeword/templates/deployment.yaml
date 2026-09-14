@@ -1,0 +1,82 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "wyoming-openwakeword.fullname" . }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "wyoming-openwakeword.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "wyoming-openwakeword.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- if .Values.openwakeword.customModels }}
+      annotations:
+        checksum/custom-models: {{ include (print $.Template.BasePath "/custom-models-secret.yaml") . | sha256sum }}
+      {{- end }}
+      labels:
+        {{- include "wyoming-openwakeword.labels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          # The image entrypoint (docker_run.sh) already passes
+          # --uri tcp://0.0.0.0:10400; args here are appended.
+          args:
+            - --threshold
+            - {{ .Values.openwakeword.threshold | quote }}
+            - --trigger-level
+            - {{ .Values.openwakeword.triggerLevel | quote }}
+            - --refractory-seconds
+            - {{ .Values.openwakeword.refractorySeconds | quote }}
+            {{- if .Values.openwakeword.customModels }}
+            - --custom-model-dir
+            - /custom
+            {{- end }}
+            {{- range .Values.openwakeword.extraArgs }}
+            - {{ . | quote }}
+            {{- end }}
+          ports:
+            - name: wyoming
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          {{- with .Values.livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.readinessProbe }}
+          readinessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- if .Values.openwakeword.customModels }}
+          volumeMounts:
+            - name: custom-models
+              mountPath: /custom
+              readOnly: true
+          {{- end }}
+      {{- if .Values.openwakeword.customModels }}
+      volumes:
+        - name: custom-models
+          secret:
+            secretName: {{ include "wyoming-openwakeword.fullname" . }}-custom-models
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
