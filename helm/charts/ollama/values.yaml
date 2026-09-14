@@ -22,14 +22,23 @@ env:
   - name: OLLAMA_GPU
     value: "nvidia"
 
-# Enable automatic model downloading via init container
+# Model inventory. Models are pulled manually for now (`ollama pull` in the
+# pod); `list` documents what is on the PVC so a rebuild can restore it. With
+# `enabled: true` an init container pulls anything in `list` that is missing
+# (it never deletes) — disabled because it previously crash-looped the pod
+# (the readiness loop used curl, which the image lacks; fixed in _helpers.tpl,
+# untested since). Rationale per model: HOME-ASSISTANT-AI-PLAN.md (Phase 1).
 models:
   enabled: false
   list:
-    - "llama2:7b"
-    # - "codellama:7b"        # Code generation model (~4GB)
-    # - "mistral:7b"          # Fast and efficient model (~4GB)
-    # - "llama2:13b"        # Larger model for better quality (~7GB)
+    # Home Assistant conversation agent (Phase 1). Needs `tools` capability.
+    # 8B params, Q8_0, ~8.5 GB on disk — at the top of the ~8 GB VRAM budget
+    # for the assistant model; fall back to qwen3:8b / llama3.1:8b if it
+    # misbehaves in Assist.
+    - "gemma4:e4b-it-q8_0"
+    # Coding models (Open WebUI). Not assistant candidates.
+    - "qwen2.5-coder:14b"   # 9.0 GB
+    - "deepseek-r1:14b"     # 9.0 GB
   initContainer:
     # Use the same Ollama image for consistency
     image:

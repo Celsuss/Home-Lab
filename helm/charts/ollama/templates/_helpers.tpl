@@ -123,7 +123,8 @@ echo "Waiting for Ollama server to become ready..."
 TIMEOUT=60
 COUNTER=0
 while [ $COUNTER -lt $TIMEOUT ]; do
-    if curl -s http://localhost:11434/api/tags >/dev/null 2>&1; then
+    # The ollama image ships no curl; `ollama list` fails until the server answers
+    if ollama list >/dev/null 2>&1; then
         echo "✓ Ollama server is ready!"
         break
     fi
