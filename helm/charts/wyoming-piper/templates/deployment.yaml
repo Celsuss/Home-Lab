@@ -20,25 +20,46 @@ spec:
     spec:
       {{- if .Values.piper.customVoices }}
       initContainers:
-        # Fetch custom (non-catalogue) voices into the voice cache once;
-        # existing files are left alone so restarts are free.
+        # Fetch custom (non-catalogue) voices into the voice cache once and
+        # normalise their config so HA lists them with the catalogue voices
+        # (see piper.customVoices in values.yaml). Existing files are kept;
+        # only the small JSON is rewritten, so restarts are cheap.
         - name: custom-voices
-          image: "{{ .Values.piper.customVoicesInitContainer.image.repository }}:{{ .Values.piper.customVoicesInitContainer.image.tag }}"
-          imagePullPolicy: {{ .Values.piper.customVoicesInitContainer.image.pullPolicy }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
           command:
-            - sh
-            - -ec
+            - python3
+            - -c
             - |
-              cd /data
-              fetch() {
-                if [ -s "$1" ]; then echo "$1 already present"; return; fi
-                echo "downloading $1"
-                curl -fsSL --retry 3 -o "$1.part" "$2" && mv "$1.part" "$1"
-              }
-              {{- range .Values.piper.customVoices }}
-              fetch {{ .name }}.onnx {{ .onnxUrl | quote }}
-              fetch {{ .name }}.onnx.json {{ .jsonUrl | quote }}
-              {{- end }}
+              import json, os, urllib.request
+              voices = json.loads(os.environ["CUSTOM_VOICES"])
+              os.chdir("/data")
+              def fetch(path, url):
+                  if os.path.getsize(path) if os.path.exists(path) else 0:
+                      print(path, "already present"); return
+                  print("downloading", path)
+                  urllib.request.urlretrieve(url, path + ".part")
+                  os.replace(path + ".part", path)
+              for v in voices:
+                  name = v["name"]
+                  fetch(name + ".onnx", v["onnxUrl"])
+                  fetch(name + ".onnx.json", v["jsonUrl"])
+                  parts = name.split("-")
+                  lang = v.get("language") or parts[0]
+                  with open(name + ".onnx.json") as f:
+                      cfg = json.load(f)
+                  cfg.setdefault("language", {})["code"] = lang
+                  if not cfg.get("dataset") and len(parts) >= 2:
+                      cfg["dataset"] = parts[1]
+                  q = cfg.setdefault("audio", {}).get("quality")
+                  if (not q or q == "training_dir") and len(parts) >= 3:
+                      cfg["audio"]["quality"] = parts[2]
+                  with open(name + ".onnx.json", "w") as f:
+                      json.dump(cfg, f, indent=2)
+                  print(name, "->", cfg["language"]["code"], cfg.get("dataset"), cfg["audio"].get("quality"))
+          env:
+            - name: CUSTOM_VOICES
+              value: {{ .Values.piper.customVoices | toJson | quote }}
           volumeMounts:
             - name: data
               mountPath: /data

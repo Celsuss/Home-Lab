@@ -34,9 +34,16 @@ by default: **`en_US-glados-medium`** (GLaDOS from
 [DavesArmoury/GLaDOS_TTS](https://huggingface.co/DavesArmoury/GLaDOS_TTS),
 63 MB, CC-BY-4.0). A higher-quality alternative is
 [systemofapwne/piper-en_US-glados-high](https://huggingface.co/systemofapwne/piper-en_US-glados-high)
-(114 MB). Both are English (`en-us`) voices — **HA only lists voices matching
-the assistant's language**, so GLaDOS appears in an English assistant's
-Text-to-speech voice picker, not a Swedish one.
+(114 MB). Both are English voices — **HA only lists voices matching the assistant's
+language**, so GLaDOS appears in an English assistant's Text-to-speech voice
+picker (as "glados (medium)"), not a Swedish one.
+
+Name custom voices like catalogue ones (`<lang>_<REGION>-<dataset>-<quality>`).
+The init container rewrites the config's `language.code` to the name's
+prefix (or `language:` if set) on every start. HA groups voices by the exact
+language string and only shows one group per language; catalogue voices say
+`en_US`, and a community voice whose config says `en-us` would silently
+vanish from the picker.
 
 Tuning: `piper.lengthScale` (>1 slower speech), `piper.sentenceSilence`,
 anything else through `piper.extraArgs`. The Piper voice management web UI
