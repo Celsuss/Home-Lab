@@ -25,6 +25,19 @@ default when a client asks for none.
 | Swedish | `sv_SE-nst-medium` (default), `sv_SE-lisa-medium`, `sv_SE-alma-medium` | `nst` is the clearest; `lisa` sounds more natural but softer |
 | English | `en_US-lessac-medium`, `en_US-amy-medium`, `en_GB-alan-medium` | `lessac` is the HA reference voice; `-high` variants exist but are slower |
 
+### Custom voices (GLaDOS)
+
+Voices outside the official catalogue go in `piper.customVoices` (name +
+URLs of the `.onnx` and `.onnx.json`). An init container downloads them into
+`/data` once and Piper advertises every such pair as a custom voice. Shipped
+by default: **`en_US-glados-medium`** (GLaDOS from
+[DavesArmoury/GLaDOS_TTS](https://huggingface.co/DavesArmoury/GLaDOS_TTS),
+63 MB, CC-BY-4.0). A higher-quality alternative is
+[systemofapwne/piper-en_US-glados-high](https://huggingface.co/systemofapwne/piper-en_US-glados-high)
+(114 MB). Both are English (`en-us`) voices — **HA only lists voices matching
+the assistant's language**, so GLaDOS appears in an English assistant's
+Text-to-speech voice picker, not a Swedish one.
+
 Tuning: `piper.lengthScale` (>1 slower speech), `piper.sentenceSilence`,
 anything else through `piper.extraArgs`. The Piper voice management web UI
 (`--web-server`) is off; it has no authentication.

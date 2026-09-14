@@ -18,6 +18,31 @@ spec:
       labels:
         {{- include "wyoming-piper.labels" . | nindent 8 }}
     spec:
+      {{- if .Values.piper.customVoices }}
+      initContainers:
+        # Fetch custom (non-catalogue) voices into the voice cache once;
+        # existing files are left alone so restarts are free.
+        - name: custom-voices
+          image: "{{ .Values.piper.customVoicesInitContainer.image.repository }}:{{ .Values.piper.customVoicesInitContainer.image.tag }}"
+          imagePullPolicy: {{ .Values.piper.customVoicesInitContainer.image.pullPolicy }}
+          command:
+            - sh
+            - -ec
+            - |
+              cd /data
+              fetch() {
+                if [ -s "$1" ]; then echo "$1 already present"; return; fi
+                echo "downloading $1"
+                curl -fsSL --retry 3 -o "$1.part" "$2" && mv "$1.part" "$1"
+              }
+              {{- range .Values.piper.customVoices }}
+              fetch {{ .name }}.onnx {{ .onnxUrl | quote }}
+              fetch {{ .name }}.onnx.json {{ .jsonUrl | quote }}
+              {{- end }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"

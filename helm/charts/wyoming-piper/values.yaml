@@ -24,6 +24,24 @@ piper:
   updateVoices: false
   # Extra CLI flags appended verbatim (see `--help` in the README).
   extraArgs: []
+  # Voices that are not in Piper's official catalogue. An init container
+  # downloads <name>.onnx + <name>.onnx.json into /data (skipped when
+  # already present) and Piper advertises any such pair as a custom voice,
+  # selectable in HA like any other. Note HA filters voices by the
+  # assistant's language: an en-us voice only shows up in an English
+  # assistant.
+  customVoices:
+    # GLaDOS (Portal), medium quality, 63 MB, CC-BY-4.0. Alternative with
+    # higher quality (114 MB): https://huggingface.co/systemofapwne/piper-en_US-glados-high
+    # (model.onnx / config.json).
+    - name: en_US-glados-medium
+      onnxUrl: https://huggingface.co/DavesArmoury/GLaDOS_TTS/resolve/main/glados_piper_medium.onnx
+      jsonUrl: https://huggingface.co/DavesArmoury/GLaDOS_TTS/resolve/main/glados_piper_medium.onnx.json
+  customVoicesInitContainer:
+    image:
+      repository: curlimages/curl
+      tag: "8.22.0"
+      pullPolicy: IfNotPresent
 
 service:
   type: ClusterIP
