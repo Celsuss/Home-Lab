@@ -5,19 +5,34 @@ Piper on the Google Home speaker. Until the seeded `packages/` mechanism
 exists (Phase 4.2) this lives in `/config/automations.yaml`, i.e. paste it in
 via Settings → Automations → **Create automation** → ⋮ → *Edit in YAML*.
 
-Prerequisites: the Wyoming Piper integration is added
+Prerequisites (done 2026-09-15): the Wyoming Piper integration is added
 (`helm/charts/home-assistant/README.md` → "Voice pipeline"), and the Google
-Home is exposed to Assist with an alias (e.g. "kitchen speaker").
+Home is exposed to Assist as `media_player.den_speaker`. The Piper TTS entity
+is `tts.piper`.
 
-Find the entity ids first: Settings → Devices & services → Entities, filter
-`media_player.` (the Cast speaker) and `tts.` (Piper shows up as
-`tts.piper`).
+Quick test without an automation — Settings → Developer tools → Actions →
+YAML mode → Perform action:
+
+```yaml
+action: tts.speak
+target:
+  entity_id: tts.piper
+data:
+  media_player_entity_id: media_player.den_speaker
+  message: "Hello. The cake is a lie."
+  language: en_US
+  options:
+    voice: en_US-glados-medium
+```
+
+The automation version (Settings → Automations → Create automation → ⋮ →
+*Edit in YAML*):
 
 ```yaml
 alias: "Smoke test: announce HA start on the Google Home"
 description: >
-  Piper TTS → Google Home. Verifies the TTS half of the voice pipeline and
-  that Cast can fetch audio from HA's internal_url.
+  Piper TTS (GLaDOS) → Google Home. Verifies the TTS half of the voice
+  pipeline and that Cast can fetch audio from HA's internal_url.
 triggers:
   - trigger: homeassistant
     event: start
@@ -26,13 +41,13 @@ actions:
   - delay: "00:00:30"                  # let Cast discovery finish
   - action: tts.speak
     target:
-      entity_id: tts.piper             # Wyoming Piper TTS entity
+      entity_id: tts.piper
     data:
-      media_player_entity_id: media_player.google_home   # your Cast speaker
-      message: "Hemautomationen är igång."
-      language: sv-SE
+      media_player_entity_id: media_player.den_speaker
+      message: "Oh. It's you. Home automation is online. Try not to break anything."
+      language: en_US
       options:
-        voice: sv_SE-nst-medium        # any voice Piper advertises
+        voice: en_US-glados-medium     # custom voice from wyoming-piper values
 mode: single
 ```
 
