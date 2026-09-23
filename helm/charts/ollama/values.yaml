@@ -21,6 +21,15 @@ env:
     value: "/root/.ollama"
   - name: OLLAMA_GPU
     value: "nvidia"
+  # Ollama defaults to a 4096-token context. Open WebUI 0.10.0+ injects the
+  # builtin tool schemas (time, memory, chats, notes, knowledge, channels,
+  # web_search, image_generation, code_interpreter) plus any MCP tool servers
+  # into every request, which alone filled 4096 and left room for exactly one
+  # output token — replies came back as a single character with no error.
+  # Raise the window so the tool preamble plus a real answer both fit.
+  # Lower to 8192 if VRAM gets tight with the 14B models.
+  - name: OLLAMA_CONTEXT_LENGTH
+    value: "16384"
 
 # Model inventory. Models are pulled manually for now (`ollama pull` in the
 # pod); `list` documents what is on the PVC so a rebuild can restore it. With
