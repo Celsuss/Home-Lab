@@ -1,0 +1,18 @@
+---
+# Named (not `default`) because ai-workloads is shared with open-webui, khoj and
+# others - a second VaultAuth called `default` would fight over ownership.
+# `vso-service-account` already exists in this namespace; this chart only
+# references it, it does not create it.
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultAuth
+metadata:
+  name: open-terminal-vault-auth
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "open-terminal.labels" . | nindent 4 }}
+spec:
+  method: kubernetes
+  mount: kubernetes
+  kubernetes:
+    role: vso-role
+    serviceAccount: vso-service-account

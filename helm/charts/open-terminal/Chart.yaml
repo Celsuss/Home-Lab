@@ -1,0 +1,13 @@
+---
+apiVersion: v2
+name: open-terminal
+description: |
+  Open Terminal - a self-hosted shell/filesystem/code-execution sandbox that
+  Open WebUI proxies, turning the chat UI into an agent harness.
+type: application
+
+# Chart version. Bump on every change to the chart itself.
+version: 0.1.0
+
+# Version of Open Terminal being deployed.
+appVersion: "0.14.0"

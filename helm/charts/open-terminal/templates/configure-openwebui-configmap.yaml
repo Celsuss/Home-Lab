@@ -1,0 +1,114 @@
+{{- if .Values.openWebui.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "open-terminal.fullname" . }}-configure
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "open-terminal.labels" . | nindent 4 }}
+data:
+  configure.py: |
+    """Register this terminal in Open WebUI's admin config.
+
+    Open WebUI seeds `terminal_server.connections` from the
+    TERMINAL_SERVER_CONNECTIONS env var only when the key is absent from its
+    database, so an instance that has already booted once can only be
+    configured over its admin API. Run as an ArgoCD PostSync hook.
+
+    Owns exactly the connection whose id is CONNECTION_ID; any other terminal
+    connection configured in the UI is read back and preserved.
+    """
+
+    import json
+    import os
+    import sys
+    import time
+    import urllib.error
+    import urllib.request
+
+    BASE = os.environ["OPEN_WEBUI_URL"].rstrip("/")
+    API_KEY = os.environ["OPEN_WEBUI_API_KEY"]
+    ENDPOINT = BASE + "/api/v1/configs/terminal_servers"
+
+    DESIRED = {
+        "id": os.environ["CONNECTION_ID"],
+        "name": os.environ["CONNECTION_NAME"],
+        "enabled": True,
+        "url": os.environ["TERMINAL_URL"],
+        "key": os.environ["TERMINAL_KEY"],
+        "auth_type": "bearer",
+        "config": {"chat_uploads": os.environ.get("CHAT_UPLOADS", "default")},
+    }
+
+
+    def call(url, method="GET", body=None, auth=True):
+        data = json.dumps(body).encode() if body is not None else None
+        req = urllib.request.Request(url, data=data, method=method)
+        if data:
+            req.add_header("Content-Type", "application/json")
+        if auth:
+            req.add_header("Authorization", "Bearer " + API_KEY)
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            return json.loads(resp.read() or b"null")
+
+
+    def wait_for_open_webui(attempts=60, delay=5):
+        for attempt in range(1, attempts + 1):
+            try:
+                call(BASE + "/health", auth=False)
+                return
+            except Exception as exc:  # noqa: BLE001 - any failure is "not up yet"
+                print(f"waiting for Open WebUI ({attempt}/{attempts}): {exc}", flush=True)
+                time.sleep(delay)
+        sys.exit(f"Open WebUI at {BASE} never became ready")
+
+
+    def matches(existing):
+        """True if the live entry already says what we want it to say."""
+        for key, value in DESIRED.items():
+            if existing.get(key) != value:
+                return False
+        return True
+
+
+    def redact(connections):
+        return [dict(c, key="***") if c.get("key") else c for c in connections]
+
+
+    def main():
+        wait_for_open_webui()
+
+        try:
+            current = call(ENDPOINT).get("TERMINAL_SERVER_CONNECTIONS") or []
+        except urllib.error.HTTPError as exc:
+            sys.exit(
+                f"GET {ENDPOINT} failed with {exc.code}: {exc.read().decode(errors='replace')}\n"
+                "An admin Open WebUI API key (sk-...) is required; check "
+                "secret/homelab/open-webui in Vault and that API keys are enabled."
+            )
+
+        merged, replaced = [], False
+        for connection in current:
+            if connection.get("id") == DESIRED["id"]:
+                if matches(connection):
+                    print("connection already up to date; nothing to do", flush=True)
+                    return
+                merged.append(dict(connection, **DESIRED))
+                replaced = True
+            else:
+                merged.append(connection)
+        if not replaced:
+            merged.append(DESIRED)
+
+        result = call(ENDPOINT, method="POST", body={"TERMINAL_SERVER_CONNECTIONS": merged})
+        print(
+            "registered terminal connection: "
+            + json.dumps(redact(result.get("TERMINAL_SERVER_CONNECTIONS") or [])),
+            flush=True,
+        )
+
+
+    if __name__ == "__main__":
+        main()
+{{- end }}

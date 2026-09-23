@@ -1,0 +1,113 @@
+---
+namespace: ai-workloads
+name: open-terminal
+
+replicaCount: 1
+
+image:
+  # The full image: Python 3.12 + Node 22, git, build tools, pandoc, LaTeX,
+  # LibreOffice, ffmpeg, pandas/numpy/matplotlib, docker CLI. ~1.4 GB
+  # compressed. `-slim` drops all of that (and sudo) if the pod ever needs to
+  # get small again.
+  repository: ghcr.io/open-webui/open-terminal
+  tag: "v0.14.0"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8000
+
+# The workspace (/home/user). Scratch space for the agent: not backed up by
+# volsync - add a tier-2 entry in helm/charts/volsync-backups/values.yaml if
+# real work starts living here.
+persistence:
+  storage: 20Gi
+  # storageClass: ""   # K3s default (local-path)
+
+vault:
+  secretPath: homelab/open-terminal
+  secretName: open-terminal-secrets
+  # Key inside the synced secret holding the bearer token clients must present.
+  apiKeyKey: api-key
+
+# Extra packages installed by the entrypoint on every container start. Leave
+# empty unless something is needed on every restart - it re-downloads each time.
+packages:
+  apt: ""
+  pip: ""
+  npm: ""
+
+# Free-text context appended to the system prompt the terminal hands the model.
+info: "This terminal runs as a pod in a single-node K3s homelab cluster. It has no Kubernetes credentials and cannot reach the LAN."
+
+# CORS only matters for browser-direct connections. This deployment is proxied
+# through the Open WebUI backend, but pinning the origin silences the upstream
+# "CORS is *" startup warning.
+corsAllowedOrigins: "https://open-webui.homelab.local"
+
+# Pod-level containment. The agent is root *inside* its container by design;
+# these are the controls that actually bound it.
+networkPolicy:
+  enabled: true
+  # Pod selector of the client allowed to reach port 8000.
+  clientPodLabels:
+    app: open-webui
+  # Egress: DNS, then the internet with private ranges carved out.
+  dnsNamespaceLabels:
+    kubernetes.io/metadata.name: kube-system
+  blockedCIDRs:
+    - 10.0.0.0/8        # pod CIDR 10.42/16 + service CIDR 10.43/16
+    - 172.16.0.0/12
+    - 192.168.0.0/16    # the LAN
+
+# PostSync hook that registers this terminal in Open WebUI's admin config.
+# Open WebUI's TERMINAL_SERVER_CONNECTIONS env var only seeds a *fresh*
+# database, so an already-running instance has to be told over its admin API.
+openWebui:
+  enabled: true
+  url: http://open-webui.ai-workloads.svc.cluster.local:8080
+  connectionId: open-terminal
+  connectionName: Open Terminal
+  # "default" keeps chat attachments in the conversation; "filesystem" drops
+  # them into the terminal's working directory instead.
+  chatUploads: default
+  # Open WebUI API key (sk-...) minted once under Settings -> Account -> API keys
+  # and stored in Vault at secret/homelab/open-webui.
+  apiKeySecret: open-webui-secret
+  apiKeySecretKey: admin-api-key
+  image:
+    repository: python
+    tag: "3.12-alpine"
+    pullPolicy: IfNotPresent
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 512Mi
+  limits:
+    cpu: 2000m
+    memory: 4Gi
+
+# The entrypoint chowns the mounted workspace and can install packages before
+# the API comes up, so give startup room.
+startupProbe:
+  httpGet:
+    path: /health
+    port: http
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 30
+readinessProbe:
+  httpGet:
+    path: /health
+    port: http
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+livenessProbe:
+  httpGet:
+    path: /health
+    port: http
+  periodSeconds: 30
+  timeoutSeconds: 5
+  failureThreshold: 3

@@ -1,0 +1,68 @@
+{{- if .Values.openWebui.enabled }}
+---
+# Runs after every successful sync of this app and reconciles the Open WebUI
+# side of the integration. Git is the source of truth for this connection:
+# edits made to it in Settings -> Admin -> Integrations are reverted on the
+# next sync. Other terminal connections are left alone.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "open-terminal.fullname" . }}-configure
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "open-terminal.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    # Keep the finished Job around for inspection until the next sync replaces it.
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        {{- include "open-terminal.selectorLabels" . | nindent 8 }}
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      containers:
+        - name: configure
+          image: {{ .Values.openWebui.image.repository }}:{{ .Values.openWebui.image.tag }}
+          imagePullPolicy: {{ .Values.openWebui.image.pullPolicy }}
+          command: ["python3", "/scripts/configure.py"]
+          env:
+            - name: OPEN_WEBUI_URL
+              value: {{ .Values.openWebui.url | quote }}
+            - name: OPEN_WEBUI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.openWebui.apiKeySecret }}
+                  key: {{ .Values.openWebui.apiKeySecretKey }}
+            - name: TERMINAL_URL
+              value: {{ include "open-terminal.serviceUrl" . | quote }}
+            - name: TERMINAL_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.vault.secretName }}
+                  key: {{ .Values.vault.apiKeyKey }}
+            - name: CONNECTION_ID
+              value: {{ .Values.openWebui.connectionId | quote }}
+            - name: CONNECTION_NAME
+              value: {{ .Values.openWebui.connectionName | quote }}
+            - name: CHAT_UPLOADS
+              value: {{ .Values.openWebui.chatUploads | quote }}
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+              readOnly: true
+      volumes:
+        - name: scripts
+          configMap:
+            name: {{ include "open-terminal.fullname" . }}-configure
+{{- end }}

@@ -1,0 +1,50 @@
+{{- if .Values.networkPolicy.enabled }}
+---
+# The terminal executes whatever the model decides to run. Open WebUI reaches in
+# on 8000; the terminal itself may reach DNS and the public internet (pip, npm,
+# git, apt) but not the LAN, other namespaces or cluster services.
+#
+# K3s runs its NetworkPolicy controller unless started with
+# `--disable-network-policy`, which this cluster does not (see
+# ansible/roles/k3s/templates/config.yaml.j2). A policy is silently inert if the
+# controller is off, so verify with a curl at a private address after deploying.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "open-terminal.fullname" . }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "open-terminal.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app: {{ include "open-terminal.fullname" . }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- toYaml .Values.networkPolicy.clientPodLabels | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.service.port }}
+  egress:
+    # Cluster DNS.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              {{- toYaml .Values.networkPolicy.dnsNamespaceLabels | nindent 14 }}
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Everything else: the public internet only.
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              {{- toYaml .Values.networkPolicy.blockedCIDRs | nindent 14 }}
+{{- end }}

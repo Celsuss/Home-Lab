@@ -1,0 +1,82 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "open-terminal.fullname" . }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "open-terminal.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  # One RWO workspace volume: never run two pods against it at once.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: {{ include "open-terminal.fullname" . }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "open-terminal.fullname" . }}
+        {{- include "open-terminal.selectorLabels" . | nindent 8 }}
+    spec:
+      # The model runs arbitrary commands in here - it gets no API credentials.
+      automountServiceAccountToken: false
+      containers:
+      - name: {{ include "open-terminal.fullname" . }}
+        image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        # No hardened securityContext on purpose: the image already drops to
+        # uid 1000 (`user`), and its entrypoint needs sudo (to chown the mounted
+        # workspace, install packages, set up the egress firewall) plus a
+        # setcap'd python binary. `drop: ALL` or a read-only root filesystem
+        # breaks startup. Containment is at the pod level instead: no service
+        # account token, a NetworkPolicy, no host mounts, no docker socket.
+        ports:
+        - name: http
+          containerPort: {{ .Values.service.port }}
+        env:
+        - name: OPEN_TERMINAL_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.vault.secretName }}
+              key: {{ .Values.vault.apiKeyKey }}
+        - name: OPEN_TERMINAL_CORS_ALLOWED_ORIGINS
+          value: {{ .Values.corsAllowedOrigins | quote }}
+        {{- with .Values.info }}
+        - name: OPEN_TERMINAL_INFO
+          value: {{ . | quote }}
+        {{- end }}
+        {{- with .Values.packages.apt }}
+        - name: OPEN_TERMINAL_PACKAGES
+          value: {{ . | quote }}
+        {{- end }}
+        {{- with .Values.packages.pip }}
+        - name: OPEN_TERMINAL_PIP_PACKAGES
+          value: {{ . | quote }}
+        {{- end }}
+        {{- with .Values.packages.npm }}
+        - name: OPEN_TERMINAL_NPM_PACKAGES
+          value: {{ . | quote }}
+        {{- end }}
+        resources:
+          {{- toYaml .Values.resources | nindent 10 }}
+        {{- with .Values.startupProbe }}
+        startupProbe:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with .Values.readinessProbe }}
+        readinessProbe:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with .Values.livenessProbe }}
+        livenessProbe:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        volumeMounts:
+        - name: workspace
+          mountPath: /home/user
+      volumes:
+      - name: workspace
+        persistentVolumeClaim:
+          claimName: {{ include "open-terminal.fullname" . }}-pvc
