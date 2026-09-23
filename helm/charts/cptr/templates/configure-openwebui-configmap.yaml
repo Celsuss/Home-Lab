@@ -1,0 +1,145 @@
+{{- if .Values.openWebui.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "cptr.fullname" . }}-configure
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "cptr.labels" . | nindent 4 }}
+data:
+  configure.py: |
+    """Register cptr in Open WebUI as an OpenAI-compatible model provider.
+
+    Open WebUI stores these under `openai.*` in its database and exposes them
+    at GET /openai/config and POST /openai/config/update. Env vars only seed a
+    fresh database, so an instance that has already booted can only be
+    configured over the admin API. Run as an ArgoCD PostSync hook.
+
+    Unlike terminal-server connections, OpenAI connections have NO id field:
+    they are three parallel lists keyed by POSITION, plus an
+    OPENAI_API_CONFIGS dict keyed by the *stringified index*
+    (see open-webui v0.11.4 routers/openai.py:549). update_config replaces all
+    of it in one shot and drops any config entry whose key is not a current
+    index - so this script reads the live lists, finds our entry by base URL,
+    edits that slot in place (or appends), and writes the whole thing back.
+    Appending never shifts an existing index, and nothing is ever removed, so
+    other providers' configs stay attached to the right connection.
+    """
+
+    import json
+    import os
+    import sys
+    import time
+    import urllib.error
+    import urllib.request
+
+    BASE = os.environ["OPEN_WEBUI_URL"].rstrip("/")
+    API_KEY = os.environ["OPEN_WEBUI_API_KEY"]
+    GET_ENDPOINT = BASE + "/openai/config"
+    SET_ENDPOINT = BASE + "/openai/config/update"
+
+    CPTR_URL = os.environ["CPTR_BASE_URL"]
+    CPTR_KEY = os.environ["CPTR_API_KEY"]
+
+    DESIRED = {
+        "enable": True,
+        "connection_type": "external",
+        "tags": [],
+        # Empty = ask cptr's /v1/models for the workspace list.
+        "model_ids": [],
+        "headers": json.loads(os.environ.get("CONNECTION_HEADERS") or "{}"),
+    }
+    if os.environ.get("PREFIX_ID"):
+        DESIRED["prefix_id"] = os.environ["PREFIX_ID"]
+
+
+    def call(url, method="GET", body=None, auth=True):
+        data = json.dumps(body).encode() if body is not None else None
+        req = urllib.request.Request(url, data=data, method=method)
+        if data:
+            req.add_header("Content-Type", "application/json")
+        if auth:
+            req.add_header("Authorization", "Bearer " + API_KEY)
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            return json.loads(resp.read() or b"null")
+
+
+    def wait_for_open_webui(attempts=60, delay=5):
+        for attempt in range(1, attempts + 1):
+            try:
+                call(BASE + "/health", auth=False)
+                return
+            except Exception as exc:  # noqa: BLE001 - any failure is "not up yet"
+                print(f"waiting for Open WebUI ({attempt}/{attempts}): {exc}", flush=True)
+                time.sleep(delay)
+        sys.exit(f"Open WebUI at {BASE} never became ready")
+
+
+    def redact(payload):
+        out = dict(payload)
+        out["OPENAI_API_KEYS"] = ["***" if k else "" for k in out.get("OPENAI_API_KEYS", [])]
+        return out
+
+
+    def main():
+        wait_for_open_webui()
+
+        try:
+            current = call(GET_ENDPOINT)
+        except urllib.error.HTTPError as exc:
+            sys.exit(
+                f"GET {GET_ENDPOINT} failed with {exc.code}: {exc.read().decode(errors='replace')}\n"
+                "An admin Open WebUI API key (sk-...) is required; check "
+                "secret/homelab/open-webui in Vault and that API keys are enabled."
+            )
+
+        # Absent keys are omitted from the response entirely, not returned null.
+        urls = list(current.get("OPENAI_API_BASE_URLS") or [])
+        keys = list(current.get("OPENAI_API_KEYS") or [])
+        configs = dict(current.get("OPENAI_API_CONFIGS") or {})
+
+        # The API pads/truncates on write; do it here too so index math is sane.
+        keys = (keys + [""] * len(urls))[: len(urls)]
+
+        if CPTR_URL in urls:
+            idx = urls.index(CPTR_URL)
+        else:
+            urls.append(CPTR_URL)
+            keys.append("")
+            idx = len(urls) - 1
+
+        # Merge over whatever is already there, like the open-terminal hook:
+        # git owns the fields it names, anything else set by hand survives.
+        entry = dict(configs.get(str(idx), {}), **DESIRED)
+
+        if (
+            current.get("ENABLE_OPENAI_API")
+            and keys[idx] == CPTR_KEY
+            and configs.get(str(idx)) == entry
+            and urls[idx] == CPTR_URL
+        ):
+            print("cptr connection already up to date; nothing to do", flush=True)
+            return
+
+        keys[idx] = CPTR_KEY
+        configs[str(idx)] = entry
+
+        payload = {
+            # Required: the provider-wide toggle. Enabling it does not touch any
+            # other connection, but leaving it off would make ours inert.
+            "ENABLE_OPENAI_API": True,
+            "OPENAI_API_BASE_URLS": urls,
+            "OPENAI_API_KEYS": keys,
+            "OPENAI_API_CONFIGS": configs,
+        }
+        result = call(SET_ENDPOINT, method="POST", body=payload)
+        print(
+            f"registered cptr at index {idx}: " + json.dumps(redact(result or payload)),
+            flush=True,
+        )
+
+
+    if __name__ == "__main__":
+        main()
+{{- end }}

@@ -27,14 +27,15 @@ persistence:
   storage: 30Gi
   # storageClass: ""   # K3s default (local-path)
 
-# Vault is only needed for Phase 2 (registering cptr in Open WebUI as an
-# OpenAI-compatible model provider), and the API key has to be minted in the
-# cptr UI first. Leave disabled until `secret/homelab/cptr` actually exists,
-# otherwise the VaultStaticSecret sits permanently in error.
+# Holds the gateway API key minted in the cptr UI under Admin -> Gateway.
+# Keep `enabled: false` until `secret/homelab/cptr` exists, or the
+# VaultStaticSecret sits permanently in error.
 vault:
-  enabled: false
+  enabled: true
   secretPath: homelab/cptr
   secretName: cptr-secrets
+  # Key inside the synced secret holding the sk-cptr-... gateway key.
+  apiKeyKey: api-key
 
 # LAN access.
 ingress:
@@ -148,3 +149,49 @@ livenessProbe:
     port: http
   periodSeconds: 30
   failureThreshold: 3
+
+# ---------------------------------------------------------------------------
+# Open WebUI integration
+# ---------------------------------------------------------------------------
+# PostSync hook that registers cptr as an OpenAI-compatible model provider, so
+# its workspaces appear as models in Open WebUI. See README.md for why this
+# cannot be done with env vars on the Open WebUI side.
+openWebui:
+  enabled: true
+  url: http://open-webui.ai-workloads.svc.cluster.local:8080
+
+  # Open WebUI has no id field for OpenAI connections - it keys them by
+  # POSITION in OPENAI_API_BASE_URLS - so this URL is effectively the primary
+  # key, and the job finds our entry by matching it exactly. Must be the
+  # in-cluster Service: routing pod -> Traefik -> back in is exactly what the
+  # NetworkPolicy above denies.
+  baseUrl: http://cptr.ai-workloads.svc.cluster.local:8000/v1
+
+  # Namespaces cptr's workspace-models in the model list ("cptr.<workspace>").
+  # Set to "" to leave model ids untouched.
+  prefixId: cptr
+
+  # Open WebUI substitutes these per request (openai.py:214), which is how cptr
+  # learns which user and chat is calling - it maps them onto its own sessions
+  # (cptr/routers/gateway.py:43). Copied from the cptr Admin -> Gateway panel.
+  headers:
+    X-OpenWebUI-User-Name: "{{USER_NAME}}"
+    X-OpenWebUI-User-Id: "{{USER_ID}}"
+    X-OpenWebUI-User-Email: "{{USER_EMAIL}}"
+    X-OpenWebUI-User-Role: "{{USER_ROLE}}"
+    X-OpenWebUI-Chat-Id: "{{CHAT_ID}}"
+    X-OpenWebUI-Message-Id: "{{MESSAGE_ID}}"
+    X-OpenWebUI-User-Message-Id: "{{USER_MESSAGE_ID}}"
+    X-OpenWebUI-User-Message-Parent-Id: "{{USER_MESSAGE_PARENT_ID}}"
+    X-OpenWebUI-Task: "{{TASK}}"
+
+  # Open WebUI admin API key (sk-...), minted under Settings -> Account ->
+  # API keys and stored in Vault at secret/homelab/open-webui. Shared with the
+  # open-terminal chart's identical hook.
+  apiKeySecret: open-webui-secret
+  apiKeySecretKey: admin-api-key
+
+  image:
+    repository: python
+    tag: "3.12-alpine"
+    pullPolicy: IfNotPresent
