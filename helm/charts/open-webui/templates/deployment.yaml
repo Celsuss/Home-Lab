@@ -6,6 +6,9 @@ metadata:
   namespace: {{ .Values.namespace }}
 spec:
   replicas: {{ .Values.replicaCount }}
+  # SQLite on a single RWO volume: never run two pods against it at once.
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: {{ .Values.name }}
@@ -18,7 +21,8 @@ spec:
       - name: {{ .Values.name }}
         image: {{ .Values.image.repository }}:{{ .Values.image.tag  | default "latest" }} # Or main?
         ports:
-        - containerPort: {{ .Values.service.port }}
+        - name: http
+          containerPort: {{ .Values.service.port }}
         resources:
           requests:
             cpu: {{ .Values.resources.requests.cpu }}
@@ -28,6 +32,18 @@ spec:
             memory: {{ .Values.resources.limits.memory }}
         env:
         {{- toYaml .Values.env | nindent 8 }}
+        {{- with .Values.startupProbe }}
+        startupProbe:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with .Values.readinessProbe }}
+        readinessProbe:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with .Values.livenessProbe }}
+        livenessProbe:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
         tty: true
         volumeMounts:
         - name: webui-volume
