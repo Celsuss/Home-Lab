@@ -4,9 +4,17 @@
 ## Post deployment
 Manual steps required before deploy:
 1. Create Vault secret: `vault kv put secret/homelab/open-webui webui-secret-key=<generated-key>`
-2. After deploy: In OpenWebUI Admin Settings > External Tools, add mcpo servers:
-  - http://mcpo.ai-workloads.svc.cluster.local:8000/fetch/openapi.json
-  - http://mcpo.ai-workloads.svc.cluster.local:8000/memory/openapi.json
+2. After deploy: In OpenWebUI Admin Settings > External Tools, add mcpo servers.
+   Give the **base** URL only — Open WebUI appends `/openapi.json` itself:
+  - http://mcpo.ai-workloads.svc.cluster.local:8000/fetch
+  - http://mcpo.ai-workloads.svc.cluster.local:8000/memory
+
+   (Entering the full `.../openapi.json` URL makes 0.11.x request
+   `.../openapi.json/openapi.json` and the server returns 404.)
+
+   This is a PersistentConfig setting stored in the database, so the
+   `TOOL_SERVER_CONNECTIONS` env var will NOT override an existing value —
+   it has to be changed in the UI.
 
 ## Upgrade notes
 
