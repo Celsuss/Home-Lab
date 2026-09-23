@@ -127,10 +127,18 @@ Then `vault.enabled: true` (already set) lets the VaultStaticSecret sync it to
 ## Access
 
 - **LAN:** `https://cptr.homelab.local` (Traefik, `homelab-ca` cert)
-- **Remote:** `https://cptr.<tailnet>.ts.net` (Tailscale operator ingress, via the shared
-  `homelab-common.tailscale-ingress` helper)
+- **Remote:** `https://cptr.tail5517c5.ts.net` (Tailscale operator ingress, via the shared
+  `homelab-common.tailscale-ingress` helper; the hostname is assigned by the operator and
+  readable from the Ingress status)
 
 Both are always on; the NetworkPolicy allows exactly those two paths.
+
+**Use the tailnet URL on phones and laptops, including at home.** It carries a real
+Let's Encrypt certificate for `*.ts.net`, while `cptr.homelab.local` is signed by the
+`homelab-ca` cluster issuer that only machines with that CA installed will trust — and it
+resolves only on the LAN. This matters most when installing the PWA: it is pinned to the
+origin it was installed from, so installing from the `.homelab.local` URL produces an app
+that breaks the moment you leave the house.
 
 ## Relationship to `open-terminal`
 
@@ -145,6 +153,29 @@ They overlap but do different jobs, and both are deployed:
 
 `open-terminal` is the LLM's tool backend; `cptr` is a workstation for a human. If the
 duplication ever needs to go, `cptr` is the one that can absorb the other's job.
+
+**They do not integrate, and never share state.** Two pods, two images, two PVCs, two
+filesystems. A file the model writes through open-terminal's tools lives in that pod's
+`/home/user`; a file cptr's agent writes lives in cptr's `/workspace`. Neither can see the
+other — open-terminal's NetworkPolicy blocks the whole service CIDR, and cptr's allows only
+ollama and forgejo. Picking between them in Open WebUI picks which sandbox you are working
+in:
+
+- a chat using the **open-terminal** connection: Open WebUI drives the loop, the model is
+  whatever you selected in Open WebUI, and commands run in the open-terminal pod.
+- a chat using a **`cptr.<workspace>`** model: cptr drives its own loop in that workspace,
+  using the model from its own Ollama connection (`gateway.model`), and Open WebUI is just
+  the chat window.
+
+### External coding agents are not usable in this image
+
+Admin → Agents offers profiles for claude code, codex, cline, cursor, gemini, grok,
+opencode and pi (`cptr/utils/agents/`). Each shells out to that CLI **inside the
+container**, and this image ships Python 3.12, `uv`, `git`, `gh` — no Node, no npm, no
+sudo. Those profiles will report `Not found`. cptr's own built-in agent loop (with skills
+and sub-agents) is the one that works here, driven by the Ollama connection. Python-based
+tools can be added with `uv tool install`, which persists because `$HOME` is the PVC;
+Node-based ones cannot without changing the image.
 
 ## Open WebUI integration
 

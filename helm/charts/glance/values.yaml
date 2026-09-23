@@ -403,6 +403,9 @@ config:
                 - title: Open-webUI
                   url: https://open-webui.homelab.local/
                   icon: sh:open-webui-light
+                - title: cptr
+                  url: https://cptr.homelab.local/
+                  icon: mdi:laptop
                 - title: Beszel
                   url: https://beszel.homelab.local/
                   icon: sh:beszel-light
