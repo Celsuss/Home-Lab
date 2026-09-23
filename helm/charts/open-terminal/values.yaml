@@ -10,7 +10,7 @@ image:
   # compressed. `-slim` drops all of that (and sudo) if the pod ever needs to
   # get small again.
   repository: ghcr.io/open-webui/open-terminal
-  tag: "v0.14.0"
+  tag: "0.14.0"
   pullPolicy: IfNotPresent
 
 service:
