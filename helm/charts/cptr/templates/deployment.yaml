@@ -1,0 +1,72 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "cptr.fullname" . }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "cptr.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  # One RWO volume: never run two pods against it at once.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: {{ include "cptr.fullname" . }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "cptr.fullname" . }}
+        {{- include "cptr.selectorLabels" . | nindent 8 }}
+    spec:
+      # Whoever signs in gets a shell in here, so it gets no cluster credentials.
+      automountServiceAccountToken: false
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+      - name: {{ include "cptr.fullname" . }}
+        image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        securityContext:
+          {{- toYaml .Values.securityContext | nindent 10 }}
+        # The image already CMDs `cptr run --host 0.0.0.0 --port 8000 --headless`
+        # under tini, with CPTR_DATA_DIR=/data. Nothing to override.
+        ports:
+        - name: http
+          containerPort: {{ .Values.service.port }}
+        env:
+        # The image's own home, /home/cptr, holds the venv cptr itself runs
+        # from - mounting the PVC over it would delete the application. So the
+        # persistent volume becomes $HOME instead, which is what makes
+        # ~/.gitconfig, ~/.ssh and gh auth survive a restart.
+        - name: HOME
+          value: /workspace
+        resources:
+          {{- toYaml .Values.resources | nindent 10 }}
+        {{- with .Values.startupProbe }}
+        startupProbe:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with .Values.readinessProbe }}
+        readinessProbe:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with .Values.livenessProbe }}
+        livenessProbe:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        workingDir: /workspace
+        volumeMounts:
+        # SQLite app.db, config.toml, uploads, logs.
+        - name: state
+          mountPath: /data
+          subPath: data
+        # $HOME and the working directory: your projects live here.
+        - name: state
+          mountPath: /workspace
+          subPath: workspace
+      volumes:
+      - name: state
+        persistentVolumeClaim:
+          claimName: {{ include "cptr.fullname" . }}-pvc

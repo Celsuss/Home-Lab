@@ -1,0 +1,21 @@
+---
+apiVersion: v2
+name: cptr
+description: |
+  Open WebUI Computer (cptr) - a browser-based Linux workstation: files, editor,
+  terminal, git and AI chat. Upstream is explicitly NOT sandboxed ("full access
+  to the host filesystem and shell, equivalent to an SSH session"), so it runs
+  here as a pod with no host mounts: the "computer" it exposes is the container,
+  never the Arch host the single K3s node runs on.
+type: application
+
+# Chart version. Bump on every change to the chart itself.
+version: 0.1.0
+
+# Version of Open WebUI Computer being deployed.
+appVersion: "0.9.21"
+
+dependencies:
+  - name: homelab-common
+    version: 0.1.0
+    repository: "file://../homelab-common"

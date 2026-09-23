@@ -1,0 +1,150 @@
+---
+namespace: ai-workloads
+name: cptr
+
+replicaCount: 1
+
+image:
+  # ~246 MB compressed. Debian bookworm + Python 3.12 + uv, with git, gh and
+  # tini. No compilers, no node, no sudo - the image runs as the unprivileged
+  # `cptr` user. The `-browser` tag adds Chromium for agent browser automation
+  # (much larger); `dev` tracks main.
+  repository: ghcr.io/open-webui/computer
+  # NOTE: no `v` prefix - `v0.9.21` 404s on GHCR. Same trap as open-terminal.
+  tag: "0.9.21"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8000
+
+# One RWO claim, mounted twice by subPath: `data` -> /data (SQLite app.db,
+# config.toml, uploads, logs) and `workspace` -> /workspace (which is also
+# $HOME, see deployment.yaml). local-path does not enforce the request - it is
+# a bind mount of a directory on the node's root filesystem - so this number is
+# nominal. The node disk was 88% full (210G free) when this was written.
+persistence:
+  storage: 30Gi
+  # storageClass: ""   # K3s default (local-path)
+
+# Vault is only needed for Phase 2 (registering cptr in Open WebUI as an
+# OpenAI-compatible model provider), and the API key has to be minted in the
+# cptr UI first. Leave disabled until `secret/homelab/cptr` actually exists,
+# otherwise the VaultStaticSecret sits permanently in error.
+vault:
+  enabled: false
+  secretPath: homelab/cptr
+  secretName: cptr-secrets
+
+# LAN access.
+ingress:
+  enabled: true
+  className: traefik
+  host: cptr.homelab.local
+  annotations:
+    cert-manager.io/cluster-issuer: homelab-ca
+  tls:
+    - secretName: cptr-tls
+      hosts:
+        - cptr.homelab.local
+
+# Remote access over the tailnet - this is the one that makes it reachable from
+# a phone or another PC. Rendered by the homelab-common helper.
+tailscale:
+  enabled: true
+
+# Pod-level containment. This is the entire security boundary between a browser
+# session and the Arch desktop the node runs on - see README.md.
+networkPolicy:
+  enabled: true
+  # Who may reach port 8000.
+  ingress:
+    # The per-ingress tailscale proxy StatefulSet (namespace `tailscale`).
+    tailscaleNamespaceLabels:
+      kubernetes.io/metadata.name: tailscale
+    tailscalePodLabels:
+      tailscale.com/managed: "true"
+    # Traefik, for cptr.homelab.local on the LAN.
+    traefikNamespaceLabels:
+      kubernetes.io/metadata.name: kube-system
+    traefikPodLabels:
+      app.kubernetes.io/name: traefik
+    # Open WebUI, for the Phase 2 model-provider connection.
+    openWebuiPodLabels:
+      app: open-webui
+  egress:
+    dnsNamespaceLabels:
+      kubernetes.io/metadata.name: kube-system
+    # Named carve-outs back into the cluster. Everything not listed here is
+    # unreachable, because blockedCIDRs below removes all of RFC1918.
+    allowed:
+      - name: ollama
+        podLabels:
+          app.kubernetes.io/name: ollama
+        ports:
+          - 11434
+      - name: forgejo
+        namespaceLabels:
+          kubernetes.io/metadata.name: forgejo
+        podLabels:
+          app.kubernetes.io/name: forgejo
+        ports:
+          - 3000   # forgejo-http
+          - 22     # forgejo-ssh
+    # The public internet (git, pip, npm, GitHub), with every private range
+    # carved out: no LAN, no router, no Vault, no other namespaces.
+    blockedCIDRs:
+      - 10.0.0.0/8        # pod CIDR 10.42/16 + service CIDR 10.43/16
+      - 172.16.0.0/12
+      - 192.168.0.0/16    # the LAN
+
+# The image already runs as the unprivileged `cptr` user with no sudo, so
+# unlike open-terminal this pod can take a real securityContext.
+podSecurityContext:
+  runAsNonRoot: true
+  # The image declares `USER cptr` by *name*, and kubelet cannot verify a named
+  # user is non-root - with runAsNonRoot alone the pod dies in
+  # CreateContainerConfigError. So pin the uid/gid, verified by pulling
+  # /etc/passwd out of the 0.9.21 image: `cptr:x:1000:1000::/home/cptr`.
+  runAsUser: 1000
+  runAsGroup: 1000
+  # fsGroup is what makes the kubelet-created subPath directories writable by
+  # that user; OnRootMismatch avoids re-chowning the whole volume every start.
+  fsGroup: 1000
+  fsGroupChangePolicy: OnRootMismatch
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  # Not read-only: uv, git and the app itself write under /home/cptr and /tmp.
+  readOnlyRootFilesystem: false
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: 4000m
+    memory: 6Gi
+
+# cptr exposes no documented health endpoint, so these are TCP checks. Tighten
+# to httpGet if upstream ever documents one.
+startupProbe:
+  tcpSocket:
+    port: http
+  periodSeconds: 5
+  failureThreshold: 30
+readinessProbe:
+  tcpSocket:
+    port: http
+  periodSeconds: 10
+  failureThreshold: 3
+livenessProbe:
+  tcpSocket:
+    port: http
+  periodSeconds: 30
+  failureThreshold: 3
