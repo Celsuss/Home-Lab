@@ -62,6 +62,27 @@ level:
   namespaces included.
 - No host path mounts and no Docker socket (mounting the socket would be root on the host).
 
+### Verifying the NetworkPolicy
+
+A NetworkPolicy is silently inert if the controller is off, so it is worth checking from the
+terminal pane itself. **k3s enforces policies with kube-router, whose default rule is
+`REJECT --reject-with icmp-port-unreachable`, not `DROP`** — so a blocked connection comes back as an
+*instant* `curl: (7) ... after 0 ms: Could not connect to server`, never a hang. Expecting a timeout
+will make a working policy look broken.
+
+```bash
+curl -m 3 https://example.com                # allowed  -> HTML
+curl -m 3 http://10.43.203.193:11434/        # blocked  -> curl: (7) after 0 ms  (ollama ClusterIP)
+curl -m 3 http://192.168.0.1                 # blocked  -> curl: (7) after 0 ms  (the LAN)
+```
+
+Verified 2026-09-23. The proof that the rules match precisely rather than blocking everything: the
+first command needs DNS, and kube-dns lives at `10.43.0.10` — inside the same `10.43.0.0/16` the
+second command is refused from. Port 53 is allowed, the rest of the range is not.
+
+Don't test against the node's own IP (`192.168.0.142`): pod-to-own-node traffic is a NetworkPolicy
+blind spot that CNIs commonly exempt, so it proves nothing either way.
+
 The pod deliberately has **no** restrictive container `securityContext`: the entrypoint needs sudo to
 chown the mounted workspace and runs a `setcap`'d Python binary, so `drop: ALL` or a read-only root
 filesystem breaks startup.

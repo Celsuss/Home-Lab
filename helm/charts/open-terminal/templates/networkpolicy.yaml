@@ -4,10 +4,11 @@
 # on 8000; the terminal itself may reach DNS and the public internet (pip, npm,
 # git, apt) but not the LAN, other namespaces or cluster services.
 #
-# K3s runs its NetworkPolicy controller unless started with
+# K3s runs its NetworkPolicy controller (kube-router) unless started with
 # `--disable-network-policy`, which this cluster does not (see
 # ansible/roles/k3s/templates/config.yaml.j2). A policy is silently inert if the
-# controller is off, so verify with a curl at a private address after deploying.
+# controller is off, so verify after deploying - see the README for what a
+# blocked connection actually looks like here (an instant refusal, not a hang).
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
