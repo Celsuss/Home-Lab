@@ -1,0 +1,20 @@
+---
+# Every file in the chart's packages/ directory becomes a Home Assistant
+# package (https://www.home-assistant.io/docs/configuration/packages/), mounted
+# read-only at /config/packages and picked up by
+# `homeassistant: packages: !include_dir_named packages` in configuration.yaml.
+# This is how HA YAML (automations, scripts, helpers…) lives in git instead of
+# the UI. Files are copied verbatim — no Helm templating, so HA's own
+# Jinja templates can be used freely.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "home-assistant.fullname" . }}-packages
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "home-assistant.labels" . | nindent 4 }}
+data:
+{{- range $path, $_ := .Files.Glob "packages/*.yaml" }}
+  {{ base $path }}: |
+{{ $.Files.Get $path | indent 4 }}
+{{- end }}

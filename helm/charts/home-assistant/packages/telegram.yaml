@@ -1,0 +1,58 @@
+# Telegram ↔ Assist bridge — HOME-ASSISTANT-AI-PLAN.md, Phase 4.
+#
+# Any text message the bot receives is handed to the Ollama conversation agent
+# (the same one that answers voice/Assist) and the answer is sent back to the
+# chat it came from. Which chats may talk to the bot is enforced by the Telegram
+# bot integration itself ("Add allowed chat ID" subentry in the HA UI), so this
+# package never needs to know your chat id.
+#
+# Manual prerequisites (HA UI, see helm/charts/home-assistant/README.md):
+#   - Telegram bot integration (Polling) with your chat id allow-listed
+#   - Ollama integration; agent entity id below must match
+#     (Settings → Devices & services → Ollama → the conversation entity)
+automation:
+  - id: telegram_assist_chat
+    alias: "Telegram: chat with the assistant"
+    description: >
+      Forward every Telegram text message to the Ollama conversation agent and
+      reply with its answer. conversation_id is derived from the chat id so the
+      agent keeps context for a chat (HA expires idle conversations after 5 min).
+    mode: queued                       # one chat = one ordered thread; don't run replies in parallel
+    max: 10
+    triggers:
+      - trigger: event
+        event_type: telegram_text      # plain text only; "/commands" fire telegram_command instead
+    actions:
+      - action: telegram_bot.send_chat_action
+        continue_on_error: true        # cosmetic; never block the reply on it
+        data:
+          chat_id: "{{ trigger.event.data.chat_id }}"
+          chat_action: typing
+      - action: conversation.process
+        data:
+          agent_id: conversation.ollama_conversation   # Ollama agent from Phase 1
+          text: "{{ trigger.event.data.text }}"
+          conversation_id: "telegram-{{ trigger.event.data.chat_id }}"
+        response_variable: reply
+      - action: telegram_bot.send_message
+        data:
+          chat_id: "{{ trigger.event.data.chat_id }}"
+          parse_mode: plain_text       # LLM output is not valid Markdown; plain avoids "Can't parse entities"
+          message: "{{ reply.response.speech.plain.speech | default('(no reply)', true) }}"
+
+  - id: telegram_start_command
+    alias: "Telegram: /start"
+    description: Greet a new chat so the bot doesn't look dead after BotFather's first /start.
+    mode: single
+    triggers:
+      - trigger: event
+        event_type: telegram_command
+        event_data:
+          command: /start
+    actions:
+      - action: telegram_bot.send_message
+        data:
+          chat_id: "{{ trigger.event.data.chat_id }}"
+          parse_mode: plain_text
+          message: >-
+            Oh. It's you. Type what you want and I'll pass it on to the house.

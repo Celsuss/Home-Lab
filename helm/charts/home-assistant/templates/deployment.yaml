@@ -16,6 +16,7 @@ spec:
     metadata:
       annotations:
         checksum/config-seed: {{ include (print $.Template.BasePath "/config-seed-configmap.yaml") . | sha256sum }}
+        checksum/packages: {{ include (print $.Template.BasePath "/packages-configmap.yaml") . | sha256sum }}
         {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -55,6 +56,26 @@ spec:
               else
                 echo "configuration.yaml already exists, leaving it untouched"
               fi
+              # Make sure the git-managed packages/ dir (mounted from a
+              # ConfigMap) is actually loaded. Older seeds predate it; append
+              # the include once if it's missing. If the file already has its
+              # own `homeassistant:` block we can't merge safely — tell the
+              # user instead of producing a duplicate key.
+              if grep -q 'packages:' /config/configuration.yaml; then
+                echo "packages already configured"
+              elif grep -q '^homeassistant:' /config/configuration.yaml; then
+                echo "WARNING: configuration.yaml has a 'homeassistant:' block without 'packages:'."
+                echo "WARNING: add 'packages: !include_dir_named packages' under it by hand."
+              else
+                echo "Appending packages include to configuration.yaml"
+                printf '\n# Added by the home-assistant Helm chart: YAML from git (helm/charts/home-assistant/packages/).\nhomeassistant:\n  packages: !include_dir_named packages\n' >> /config/configuration.yaml
+              fi
+              # HA only creates these on a fresh onboarding (same contents as
+              # HA would write); the seed's includes must not point at
+              # missing files.
+              [ -f /config/automations.yaml ] || echo '[]' > /config/automations.yaml
+              [ -f /config/scripts.yaml ] || : > /config/scripts.yaml
+              [ -f /config/scenes.yaml ] || : > /config/scenes.yaml
           volumeMounts:
             - name: config
               mountPath: /config
@@ -90,6 +111,9 @@ spec:
           volumeMounts:
             - name: config
               mountPath: /config
+            - name: packages
+              mountPath: /config/packages
+              readOnly: true
       volumes:
         - name: config
           persistentVolumeClaim:
@@ -97,6 +121,9 @@ spec:
         - name: config-seed
           configMap:
             name: {{ include "home-assistant.fullname" . }}-config-seed
+        - name: packages
+          configMap:
+            name: {{ include "home-assistant.fullname" . }}-packages
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

@@ -1,0 +1,29 @@
+# Announcements on the Google Home via Piper TTS — HOME-ASSISTANT-AI-PLAN.md,
+# Phase 2.4 smoke test, moved from docs/home-assistant/announcements.md into
+# the seeded packages mechanism (Phase 4.2).
+#
+# Prerequisites: Wyoming Piper integration (tts.piper) and the Google Home
+# exposed as media_player.den_speaker. Cast fetches the audio from HA's
+# internal_url — keep it auto-detected (http://192.168.0.142:8123), never
+# home-assistant.homelab.local (Cast devices bypass LAN DNS).
+automation:
+  - id: announce_ha_start_google_home
+    alias: "Smoke test: announce HA start on the Google Home"
+    description: >
+      Piper TTS (GLaDOS) → Google Home. Verifies the TTS half of the voice
+      pipeline and that Cast can fetch audio from HA's internal_url.
+    mode: single
+    triggers:
+      - trigger: homeassistant
+        event: start
+    actions:
+      - delay: "00:00:30"              # let Cast discovery finish
+      - action: tts.speak
+        target:
+          entity_id: tts.piper
+        data:
+          media_player_entity_id: media_player.den_speaker
+          message: "Oh. It's you. Home automation is online. Try not to break anything."
+          language: en_US
+          options:
+            voice: en_US-glados-medium # custom voice from wyoming-piper values

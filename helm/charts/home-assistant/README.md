@@ -26,11 +26,44 @@ Both go through a reverse proxy that sets `X-Forwarded-For`. The chart seeds a
 All state (config, SQLite recorder DB) lives on the `/config` PVC
 (`persistence.configStorage`, default 10Gi, `local-path`).
 
+## YAML in git: `packages/`
+
+Every `packages/*.yaml` file in this chart is rendered into a ConfigMap and
+mounted read-only at `/config/packages`; `configuration.yaml` loads the
+directory with `homeassistant: packages: !include_dir_named packages`. This is
+the mechanism for all HA YAML (automations, scripts, helpers, template
+sensors…) — add a file, commit, ArgoCD syncs, the pod restarts (the
+deployment carries a `checksum/packages` annotation) and HA loads it. Files
+are copied verbatim, so HA's own Jinja templates are fine; there is no Helm
+templating inside packages.
+
+- Automations/scripts from packages show up in the UI but are **read-only**
+  there; UI-created ones keep living in `automations.yaml` alongside them.
+- Give every automation a stable `id:` so traces/enable state survive edits.
+- The init container appends the `packages:` include to an existing
+  `configuration.yaml` once if it's missing. If you already have your own
+  `homeassistant:` block it refuses (duplicate key) and logs a warning — add
+  `packages: !include_dir_named packages` under it by hand.
+- A broken package fails HA's config check at startup (HA keeps the old
+  config and shows a repair). Validate before pushing:
+  Settings → System → Repairs, or `ha` logs.
+
+Current packages: `announcements.yaml` (Phase 2 Google Home smoke test),
+`telegram.yaml` (Phase 4 Telegram chat).
+
 ## Secrets
 
 No Kubernetes-injected secrets are required — Home Assistant manages its own
 `/config/secrets.yaml`. If a future integration needs a K8s secret, add Vault
 scaffolding following the repo convention (see `AGENTS.md`).
+
+Credentials that are entered through a UI config flow (e.g. the Telegram bot
+token) live in HA's `.storage`, but are **also** kept in Vault as the source of
+record so they can be re-entered after a `/config` rebuild:
+
+```bash
+vault kv get secret/homelab/home-assistant
+```
 
 ## Assist: local LLM via Ollama
 
@@ -111,6 +144,50 @@ side, again a UI config flow (repeat after a `/config` rebuild):
 5. Google Home as output: expose the Cast `media_player` to Assist with an
    alias ("kitchen speaker") so volume/play/pause work by voice, and add the
    smoke-test announcement from `docs/home-assistant/announcements.md`.
+
+## Telegram: chat with the assistant
+
+Phase 4 of the plan. Messages to a Telegram bot go to the same Ollama
+conversation agent as Assist, and the answer is sent back — including device
+commands. HA's built-in **Telegram bot** integration does the transport; the
+glue is `packages/telegram.yaml` (automation `telegram_assist_chat`). No extra
+services.
+
+One-time setup:
+
+1. **Create the bot**: message `@BotFather` → `/newbot`, keep the token. Get
+   your numeric user id from `@userinfobot`. Send your new bot `/start` once
+   (Telegram bots cannot message a user who hasn't started them).
+2. **Vault** (source of record):
+   ```bash
+   vault kv put secret/homelab/home-assistant \
+     TELEGRAM_BOT_TOKEN=123456:ABC... TELEGRAM_ALLOWED_CHAT_ID=123456789
+   ```
+3. **HA UI → Settings → Devices & services → Add integration → Telegram bot**
+   - Platform: **Polling** (outbound only; webhooks would need a public URL)
+   - API key: the token. Leave API endpoint / proxy at defaults.
+   - After it's created: entry ⋮ → **Add allowed chat ID** → your user id.
+     Only allow-listed chats are ever processed — this *is* the access
+     control (plan 5.4: one chat id, no groups).
+   - Cogwheel → Options → Parse mode `plain_text` (the package sets it per
+     message anyway).
+4. **Check the agent entity id** in `packages/telegram.yaml`
+   (`agent_id: conversation.ollama_conversation`): Settings → Devices &
+   services → Ollama → the conversation entity. If yours differs, change the
+   package and push.
+5. Send the bot a message. Reply should come from GLaDOS. Traces:
+   Settings → Automations → "Telegram: chat with the assistant" → Traces.
+
+How it works: `telegram_text` event → `telegram_bot.send_chat_action`
+(typing…) → `conversation.process` with `conversation_id: telegram-<chat id>`
+(HA keeps the chat history per id, expires after 5 min idle) →
+`telegram_bot.send_message` with `parse_mode: plain_text` (LLM text is not
+valid Telegram Markdown; Markdown would 400 on a stray `*`). `/start` gets a
+canned greeting; other `/commands` are ignored.
+
+Not covered yet (plan 4.3): proactive notifications (`notify.telegram_bot_*`
+entities are created per allowed chat — use `notify.send_message`), voice
+notes.
 
 ## Future: Zigbee / Z-Wave USB coordinators
 

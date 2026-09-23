@@ -12,6 +12,18 @@ data:
     # Home Assistant manages this file after initial creation — edit freely.
     default_config:
 
+    # YAML from git: helm/charts/home-assistant/packages/*.yaml, mounted at
+    # /config/packages by the chart. Automations/scripts defined there are
+    # read-only in the UI.
+    homeassistant:
+      packages: !include_dir_named packages
+
+    # Same includes HA writes into a fresh configuration.yaml — required for
+    # the UI automation/script/scene editors to persist anything.
+    automation: !include automations.yaml
+    script: !include scripts.yaml
+    scene: !include scenes.yaml
+
     # Required so HA accepts requests forwarded by the Traefik ingress.
     http:
       use_x_forwarded_for: true
