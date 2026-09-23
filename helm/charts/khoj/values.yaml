@@ -120,6 +120,18 @@ redis:
     periodSeconds: 10
 
 searxng:
+  # Khoj shipped its own SearXNG, but the standalone `searxng` chart in this
+  # namespace already serves the same purpose. Two instances doubled the
+  # outbound query volume from a single egress IP, which is part of why
+  # Google/DuckDuckGo/Brave/Startpage started blocking it. This copy also had no
+  # settings.yml mounted, so it ran on pure defaults: the same four blocked
+  # engines and no `json` output format, meaning Khoj's own web search returned
+  # nothing either. Disabled in favour of the shared, configured instance.
+  enabled: false
+  # Shared SearXNG endpoint used when `enabled: false`. Leave empty to use this
+  # chart's own instance.
+  host: "http://searxng.ai-workloads.svc.cluster.local:8080"
+
   image:
     repository: searxng/searxng
     pullPolicy: IfNotPresent

@@ -11,6 +11,41 @@ service:
   type: ClusterIP
   port: 8080
 
+# Per-engine overrides merged by name over SearXNG's defaults
+# (`use_default_settings: true` in the ConfigMap).
+#
+# The four general web engines SearXNG enables by default — brave, duckduckgo,
+# google and startpage — all block this egress IP (429 / CAPTCHA / HTTP 403 /
+# CAPTCHA). Every query therefore returned `{"results": []}` with HTTP 200, so
+# Open WebUI's web search handed the model an empty list and it reported that it
+# could not find anything.
+#
+# The three engines enabled below were each verified working from this network,
+# 10 results over 3 consecutive queries with no rate limiting. The blocked
+# defaults stay enabled but down-weighted: SearXNG suspends them on its own and
+# they start contributing again by themselves if the blocks ever lift.
+engines:
+  - name: bing
+    disabled: false
+  - name: yandex
+    disabled: false
+  - name: seznam
+    disabled: false
+  - name: brave
+    weight: 0.5
+  - name: duckduckgo
+    weight: 0.5
+  - name: google
+    weight: 0.5
+  - name: startpage
+    weight: 0.5
+
+# A single slow engine must not stall a whole query — Open WebUI gives the
+# search a limited budget before it gives up on the tool call.
+outgoing:
+  requestTimeout: 6.0
+  maxRequestTimeout: 12.0
+
 resources:
   limits:
     cpu: 500m

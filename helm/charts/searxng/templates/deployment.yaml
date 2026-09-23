@@ -11,6 +11,10 @@ spec:
       app: {{ .Values.name }}
   template:
     metadata:
+      annotations:
+        # SearXNG only reads settings.yml at startup, so a ConfigMap-only change
+        # would otherwise sit unapplied until something else restarted the pod.
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
       labels:
         app: {{ .Values.name }}
     spec:

@@ -58,6 +58,9 @@ template:
     echo ""
     echo "All charts passed templating"
 
+connect-to-vault:
+    kubectl exec -it vault-server-0 -n vault -- /bin/sh
+
 # Apply YAML formatting fixes in-place
 format:
     yamlfmt
@@ -70,3 +73,7 @@ format-check:
 install-hooks:
     pre-commit install
     echo "Git hooks installed"
+
+# Verify SearXNG returns web search results (Open WebUI's search_web depends on it)
+smoke-search query="stockholm weather forecast":
+    bash ./scripts/smoke-search.sh "{{ query }}"

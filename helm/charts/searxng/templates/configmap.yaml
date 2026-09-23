@@ -15,3 +15,8 @@ data:
       formats:
         - html
         - json
+    outgoing:
+      request_timeout: {{ .Values.outgoing.requestTimeout }}
+      max_request_timeout: {{ .Values.outgoing.maxRequestTimeout }}
+    engines:
+      {{- toYaml .Values.engines | nindent 6 }}

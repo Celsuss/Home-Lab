@@ -1,4 +1,5 @@
 ---
+{{- if .Values.searxng.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -37,3 +38,4 @@ spec:
           readinessProbe:
             {{- toYaml . | nindent 12 }}
           {{- end }}
+{{- end }}

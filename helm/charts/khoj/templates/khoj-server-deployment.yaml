@@ -45,7 +45,7 @@ spec:
             - name: REDIS_HOST
               value: "{{ include "khoj.fullname" . }}-redis"
             - name: SEARXNG_HOST
-              value: "http://{{ include "khoj.fullname" . }}-searxng:{{.Values.searxng.service.port }}"
+              value: {{ .Values.searxng.host | default (printf "http://%s-searxng:%v" (include "khoj.fullname" .) .Values.searxng.service.port) | quote }}
             - name: KHOJ_CODE_EXECUTION_HOST
               value: "http://{{ include "khoj.fullname" . }}-terrarium:{{.Values.terrarium.service.port }}"
             - name: KHOJ_ADMIN_EMAIL

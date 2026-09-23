@@ -4,17 +4,54 @@
 ## Post deployment
 Manual steps required before deploy:
 1. Create Vault secret: `vault kv put secret/homelab/open-webui webui-secret-key=<generated-key>`
-2. After deploy: In OpenWebUI Admin Settings > External Tools, add mcpo servers.
-   Give the **base** URL only — Open WebUI appends `/openapi.json` itself:
-  - http://mcpo.ai-workloads.svc.cluster.local:8000/fetch
-  - http://mcpo.ai-workloads.svc.cluster.local:8000/memory
+2. After deploy: nothing to register. 0.11.4 ships native `search_web`,
+   `fetch_url`, knowledge, memory, task and calendar tools, so no external tool
+   server is needed. The `mcpo` chart is scaled to zero — see
+   `helm/charts/mcpo/README.md` before re-enabling it.
 
-   (Entering the full `.../openapi.json` URL makes 0.11.x request
-   `.../openapi.json/openapi.json` and the server returns 404.)
+   **Remove any leftover `mcpo` entries** (see [Web search](#web-search) below).
+   Tool server and MCP server connections are PersistentConfig stored in the
+   database, so `TOOL_SERVER_CONNECTIONS` will NOT override an existing value —
+   they have to be deleted in the UI.
 
-   This is a PersistentConfig setting stored in the database, so the
-   `TOOL_SERVER_CONNECTIONS` env var will NOT override an existing value —
-   it has to be changed in the UI.
+## Web search
+
+Provided by the standalone `searxng` chart in this namespace, via
+`ENABLE_WEB_SEARCH` + `SEARXNG_QUERY_URL` in `values.yaml`. Open WebUI's native
+`search_web` tool uses it.
+
+### Zero search results (2026-09-23)
+
+Symptom: the model calls `search_web`, gets `[]` back, and reports it could not
+find anything. Web search looks correctly configured, because it *is* — the
+request reaches SearXNG fine and SearXNG answers `HTTP 200` with an empty result
+list.
+
+Cause: all four general web engines SearXNG enables by default were blocking
+this egress IP.
+
+```console
+$ curl 'http://searxng.ai-workloads.svc.cluster.local:8080/search?q=test&format=json'     | jq '{n: (.results|length), unresponsive: .unresponsive_engines}'
+{
+  "n": 0,
+  "unresponsive": [["brave","too many requests"], ["duckduckgo","CAPTCHA"],
+                   ["google","access denied"], ["startpage","CAPTCHA"]]
+}
+```
+
+Fixed by enabling `bing`, `yandex` and `seznam` in `helm/charts/searxng` — see
+the comments in that chart's `values.yaml`. **Diagnose this at SearXNG, not in
+Open WebUI:** `unresponsive_engines` in the JSON response names the real
+problem, and `just smoke-search` checks it in one command.
+
+### Two other things that looked like the same bug
+
+- **"Failed to connect to MCP server 'Web fetch'" / `Connection failed` on
+  Verify connection.** Unrelated to web search: `mcpo` was serving zero tools,
+  and was registered under 0.11's MCP servers section even though it is an
+  MCP → *OpenAPI* proxy. Details in `helm/charts/mcpo/README.md`.
+- **`KeyError: 'model'` in `run_initial_title_generation`.** Upstream 0.11.4
+  bug; breaks auto-titling of new chats only, not responses.
 
 ## Upgrade notes
 

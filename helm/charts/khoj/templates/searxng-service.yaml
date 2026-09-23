@@ -1,4 +1,5 @@
 ---
+{{- if .Values.searxng.enabled }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -14,3 +15,4 @@ spec:
   selector:
     {{- include "khoj.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/component: searxng
+{{- end }}
