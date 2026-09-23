@@ -1,9 +1,12 @@
 # Announcements on the Google Home (Piper TTS)
 
 Smoke test for Phase 2.4 of `HOME-ASSISTANT-AI-PLAN.md`: HA speaks through
-Piper on the Google Home speaker. Until the seeded `packages/` mechanism
-exists (Phase 4.2) this lives in `/config/automations.yaml`, i.e. paste it in
-via Settings → Automations → **Create automation** → ⋮ → *Edit in YAML*.
+Piper on the Google Home speaker.
+
+**Since Phase 4.2 (2026-09-15) the automation is deployed from git:**
+`helm/charts/home-assistant/packages/announcements.yaml`. If you pasted the
+YAML below into the UI earlier, delete that copy (Settings → Automations) or
+HA will announce twice. The YAML here is kept as the reference/explanation.
 
 Prerequisites (done 2026-09-15): the Wyoming Piper integration is added
 (`helm/charts/home-assistant/README.md` → "Voice pipeline"), and the Google
@@ -25,8 +28,7 @@ data:
     voice: en_US-glados-medium
 ```
 
-The automation version (Settings → Automations → Create automation → ⋮ →
-*Edit in YAML*):
+The automation version (now in `packages/announcements.yaml`):
 
 ```yaml
 alias: "Smoke test: announce HA start on the Google Home"

@@ -157,27 +157,36 @@ Two viable routes, not mutually exclusive:
 
 Outcome: Message your bot on Telegram, get an answer from the same Ollama-backed agent, including executing home commands. No extra services are needed for v1 — HA's built-in Telegram integration + the conversation API does it all.
 
-### 4.1 Create the bot
-- [ ] Create a bot with @BotFather, note the token and your numeric Telegram user id (`@userinfobot`).
-- [ ] Store both in Vault under the repo convention: `vault kv put secret/homelab/home-assistant TELEGRAM_BOT_TOKEN=... TELEGRAM_ALLOWED_CHAT_ID=...`. HA itself stores the token in `.storage` via the config flow, but Vault is the source of record and lets us seed it if HA is ever rebuilt.
+### 4.1 Create the bot — ✅ DONE 2026-09-24 _(manual)_
+- [x] Create a bot with @BotFather, note the token and your numeric Telegram user id (`@userinfobot`). Send the bot `/start` once from your account. _(2026-09-24)_
+- [x] Store both in Vault under the repo convention: `vault kv put secret/homelab/home-assistant TELEGRAM_BOT_TOKEN=... TELEGRAM_ALLOWED_CHAT_ID=...`. _(2026-09-24)_ HA itself stores the token in `.storage` via the config flow, but Vault is the source of record and lets us re-enter it if HA is ever rebuilt. _(Nothing in the chart reads it — the token only ever goes into the config flow, and the automation takes the chat id from the incoming message, so no VaultStaticSecret is needed.)_
 
-### 4.2 Configure HA
-- [ ] Add the **Telegram bot** integration (polling mode — simplest, no inbound port needed; webhook mode would need the public Tailscale/funnel URL). Restrict to your chat id.
-- [ ] Create an automation (store it in `/config/automations.yaml` or in a package seeded by the chart, so it's in git):
+### 4.2 Configure HA — ✅ DONE 2026-09-24
+- [x] Add the **Telegram bot** integration (polling mode — simplest, no inbound port needed; webhook mode would need the public Tailscale/funnel URL). Restrict to your chat id. _(HA UI; steps in `helm/charts/home-assistant/README.md` → "Telegram". The integration is a config flow with an "Add allowed chat ID" subentry — that allow-list is the access control.)_ _(2026-09-24: added, chat id allow-listed.)_
+- [x] Create an automation (store it in `/config/automations.yaml` or in a package seeded by the chart, so it's in git): _(2026-09-15: `helm/charts/home-assistant/packages/telegram.yaml`)_
   - Trigger: event `telegram_text`
-  - Action: `conversation.process` with `agent_id` = the Ollama agent, `text` = the message, `conversation_id` = the chat id (keeps context across turns)
-  - Action: `telegram_bot.send_message` with the response
-- [ ] Add a seeded `packages/` mechanism to the HA chart: extend `config-seed-configmap.yaml` (or add a second ConfigMap mounted at `/config/packages/`) and set `homeassistant: packages: !include_dir_named packages` in the seeded `configuration.yaml`. This is how all future HA YAML lands in git instead of the UI.
+  - Action: `conversation.process` with `agent_id` = the Ollama agent, `text` = the message, `conversation_id` = `telegram-<chat id>` (keeps context across turns; HA respects custom non-ULID ids, expires after 5 min idle)
+  - Action: `telegram_bot.send_message` with the response, `parse_mode: plain_text`, `chat_id` from the trigger. Plus a `typing…` chat action while the model thinks and a canned `/start` reply.
+  - [x] **Verify** `agent_id: conversation.ollama_conversation` matches the real entity id of the Ollama conversation entity; fix in the package if not. _(2026-09-24: matched — replies come back from the Ollama agent.)_
+- [x] Add a seeded `packages/` mechanism to the HA chart: _(2026-09-15: `packages/*.yaml` → `templates/packages-configmap.yaml` → mounted read-only at `/config/packages`; seed `configuration.yaml` gained `homeassistant: packages: !include_dir_named packages` plus the standard `automation/script/scene: !include` lines; the init container appends the packages include once to an already-existing `configuration.yaml` and creates empty `automations/scripts/scenes.yaml` like HA would. Pod restarts on package changes via a `checksum/packages` annotation.)_ This is how all future HA YAML lands in git instead of the UI.
+- [x] Move the Phase 2 startup announcement into `packages/announcements.yaml`; delete the UI copy if one was pasted.
 
 ### 4.3 Nice-to-haves once the loop works
 - [ ] Proactive notifications *to* Telegram (door left open, low battery, backup failed) via `notify.telegram` — this is where the Phase 5 integrations start paying off.
 - [ ] Voice notes: Telegram voice message → download → STT via Whisper → conversation. (HA doesn't do this natively; needs the Phase 5 agent runtime.)
 
 ### 4.4 Validate
-- [ ] Send "is anything on in the kitchen?" from Telegram while away (over cellular, not Wi-Fi) → correct answer.
-- [ ] Send a command → device changes state → confirmation reply.
+- [x] After the ArgoCD sync: HA pod restarted, init-container log says "Appending packages include" (or "packages already configured"), no repair issue in Settings → System → Repairs, and both package automations appear under Settings → Automations (read-only). _(2026-09-24: implied — the packaged `telegram_assist_chat` automation fired, so `/config/packages` loaded.)_
+- [x] Send a message from Telegram → answer from the Ollama agent. _(2026-09-24: works.)_
+- [ ] Repeat while away (over cellular, not Wi-Fi) → still answers. _(Polling is outbound-only, so this should just work; confirm once.)_
+- [ ] Send a command → device changes state → confirmation reply. _(Blocked until real devices exist — after the move, same loose end as 1.4/2.5.)_
+- [ ] Send two related messages within 5 min ("what's the temperature in the bedroom?" → "and in the kitchen?") → the second one is understood in context.
 
-**Discoveries**: _(fill in)_
+**Discoveries**:
+- 2026-09-24: **Telegram loop is live.** Bot created, integration added in Polling mode with the chat id allow-listed, and the packaged automation answers messages with the Ollama agent — so the `packages/` mechanism (4.2) is confirmed working end to end on the real instance. Remaining in 4.4: the cellular check, the two-turn context check, and device commands (waiting on real devices after the move).
+- 2026-09-15: **Cluster side of Phase 4 done, HA side pending.** HA 2026.9's Telegram bot integration is config-flow only (Broadcast / Polling / Webhooks) with allowed chat ids as subentries; it still fires `telegram_text`/`telegram_command` on the event bus (verified in core `telegram_bot/bot.py` @ 2026.9.2) and also exposes an `event.<bot>_update_event` entity plus one `notify.*` entity per allowed chat (useful for 4.3). `send_message` takes `chat_id` (list-coerced) and `parse_mode: plain_text`; `send_chat_action` gives a typing indicator. `conversation.process` without `agent_id` uses HA's built-in agent, not the pipeline default — so the package hard-codes the Ollama entity id.
+- 2026-09-15: **Packages from a ConfigMap work with `!include_dir_named`**: HA's loader (`annotatedyaml._find_files`) skips dot-prefixed entries, so the kubelet's `..data` / `..<timestamp>` dirs are ignored and the symlinked `*.yaml` files load. Packages can't use `!secret` from a K8s Secret (HA's `secrets.yaml` lookup walks up from the including file; a `secrets.yaml` inside `packages/` would itself be loaded as a package) — keep secrets out of packages; UI config flows hold them and Vault is the record.
+- 2026-09-15: The existing `configuration.yaml` was seeded by the chart before HA's onboarding, so it never got HA's default `automation: !include automations.yaml` lines. The init container now creates the empty include targets, and the seed includes them — **check** the live `configuration.yaml` has the `automation/script/scene` includes if UI-created automations ever "disappear" after a restart.
 
 ---
 
@@ -261,6 +270,8 @@ Not a cluster change — a client choice. Document the decision in `helm/charts/
 
 | Date | Phase | What was done |
 |---|---|---|
+| 2026-09-24 | 4.1/4.2 ✅ | Telegram bot created, integration added (Polling, chat id allow-listed), Ollama agent entity id confirmed. Messaging the bot returns an answer — the git-managed `packages/` mechanism verified live. Left in 4.4: cellular test, two-turn context test, device commands (after the move). |
+| 2026-09-15 | 4.2 (cluster side ✅), 4.1/4.2-UI/4.4 pending | Phase 3 skipped for now (no hardware). `packages/` mechanism added to the HA chart (ConfigMap → `/config/packages`, seed + init-container include, checksum restart), `packages/telegram.yaml` (Telegram ↔ Ollama automation, `/start` reply) and `packages/announcements.yaml` (moved from docs). HA README gained "YAML in git" + "Telegram" sections. **Next (manual):** BotFather → Vault → add the Telegram bot integration (Polling, allow-list chat id) → confirm `conversation.ollama_conversation` entity id → 4.4 validation. |
 | 2026-09-15 | 2 ✅ | HA side done: Wyoming integrations, "Ollama" assistant (Whisper/Piper-GLaDOS/openWakeWord), voice in+out in the Companion app, GLaDOS on the Google Home, speaker exposed. GLaDOS custom voice added to `wyoming-piper` (language-code fix needed for HA's picker). Phase 2 closed; next is Phase 3 (satellites, hardware-gated) or Phase 4 (Telegram). |
 | 2026-09-14 | 2.1–2.3 ✅, 2.4/2.5 pending | Charts `wyoming-whisper`, `wyoming-piper`, `wyoming-openwakeword` written, test-deployed, validated end-to-end over the Wyoming protocol (TTS→WAV→STT round trip in sv+en, wake-word detection) and removed again; added to `root-app`. HA README gained the "Voice pipeline" UI steps; announcement automation in `docs/home-assistant/announcements.md`; Whisper chart has opt-in HA name-biasing via Vault. **Next session:** do 2.4 in the HA UI, then 2.5 latency measurement with a real mic. |
 | 2026-09-14 | 2 (scoping) | Google Home speaker discovered in HA. Plan updated: Cast speaker becomes the TTS/announcement output for Phase 2 (2.2, 2.4, 2.5), `internal_url` gotcha noted, cloud "Hey Google" bridge recorded as a non-goal; STT/wake word/satellite scope unchanged. Phase 2 not started. |
