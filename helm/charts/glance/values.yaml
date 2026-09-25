@@ -406,6 +406,9 @@ config:
                 - title: cptr
                   url: https://cptr.homelab.local/
                   icon: mdi:laptop
+                - title: OpenHands
+                  url: https://openhands.homelab.local/canvas/
+                  icon: mdi:robot
                 - title: Beszel
                   url: https://beszel.homelab.local/
                   icon: sh:beszel-light

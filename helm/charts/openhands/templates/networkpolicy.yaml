@@ -1,0 +1,85 @@
+{{- if .Values.networkPolicy.enabled }}
+---
+# OpenHands hands an AI agent a shell in this pod, on the node that is also the
+# Arch desktop. This policy - plus `automountServiceAccountToken: false`, no
+# hostPath mount and no Docker socket - is the whole containment story.
+#
+# K3s enforces policies with kube-router unless started with
+# `--disable-network-policy`, which this cluster does not (see
+# ansible/roles/k3s/templates/config.yaml.j2). A policy is silently inert if the
+# controller is off, so verify after deploying - see README.md. kube-router
+# REJECTs rather than DROPs, so a blocked connection is an *instant* curl
+# error 7, never a hang.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "openhands.fullname" . }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "openhands.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app: {{ include "openhands.fullname" . }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Port 8000 from the two ingress paths only. Nothing else in the cluster can
+    # reach it - not even other pods in this namespace.
+    - from:
+        # Tailscale proxy pods (remote access over the tailnet).
+        - namespaceSelector:
+            matchLabels:
+              {{- toYaml .Values.networkPolicy.ingress.tailscaleNamespaceLabels | nindent 14 }}
+          podSelector:
+            matchLabels:
+              {{- toYaml .Values.networkPolicy.ingress.tailscalePodLabels | nindent 14 }}
+        # Traefik (LAN access on {{ .Values.ingress.host }}).
+        - namespaceSelector:
+            matchLabels:
+              {{- toYaml .Values.networkPolicy.ingress.traefikNamespaceLabels | nindent 14 }}
+          podSelector:
+            matchLabels:
+              {{- toYaml .Values.networkPolicy.ingress.traefikPodLabels | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.service.port }}
+  egress:
+    # Cluster DNS.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              {{- toYaml .Values.networkPolicy.egress.dnsNamespaceLabels | nindent 14 }}
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    {{- range .Values.networkPolicy.egress.allowed }}
+    # {{ .name }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- toYaml .podLabels | nindent 14 }}
+          {{- with .namespaceLabels }}
+          namespaceSelector:
+            matchLabels:
+              {{- toYaml . | nindent 14 }}
+          {{- end }}
+      ports:
+        {{- range .ports }}
+        - protocol: TCP
+          port: {{ . }}
+        {{- end }}
+    {{- end }}
+    # Everything else: the public internet only - api.anthropic.com for the
+    # model calls, registry.npmjs.org for the ACP adapter, GitHub for repos.
+    # Every RFC1918 range is carved out, so the LAN, the router, Vault and every
+    # other namespace are unreachable except through the named rules above.
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              {{- toYaml .Values.networkPolicy.egress.blockedCIDRs | nindent 14 }}
+{{- end }}

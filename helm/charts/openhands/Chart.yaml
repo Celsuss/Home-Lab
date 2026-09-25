@@ -1,0 +1,22 @@
+---
+apiVersion: v2
+name: openhands
+description: |
+  OpenHands Agent Canvas - a browser UI for an AI software engineer. Deployed as
+  the upstream all-in-one image (frontend + agent-server + automation), which
+  runs the agent's shell commands *inside its own container*: no Docker socket,
+  no spawned sandbox containers, no host access. Inference is delegated to
+  Claude Code over ACP, so it bills against the Claude subscription rather than
+  per-token API credits.
+type: application
+
+# Chart version. Bump on every change to the chart itself.
+version: 0.1.0
+
+# Version of the agent-canvas image being deployed.
+appVersion: "1.23.0"
+
+dependencies:
+  - name: homelab-common
+    version: 0.1.0
+    repository: "file://../homelab-common"

@@ -1,0 +1,24 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: openhands
+  namespace: argo-cd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Celsuss/Home-Lab.git
+    path: helm/charts/openhands
+    targetRevision: HEAD
+    helm:
+      valueFiles:
+        - values.yaml
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: 'ai-workloads'
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

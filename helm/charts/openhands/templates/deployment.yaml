@@ -1,0 +1,111 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "openhands.fullname" . }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "openhands.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  # One RWO volume, and the agent-server keeps conversation state and the
+  # automation SQLite DB on it: never run two pods against it at once.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: {{ include "openhands.fullname" . }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "openhands.fullname" . }}
+        {{- include "openhands.selectorLabels" . | nindent 8 }}
+    spec:
+      # The agent runs shell commands in here, so it gets no cluster
+      # credentials. Upstream's chart has an rbac.* switch that can grant this
+      # pod namespace-admin or even cluster-admin; that is deliberately absent.
+      automountServiceAccountToken: false
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+      - name: {{ include "openhands.fullname" . }}
+        image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        securityContext:
+          {{- toYaml .Values.securityContext | nindent 10 }}
+        # The image's entrypoint starts the agent-server, the automation server
+        # and the static-server/proxy itself. Nothing to override.
+        ports:
+        - name: http
+          containerPort: {{ .Values.service.port }}
+        env:
+        # Ports the entrypoint's process manager binds.
+        - name: PORT
+          value: {{ .Values.service.port | quote }}
+        - name: AGENT_SERVER_PORT
+          value: {{ .Values.config.agentServerPort | quote }}
+        - name: AUTOMATION_PORT
+          value: {{ .Values.config.automationPort | quote }}
+        {{- if .Values.vault.enabled }}
+        # Settings-encryption key. Seeded from Vault rather than letting the
+        # entrypoint generate one, so stored settings survive losing the PVC.
+        - name: OH_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.vault.secretName }}
+              key: {{ .Values.vault.ohSecretKeyKey }}
+        {{- if .Values.config.sessionApiKey.enabled }}
+        - name: OH_SESSION_API_KEYS_0
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.vault.secretName }}
+              key: {{ .Values.vault.sessionApiKeyKey }}
+        {{- end }}
+        # This is the whole point of the deployment: the Claude Code ACP adapter
+        # spawns the `claude` CLI, which authenticates with this subscription
+        # token instead of a per-token API key. `claude setup-token` mints it and
+        # it lasts ~1 year - see README.md for the rotation runbook.
+        - name: CLAUDE_CODE_OAUTH_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.vault.secretName }}
+              key: {{ .Values.vault.claudeTokenKey }}
+        {{- end }}
+        resources:
+          {{- toYaml .Values.resources | nindent 10 }}
+        {{- with .Values.startupProbe }}
+        startupProbe:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with .Values.readinessProbe }}
+        readinessProbe:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- with .Values.livenessProbe }}
+        livenessProbe:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        # $HOME is /home/openhands and the image ships dotfiles there, so the
+        # volume is mounted at three subdirectories instead of over the top of
+        # it - shadowing $HOME would break the app, the way it would for cptr.
+        volumeMounts:
+        # Settings, encrypted secrets, conversation history, event store and the
+        # automation SQLite DB.
+        - name: state
+          mountPath: /home/openhands/.openhands
+          subPath: openhands
+        # The agent's working directory: cloned repos and anything it writes.
+        - name: state
+          mountPath: /home/openhands/workspace
+          subPath: workspace
+        # npm cache. The ACP preset is `npx -y @agentclientprotocol/
+        # claude-agent-acp`, resolved at conversation start - without this it is
+        # re-downloaded after every pod restart. Clearing this subPath is how you
+        # pick up a newer adapter.
+        - name: state
+          mountPath: /home/openhands/.npm
+          subPath: npm
+      volumes:
+      - name: state
+        persistentVolumeClaim:
+          claimName: {{ include "openhands.fullname" . }}-pvc

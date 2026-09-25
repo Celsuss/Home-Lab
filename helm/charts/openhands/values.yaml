@@ -1,0 +1,161 @@
+---
+namespace: ai-workloads
+name: openhands
+
+replicaCount: 1
+
+image:
+  # The all-in-one agent-canvas image: React frontend, agent-server (:18000),
+  # automation server (:18001) and a static-server/proxy that fronts all three
+  # on one port. Ships Node 24 + npx 11, which is what lets the Claude Code ACP
+  # adapter be fetched at runtime - verified in the 1.23.0 image.
+  repository: ghcr.io/openhands/agent-canvas
+  tag: "1.23.0"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  # The unified entry point. The UI itself is served under /canvas/ while /api,
+  # /sockets and /alive sit at the root of the same port.
+  port: 8000
+
+# Internal ports the image's process manager uses. Only change these if they
+# collide with something else inside the container.
+config:
+  agentServerPort: 18000
+  automationPort: 18001
+  # Seeds OH_SESSION_API_KEYS_0 from Vault, which the agent-server requires on
+  # direct API calls. Left off until it is confirmed that it does not also gate
+  # the browser UI - turning it on blind risks locking the UI out on first sync.
+  # Needed before the (optional) settings-configuring PostSync hook can work.
+  sessionApiKey:
+    enabled: false
+
+# One RWO claim, mounted three times by subPath - see deployment.yaml. Nominal:
+# local-path is a bind mount of a node directory and does not enforce the
+# request. The node disk was ~88% full (210G free) when cptr was written.
+persistence:
+  storage: 20Gi
+  # storageClass: ""   # K3s default (local-path)
+
+# secret/homelab/openhands, synced by VSO into the `openhands-secrets` Secret:
+#   claude-code-oauth-token  `claude setup-token` output (~1 year, Pro/Max)
+#   oh-secret-key            OpenHands settings-encryption key
+#   session-api-key          agent-server API key (see config.sessionApiKey)
+vault:
+  enabled: true
+  secretPath: homelab/openhands
+  secretName: openhands-secrets
+  claudeTokenKey: claude-code-oauth-token
+  ohSecretKeyKey: oh-secret-key
+  sessionApiKeyKey: session-api-key
+
+# LAN access. Browse to https://openhands.homelab.local/canvas/ - the root path
+# is routed too, because /api and /sockets live there.
+ingress:
+  enabled: true
+  className: traefik
+  host: openhands.homelab.local
+  annotations:
+    cert-manager.io/cluster-issuer: homelab-ca
+  tls:
+    - secretName: openhands-tls
+      hosts:
+        - openhands.homelab.local
+
+# Remote access over the tailnet. Rendered by the homelab-common helper.
+tailscale:
+  enabled: true
+
+# Pod-level containment. The agent has a shell in this container and a
+# credential that can spend the Claude subscription, so this policy plus
+# `automountServiceAccountToken: false` and the absence of any hostPath mount is
+# the whole boundary between it and the Arch desktop the node runs on.
+networkPolicy:
+  enabled: true
+  # Who may reach port 8000.
+  ingress:
+    # The per-ingress tailscale proxy StatefulSet (namespace `tailscale`).
+    tailscaleNamespaceLabels:
+      kubernetes.io/metadata.name: tailscale
+    tailscalePodLabels:
+      tailscale.com/managed: "true"
+    # Traefik, for openhands.homelab.local on the LAN.
+    traefikNamespaceLabels:
+      kubernetes.io/metadata.name: kube-system
+    traefikPodLabels:
+      app.kubernetes.io/name: traefik
+  egress:
+    dnsNamespaceLabels:
+      kubernetes.io/metadata.name: kube-system
+    # Named carve-outs back into the cluster. Everything not listed here is
+    # unreachable, because blockedCIDRs below removes all of RFC1918.
+    allowed:
+      - name: forgejo
+        namespaceLabels:
+          kubernetes.io/metadata.name: forgejo
+        podLabels:
+          app.kubernetes.io/name: forgejo
+        ports:
+          - 3000   # forgejo-http
+          - 22     # forgejo-ssh
+    # The public internet, with every private range carved out: no LAN, no
+    # router, no Vault, no other namespaces. This is what api.anthropic.com,
+    # registry.npmjs.org and github.com are reached through.
+    blockedCIDRs:
+      - 10.0.0.0/8        # pod CIDR 10.42/16 + service CIDR 10.43/16
+      - 172.16.0.0/12
+      - 192.168.0.0/16    # the LAN
+
+podSecurityContext:
+  runAsNonRoot: true
+  # The image runs as `openhands`, uid/gid 10001 (upstream's own chart pins the
+  # same values). Pinned numerically because kubelet cannot verify a named user
+  # is non-root: with runAsNonRoot alone the pod dies in
+  # CreateContainerConfigError.
+  runAsUser: 10001
+  runAsGroup: 10001
+  # fsGroup makes the kubelet-created subPath directories writable by that user;
+  # OnRootMismatch avoids re-chowning the whole volume on every start.
+  fsGroup: 10001
+  fsGroupChangePolicy: OnRootMismatch
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  # Not read-only: the agent writes code, npx unpacks packages, and the
+  # process manager writes under /tmp.
+  readOnlyRootFilesystem: false
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 1Gi
+  limits:
+    cpu: 4000m
+    memory: 6Gi
+
+# /alive is proxied to the agent-server by the unified entry point. The startup
+# budget is generous because first boot migrates the automation DB.
+startupProbe:
+  httpGet:
+    path: /alive
+    port: http
+  periodSeconds: 5
+  failureThreshold: 60
+readinessProbe:
+  httpGet:
+    path: /alive
+    port: http
+  periodSeconds: 10
+  failureThreshold: 3
+livenessProbe:
+  httpGet:
+    path: /alive
+    port: http
+  periodSeconds: 30
+  failureThreshold: 5
