@@ -68,14 +68,18 @@ spec:
         - --skip-provider-button=true
         - --cookie-secure=true
         - --whitelist-domain={{ join "," .Values.auth.oidc.whitelistDomains }}
+        # Kanidm's access tokens live 15 minutes. Without this the session goes
+        # stale at that mark and the browser is bounced back to the provider
+        # mid-request, which breaks in-flight XHRs and the /sockets websocket
+        # during a long agent run. Kanidm does hand out a refresh token, so
+        # oauth2-proxy can renew quietly instead - keep this comfortably under
+        # the token lifetime.
+        - --cookie-refresh={{ .Values.auth.cookieRefresh }}
         # Deliberately unset:
         #   --redirect-url    derived from X-Forwarded-Host per request, which
         #                     is how one deployment serves both the LAN host and
         #                     the tailnet host. Both are registered on the
         #                     Kanidm client.
-        #   --cookie-refresh  Kanidm issues no refresh token without
-        #                     offline_access, so refreshing would force a
-        #                     re-login. The default 168h cookie is the session.
         #   --proxy-websockets  already true by default - it is what carries
         #                     OpenHands' /sockets.
         env:

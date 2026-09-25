@@ -94,9 +94,12 @@ Access control lives in **Kanidm**, not in oauth2-proxy: only the
 a token to anyone else and the proxy can run with `--email-domain=*`. Setup is in
 [Manual steps](#2-create-the-kanidm-client-and-group-before-the-first-sync).
 
-Session length is the default 168h cookie. There is no `--cookie-refresh`:
-Kanidm issues no refresh token without `offline_access`, so refreshing would just
-force a re-login.
+Session length is the default 168h cookie, renewed every `auth.cookieRefresh`
+(5m). Kanidm's access tokens live only 15 minutes, and it *does* issue a refresh
+token, so oauth2-proxy renews quietly; without the refresh the browser would be
+bounced back to the provider every 15 minutes, mid-request, breaking in-flight
+XHRs and the `/sockets` websocket during a long agent run. Keep `cookieRefresh`
+comfortably under that 15-minute token lifetime.
 
 `auth.enabled: false` restores the pre-SSO behaviour exactly — both ingresses
 point straight at the app, the NetworkPolicy readmits Traefik and the tailscale

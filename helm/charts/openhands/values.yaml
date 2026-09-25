@@ -78,6 +78,12 @@ auth:
   service:
     port: 4180
 
+  # How often oauth2-proxy renews the session with its refresh token. Must stay
+  # under Kanidm's 15-minute access-token lifetime: past that the session is
+  # stale and the browser gets bounced to the provider mid-request. Must also
+  # stay under the 168h cookie expiry, which is the real session length.
+  cookieRefresh: 5m
+
   oidc:
     # Kanidm's per-client OIDC issuer. The discovery document, token endpoint
     # and JWKS all hang off this; the browser is sent to the authorize endpoint
