@@ -47,3 +47,12 @@ In-cluster URL of the unified entry point.
 {{- define "openhands.serviceUrl" -}}
 {{- printf "http://%s.%s.svc.cluster.local:%v" (include "openhands.fullname" .) .Values.namespace .Values.service.port }}
 {{- end }}
+
+{{/*
+Name of the oauth2-proxy in front of the app. Kept distinct from the app's own
+fullname so the app Service stays on the name the PostSync hook and the
+in-cluster URL already use.
+*/}}
+{{- define "openhands.authFullname" -}}
+{{- printf "%s-auth" (include "openhands.fullname" .) | trunc 63 | trimSuffix "-" }}
+{{- end }}

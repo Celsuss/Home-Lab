@@ -1,0 +1,23 @@
+{{- if .Values.auth.enabled }}
+---
+# What both ingresses point at. The app's own Service (service.yaml) keeps its
+# name and port 8000 so the PostSync configure hook is unaffected - it is just
+# no longer reachable from outside the cluster.
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "openhands.authFullname" . }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "openhands.labels" . | nindent 4 }}
+    app.kubernetes.io/component: auth
+spec:
+  type: ClusterIP
+  selector:
+    app: {{ include "openhands.authFullname" . }}
+  ports:
+    - port: {{ .Values.auth.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+{{- end }}

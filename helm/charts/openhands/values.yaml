@@ -53,8 +53,82 @@ vault:
   ohSecretKeyKey: oh-secret-key
   sessionApiKeyKey: session-api-key
 
+# ---------------------------------------------------------------------------
+# Authentication
+# ---------------------------------------------------------------------------
+# oauth2-proxy in front of everything both ingresses serve, authenticating
+# against the in-cluster Kanidm. Without it the session API key that the static
+# server injects into the SPA shell is handed to anyone who can load the page,
+# and with it a shell in this container and the Claude subscription.
+#
+# Runs as its own pod, not a sidecar: the app's NetworkPolicy below carves all
+# of RFC1918 out of egress, so a sidecar could not reach Kanidm without opening
+# the LAN ingress surface to the agent. See README.md.
+#
+# Flipping this to false restores the pre-SSO behaviour exactly - ingresses
+# point straight at the app again - and is only for debugging the gate.
+auth:
+  enabled: true
+
+  image:
+    repository: quay.io/oauth2-proxy/oauth2-proxy
+    tag: "v7.15.4"
+    pullPolicy: IfNotPresent
+
+  service:
+    port: 4180
+
+  oidc:
+    # Kanidm's per-client OIDC issuer. The discovery document, token endpoint
+    # and JWKS all hang off this; the browser is sent to the authorize endpoint
+    # it advertises.
+    issuerUrl: https://kanidm.homelab.local/oauth2/openid/openhands
+    # Hosts oauth2-proxy will build a redirect URL for. `--redirect-url` is
+    # deliberately unset so the callback is derived from X-Forwarded-Host per
+    # request - that is what lets one deployment serve both hosts. Every entry
+    # here must ALSO be registered as a redirect URL on the Kanidm client, or
+    # the login fails at the provider. See README.md.
+    whitelistDomains:
+      - openhands.homelab.local
+      - openhands.tail5517c5.ts.net
+
+  # secret/homelab/openhands-auth, synced by VSO into `openhands-auth-secrets`:
+  #   client-id       the Kanidm OAuth2 client name ("openhands")
+  #   client-secret   `kanidm system oauth2 show-basic-secret openhands`
+  #   cookie-secret   32 random bytes, url-safe base64
+  # Kept apart from the app's own Vault path so the subscription token and the
+  # SSO credentials do not share a blast radius.
+  vault:
+    secretPath: homelab/openhands-auth
+    secretName: openhands-auth-secrets
+
+  # trust-manager syncs this ConfigMap into every namespace. Mounted over
+  # /etc/ssl/certs/ca-certificates.crt so the proxy trusts the homelab-ca cert
+  # Kanidm serves - same pattern as the woodpecker chart.
+  caBundle:
+    configMapName: homelab-ca-bundle
+    key: ca-certificates.crt
+
+  networkPolicy:
+    enabled: true
+    # Kanidm is reached the way ArgoCD reaches it: out to the Traefik
+    # LoadBalancer IP and back in through the TLS-passthrough IngressRouteTCP,
+    # because k8s-gateway answers kanidm.homelab.local with this address. One
+    # host and one port, not a route to the LAN.
+    kanidmCIDR: 192.168.0.142/32
+    kanidmPort: 443
+
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
 # LAN access. Browse to https://openhands.homelab.local/canvas/ - the root path
-# is routed too, because /api and /sockets live there.
+# is routed too, because /api and /sockets live there. With auth enabled this
+# lands on the oauth2-proxy, which redirects to Kanidm before proxying on.
 ingress:
   enabled: true
   className: traefik
@@ -66,7 +140,9 @@ ingress:
       hosts:
         - openhands.homelab.local
 
-# Remote access over the tailnet. Rendered by the homelab-common helper.
+# Remote access over the tailnet. Rendered by the homelab-common helper. The
+# backend is wired to the oauth2-proxy by templates/ingress-tailscale.yaml when
+# auth.enabled is true, so there is no serviceName/servicePort to set here.
 tailscale:
   enabled: true
 

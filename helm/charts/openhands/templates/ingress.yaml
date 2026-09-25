@@ -3,6 +3,10 @@
 # Routes the whole port, not just /canvas/: the SPA lives under /canvas/ but it
 # talks to /api and /sockets at the root of the same listener. Traefik proxies
 # the websocket on /sockets with no annotations needed.
+#
+# With auth enabled the backend is the oauth2-proxy, which proxies the same
+# whole port onwards - so /oauth2/* is served by the gate and everything else
+# reaches the app only after a Kanidm login.
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -24,9 +28,15 @@ spec:
         pathType: Prefix
         backend:
           service:
+            {{- if .Values.auth.enabled }}
+            name: {{ include "openhands.authFullname" . }}
+            port:
+              number: {{ .Values.auth.service.port }}
+            {{- else }}
             name: {{ include "openhands.fullname" . }}
             port:
               number: {{ .Values.service.port }}
+            {{- end }}
   {{- with .Values.ingress.tls }}
   tls:
     {{- range . }}

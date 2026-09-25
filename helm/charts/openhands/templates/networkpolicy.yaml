@@ -25,9 +25,20 @@ spec:
     - Ingress
     - Egress
   ingress:
-    # Port 8000 from the two ingress paths only. Nothing else in the cluster can
-    # reach it - not even other pods in this namespace.
+    # Port 8000 from the login gate and the PostSync hook only. Nothing else in
+    # the cluster can reach it - not Traefik, not the tailscale proxy, not
+    # another pod in this namespace. Going around the gate is not a matter of
+    # knowing the Service name.
     - from:
+        {{- if .Values.auth.enabled }}
+        # oauth2-proxy. The only path in from either ingress.
+        - podSelector:
+            matchLabels:
+              app: {{ include "openhands.authFullname" . }}
+        {{- else }}
+        # Unauthenticated fallback: the ingresses reach the app directly, which
+        # means everyone on the LAN and every device on the tailnet can drive
+        # the agent. Only for temporarily debugging the gate.
         # Tailscale proxy pods (remote access over the tailnet).
         - namespaceSelector:
             matchLabels:
@@ -42,6 +53,7 @@ spec:
           podSelector:
             matchLabels:
               {{- toYaml .Values.networkPolicy.ingress.traefikPodLabels | nindent 14 }}
+        {{- end }}
         {{- with .Values.networkPolicy.ingress.configureJobPodLabels }}
         # The PostSync hook, which reaches the settings API over the Service.
         - podSelector:

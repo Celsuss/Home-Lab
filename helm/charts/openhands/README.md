@@ -51,20 +51,59 @@ access is needed at all.
 | Kubernetes API | `automountServiceAccountToken: false`, no ServiceAccount, no RBAC. Upstream's chart has an `rbac.*` switch that can grant this pod namespace-admin or `cluster-admin`; it is deliberately not implemented here. |
 | Privileges | Non-root uid/gid 10001, `allowPrivilegeEscalation: false`, all capabilities dropped, `seccompProfile: RuntimeDefault`. |
 | The LAN and the rest of the cluster | NetworkPolicy, below. |
-| Who may drive the agent | **Nothing. See below.** |
+| Who may drive the agent | Kanidm SSO, enforced by an oauth2-proxy in front of both ingresses. See below. |
 
-### There is no user authentication in front of this
+### Authentication: Kanidm SSO via oauth2-proxy
 
-The agent-server's session API key is injected into the SPA shell by the static
-server — that is how the frontend obtains it. So anyone who can load the page
-gets the key, and with it the full API: start conversations, run commands in the
-container, and spend the Claude subscription. There is no login, no user list.
+The agent-server has no user model of its own. Its session API key is injected
+into the SPA shell by the static server — that is how the frontend obtains it —
+so **anyone who can load the page gets the key**, and with it the full API: start
+conversations, run commands in the container, and spend the Claude subscription.
 
-**The ingress is the entire access boundary.** On the LAN that means everyone on
-the LAN. Tighten it by one of:
+So the gate is in front of the page. An **oauth2-proxy** (`openhands-auth`,
+`auth.*` in `values.yaml`) terminates both ingresses and hands everything to
+Kanidm before proxying on:
 
-- dropping `ingress.enabled` to `false` and reaching it only over the tailnet, or
-- putting a Traefik `basicAuth` middleware in front of the LAN ingress.
+```
+browser ──► Traefik (openhands.homelab.local)     ─┐
+browser ──► Tailscale proxy (openhands.<tailnet>)  ├─► openhands-auth:4180 ──► openhands:8000
+                                                   │
+PostSync configure hook ───────────────────────────┴────────────────────────► openhands:8000
+```
+
+Four things about this shape are deliberate:
+
+- **It is a separate pod, not a sidecar.** The app's NetworkPolicy carves all of
+  RFC1918 out of egress; a sidecar could not reach `kanidm.homelab.local`
+  (`192.168.0.142`) without a hole that would also hand the agent's shell the
+  whole LAN ingress surface. The proxy pod gets its own, far narrower policy:
+  DNS, the app on 8000, and one IP on one port for Kanidm.
+- **The tailnet goes through it too.** Tailnet identity alone is not treated as
+  sufficient to spend the subscription.
+- **The `openhands` Service is untouched** on port 8000, so the PostSync
+  configure hook keeps working — it just is no longer reachable from outside the
+  cluster. The app's NetworkPolicy now admits *only* the proxy and that hook, so
+  bypassing the gate is not a matter of knowing the Service name.
+- **`--redirect-url` is unset.** oauth2-proxy derives the callback from
+  `X-Forwarded-Host` per request, which is how one deployment serves both the LAN
+  host and the tailnet host. Both must be registered on the Kanidm client and
+  listed in `auth.oidc.whitelistDomains`.
+
+Access control lives in **Kanidm**, not in oauth2-proxy: only the
+`openhands_users` group is scope-mapped to the client, so Kanidm refuses to issue
+a token to anyone else and the proxy can run with `--email-domain=*`. Setup is in
+[Manual steps](#2-create-the-kanidm-client-and-group-before-the-first-sync).
+
+Session length is the default 168h cookie. There is no `--cookie-refresh`:
+Kanidm issues no refresh token without `offline_access`, so refreshing would just
+force a re-login.
+
+`auth.enabled: false` restores the pre-SSO behaviour exactly — both ingresses
+point straight at the app, the NetworkPolicy readmits Traefik and the tailscale
+proxy — and exists for debugging the gate, not for running that way.
+
+Everyone who logs in still shares one agent, one PVC and one session API key;
+the SSO layer says *who may drive it*, not *whose work is whose*.
 
 **Do not add a `hostPath` mount to this chart.** Same rule as `cptr`: the moment
 the agent can write to the node's filesystem, every other boundary here is
@@ -72,13 +111,27 @@ decorative. To work on a repo, let the agent clone it.
 
 ### NetworkPolicy
 
-- **Ingress:** port 8000 from Traefik (`kube-system`), the Tailscale proxy pods,
-  and the `openhands-configure` hook pod. No other pod in `ai-workloads` can
-  reach it.
+Two policies, one per pod.
+
+**`openhands`** (the app):
+
+- **Ingress:** port 8000 from the `openhands-auth` proxy and the
+  `openhands-configure` hook pod — and nothing else, Traefik and the tailscale
+  proxy included. (With `auth.enabled: false` those two are readmitted directly.)
 - **Egress:** cluster DNS; Forgejo on 3000/22; and `0.0.0.0/0` with all of
   `10/8`, `172.16/12` and `192.168/16` carved out — so `api.anthropic.com`,
   `registry.npmjs.org` and GitHub work, while the LAN, the router, Vault and
   every other namespace do not.
+
+**`openhands-auth`** (the proxy) — narrower in every direction except Kanidm:
+
+- **Ingress:** port 4180 from Traefik (`kube-system`) and the Tailscale proxy
+  pods.
+- **Egress:** cluster DNS; the app on 8000; and `192.168.0.142:443` only — the
+  Traefik LoadBalancer IP, which is how it reaches Kanidm (k8s-gateway answers
+  `kanidm.homelab.local` with that address, and Traefik passes the TLS through to
+  `kanidm-0`). This is the same hairpin ArgoCD's OIDC already uses. No route to
+  the public internet at all.
 
 K3s enforces policies with kube-router, which **REJECTs** rather than DROPs: a
 blocked connection fails with an *instant* `curl: (7)`, never a hang. A policy is
@@ -130,7 +183,58 @@ The pod cannot start before this secret exists — `openhands-secrets` is what t
 env vars reference — so do this first, or expect `CreateContainerConfigError`
 until the VaultStaticSecret syncs.
 
-### 2. Nothing — the agent selection is a PostSync hook
+### 2. Create the Kanidm client and group (before the first sync)
+
+Run as `idm_admin` — see [`helm/charts/kanidm/README.md`](../kanidm/README.md)
+for CLI setup and where the password lives.
+
+```bash
+kanidm login -D idm_admin
+
+# A group of its own, not the shared sso_users: this client's token is worth
+# a shell in the container and the whole Claude subscription.
+kanidm group create openhands_users
+kanidm group add-members openhands_users celsuss
+
+kanidm system oauth2 create openhands "OpenHands" https://openhands.homelab.local
+kanidm system oauth2 add-redirect-url openhands https://openhands.homelab.local/oauth2/callback
+kanidm system oauth2 add-redirect-url openhands https://openhands.tail5517c5.ts.net/oauth2/callback
+kanidm system oauth2 update-scope-map openhands openhands_users openid profile email groups
+kanidm system oauth2 prefer-short-username openhands
+
+kanidm system oauth2 show-basic-secret openhands
+```
+
+PKCE stays **on**. The argocd client had to disable it; oauth2-proxy speaks
+`S256`, so there is no `warning-insecure-client-disable-pkce` here. Likewise, if
+the tailnet redirect URL is rejected for an origin mismatch, add the origin —
+`kanidm system oauth2 add-origin openhands https://openhands.tail5517c5.ts.net` —
+rather than reaching for `disable-strict-redirect-url`.
+
+Kanidm only emits an `email` claim if the person has `mail` set, and
+oauth2-proxy wants one:
+
+```bash
+kanidm person update celsuss --mail celsuss@homelab.local
+```
+
+Then the proxy's own secret. Kept on a separate Vault path from the app's, so
+the subscription token and the SSO credentials do not share a blast radius:
+
+```bash
+vault kv put secret/homelab/openhands-auth \
+  client-id="openhands" \
+  client-secret="<the basic secret printed above>" \
+  cookie-secret="$(openssl rand -base64 32 | tr -- '+/' '-_')"
+
+vault kv get secret/homelab/openhands-auth
+```
+
+Like `openhands-secrets`, the proxy pod cannot start before
+`openhands-auth-secrets` exists — expect `CreateContainerConfigError` until the
+VaultStaticSecret syncs.
+
+### 3. Nothing — the agent selection is a PostSync hook
 
 `configureAgent` (on by default) runs after every successful sync and pins
 `agent_kind: acp`, `acp_server: claude-code` and `acp_model` through the settings
@@ -173,6 +277,9 @@ kubectl rollout restart -n ai-workloads deploy/openhands
 - LAN: <https://openhands.homelab.local/canvas/>
 - Tailnet: `https://openhands.<tailnet>.ts.net/canvas/`
 
+Both redirect to Kanidm first; you need to be in the `openhands_users` group.
+`/oauth2/sign_out` on either host clears the session.
+
 The UI is served under **`/canvas/`**; `/api`, `/sockets` and `/alive` sit at the
 root of the same port, which is why the Ingress routes `/` (Prefix) rather than
 just `/canvas`. Bookmark the `/canvas/` URL — that is what the Glance tile uses.
@@ -202,8 +309,37 @@ After ArgoCD syncs:
 
 ```bash
 kubectl get pods,pvc,ingress -n ai-workloads -l app.kubernetes.io/name=openhands
-kubectl get vaultstaticsecret,secret openhands-secrets -n ai-workloads
+kubectl get vaultstaticsecret -n ai-workloads
+kubectl get secret openhands-secrets openhands-auth-secrets -n ai-workloads
 ```
+
+`openhands-configure` reaching **Completed** is the proof the PostSync hook can
+still get to port 8000 past the tightened policy.
+
+Check the gate came up clean — an `x509: certificate signed by unknown
+authority` here means the `homelab-ca-bundle` mount is wrong, not that Kanidm is
+down:
+
+```bash
+kubectl logs -n ai-workloads deploy/openhands-auth | head -20
+```
+
+Then confirm the bypass really is closed. From any other pod in the namespace,
+this must fail **instantly** — kube-router REJECTs, so a hang means the policy is
+inert rather than working:
+
+```bash
+kubectl exec -n ai-workloads deploy/searxng -- \
+  curl -s -m 5 -o /dev/null -w '%{http_code}\n' http://openhands:8000/alive \
+  || echo "blocked (expected)"
+```
+
+In a browser: <https://openhands.homelab.local/> should redirect to Kanidm, and
+after signing in as a member of `openhands_users` land on `/canvas/` with a
+working `/sockets` websocket. Repeat from a tailnet device — if that callback
+comes back as `http://` rather than `https://`, the tailscale proxy is not
+setting `X-Forwarded-Proto` and `--redirect-url` has to be pinned instead.
+Signing in as a person *outside* the group must be refused by Kanidm itself.
 
 Then, from inside the pod, confirm the egress fence is actually enforced (instant
 failures, not hangs):

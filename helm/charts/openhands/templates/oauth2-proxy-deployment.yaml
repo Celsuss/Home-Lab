@@ -1,0 +1,127 @@
+{{- if .Values.auth.enabled }}
+---
+# oauth2-proxy in front of the agent-canvas: the login gate this chart did not
+# have. Everything the two ingresses serve goes through here first, because the
+# session API key is injected into the SPA shell - whoever can load the page can
+# drive the agent and spend the Claude subscription.
+#
+# A *separate pod*, not a sidecar: the app pod's NetworkPolicy carves all of
+# RFC1918 out of egress, so a sidecar could not reach kanidm.homelab.local
+# (192.168.0.142) without opening the whole LAN ingress surface to the agent's
+# shell. This pod has no shell worth having, and its own policy opens exactly
+# one IP and one port.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "openhands.authFullname" . }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "openhands.labels" . | nindent 4 }}
+    app.kubernetes.io/component: auth
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ include "openhands.authFullname" . }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "openhands.authFullname" . }}
+        {{- include "openhands.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: auth
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        # The upstream image's own nonroot user.
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: oauth2-proxy
+        image: {{ .Values.auth.image.repository }}:{{ .Values.auth.image.tag }}
+        imagePullPolicy: {{ .Values.auth.image.pullPolicy }}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          # oauth2-proxy writes nothing: config is flags, sessions are cookies.
+          readOnlyRootFilesystem: true
+        args:
+        - --provider=oidc
+        - --oidc-issuer-url={{ .Values.auth.oidc.issuerUrl }}
+        # Kanidm requires PKCE. Unlike the argocd client, which had to disable
+        # it, oauth2-proxy speaks S256 - so it stays on.
+        - --code-challenge-method=S256
+        - --http-address=0.0.0.0:{{ .Values.auth.service.port }}
+        - --upstream={{ include "openhands.serviceUrl" . }}
+        # Trust X-Forwarded-* from Traefik and the tailscale proxy. This is also
+        # what lets the redirect URL be derived per-request (see below).
+        - --reverse-proxy=true
+        # Access control is the Kanidm scope map, not an email allowlist:
+        # Kanidm will not issue a token to anyone outside the group mapped to
+        # this client, so by the time oauth2-proxy sees an identity it is
+        # already authorised. See README.md.
+        - --email-domain=*
+        - --skip-provider-button=true
+        - --cookie-secure=true
+        - --whitelist-domain={{ join "," .Values.auth.oidc.whitelistDomains }}
+        # Deliberately unset:
+        #   --redirect-url    derived from X-Forwarded-Host per request, which
+        #                     is how one deployment serves both the LAN host and
+        #                     the tailnet host. Both are registered on the
+        #                     Kanidm client.
+        #   --cookie-refresh  Kanidm issues no refresh token without
+        #                     offline_access, so refreshing would force a
+        #                     re-login. The default 168h cookie is the session.
+        #   --proxy-websockets  already true by default - it is what carries
+        #                     OpenHands' /sockets.
+        env:
+        - name: OAUTH2_PROXY_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.auth.vault.secretName }}
+              key: client-id
+        - name: OAUTH2_PROXY_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.auth.vault.secretName }}
+              key: client-secret
+        - name: OAUTH2_PROXY_COOKIE_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.auth.vault.secretName }}
+              key: cookie-secret
+        ports:
+        - name: http
+          containerPort: {{ .Values.auth.service.port }}
+        readinessProbe:
+          httpGet:
+            path: /ping
+            port: http
+          periodSeconds: 10
+          failureThreshold: 3
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: http
+          periodSeconds: 30
+          failureThreshold: 5
+        resources:
+          {{- toYaml .Values.auth.resources | nindent 10 }}
+        volumeMounts:
+        # Kanidm serves a homelab-ca-issued cert and oauth2-proxy has to
+        # validate it when it redeems the code and fetches the JWKS. Same mount
+        # the woodpecker chart uses; trust-manager syncs this ConfigMap into
+        # every namespace.
+        - name: ca-bundle
+          mountPath: /etc/ssl/certs/ca-certificates.crt
+          subPath: {{ .Values.auth.caBundle.key }}
+          readOnly: true
+      volumes:
+      - name: ca-bundle
+        configMap:
+          name: {{ .Values.auth.caBundle.configMapName }}
+{{- end }}

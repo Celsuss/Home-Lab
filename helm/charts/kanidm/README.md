@@ -25,6 +25,22 @@
 ```
 
  5. Access Kanidm UI: https://kanidm.homelab.local
+ 
+## Connect using client in cluster
+```bash
+kubectl run -it --rm kanidm-cli -n kanidm \
+      --image=kanidm/tools:1.9.2 --restart=Never --command -- /bin/bash
+```
+Then inside the pod:
+```bash
+mkdir -p ~/.config
+    cat > ~/.config/kanidm <<EOF
+    uri = "https://kanidm.kanidm.svc.cluster.local:8443"
+    verify_ca = false
+    EOF
+
+kanidm login -D idm_admin
+```
 
 ## Manual User Provisioning
 
@@ -98,6 +114,38 @@ kanidm system oauth2 warning-insecure-client-disable-pkce argocd
 # Get the client secret and store it in Vault
 kanidm system oauth2 show-basic-secret argocd
 vault kv put secret/homelab/argocd/oidc client-secret=<secret-from-above>
+```
+
+### OpenHands
+
+OpenHands has no user model of its own, so an `oauth2-proxy` sits in front of it
+and is the OAuth2 client. Unlike the ArgoCD client, PKCE stays enabled and access
+is restricted to a dedicated group rather than `sso_users` — the token is worth a
+shell in the agent's container and the whole Claude subscription.
+
+```bash
+kanidm group create openhands_users
+kanidm group add-members openhands_users <your username>
+
+kanidm system oauth2 create openhands "OpenHands" https://openhands.homelab.local
+
+# One redirect URL per host oauth2-proxy serves: the LAN ingress and the tailnet.
+kanidm system oauth2 add-redirect-url openhands https://openhands.homelab.local/oauth2/callback
+kanidm system oauth2 add-redirect-url openhands https://openhands.tail5517c5.ts.net/oauth2/callback
+
+# The scope map IS the access control: Kanidm refuses to issue a token to
+# anyone outside this group, which is why oauth2-proxy runs --email-domain=*
+kanidm system oauth2 update-scope-map openhands openhands_users openid profile email groups
+kanidm system oauth2 prefer-short-username openhands
+
+# oauth2-proxy wants an email claim; Kanidm emits one only if `mail` is set.
+kanidm person update <your username> --mail <your username>@homelab.local
+
+kanidm system oauth2 show-basic-secret openhands
+vault kv put secret/homelab/openhands-auth \
+  client-id="openhands" \
+  client-secret="<secret-from-above>" \
+  cookie-secret="$(openssl rand -base64 32 | tr -- '+/' '-_')"
 ```
 
 ## Troubleshooting

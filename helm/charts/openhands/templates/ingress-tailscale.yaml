@@ -1,1 +1,12 @@
-{{ include "homelab-common.tailscale-ingress" (dict "Values" .Values "fullname" (include "openhands.fullname" .) "labels" (include "openhands.labels" . | trim) "namespace" .Values.namespace) }}
+{{/*
+Tailnet access. The hostname stays `openhands` (the helper names it from
+fullname), but with auth enabled the backend is the oauth2-proxy, not the app -
+so the tailnet path gets the same Kanidm login as the LAN. Tailnet identity
+alone is not treated as sufficient to spend the Claude subscription.
+*/}}
+{{- $args := dict "Values" .Values "fullname" (include "openhands.fullname" .) "labels" (include "openhands.labels" . | trim) "namespace" .Values.namespace -}}
+{{- if .Values.auth.enabled -}}
+{{- $_ := set $args "serviceName" (include "openhands.authFullname" .) -}}
+{{- $_ := set $args "servicePort" .Values.auth.service.port -}}
+{{- end -}}
+{{ include "homelab-common.tailscale-ingress" $args }}

@@ -1,0 +1,73 @@
+{{- if and .Values.auth.enabled .Values.auth.networkPolicy.enabled }}
+---
+# The proxy's own policy. Narrower than the app's in one direction and wider in
+# another: it may talk to Kanidm (one IP, one port) but it has no route to the
+# public internet at all, which the app pod needs and this one does not.
+#
+# Same kube-router caveat as the app policy: a blocked connection is an instant
+# REJECT, not a hang, and the policy is silently inert if the controller is off.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "openhands.authFullname" . }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "openhands.labels" . | nindent 4 }}
+    app.kubernetes.io/component: auth
+spec:
+  podSelector:
+    matchLabels:
+      app: {{ include "openhands.authFullname" . }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # The two ingress paths, and nothing else - reusing the same selectors the
+    # app policy uses, because it is the same Traefik and the same tailscale
+    # proxy StatefulSet.
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              {{- toYaml .Values.networkPolicy.ingress.tailscaleNamespaceLabels | nindent 14 }}
+          podSelector:
+            matchLabels:
+              {{- toYaml .Values.networkPolicy.ingress.tailscalePodLabels | nindent 14 }}
+        - namespaceSelector:
+            matchLabels:
+              {{- toYaml .Values.networkPolicy.ingress.traefikNamespaceLabels | nindent 14 }}
+          podSelector:
+            matchLabels:
+              {{- toYaml .Values.networkPolicy.ingress.traefikPodLabels | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.auth.service.port }}
+  egress:
+    # Cluster DNS - needed to resolve both the upstream Service and
+    # kanidm.homelab.local, which k8s-gateway answers with the Traefik LB IP.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              {{- toYaml .Values.networkPolicy.egress.dnsNamespaceLabels | nindent 14 }}
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # The upstream it proxies to.
+    - to:
+        - podSelector:
+            matchLabels:
+              app: {{ include "openhands.fullname" . }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.service.port }}
+    # Kanidm, reached the same way ArgoCD reaches it: out to the Traefik
+    # LoadBalancer IP on the LAN and back in through the TLS-passthrough
+    # IngressRouteTCP. One host, one port - not a route to the LAN.
+    - to:
+        - ipBlock:
+            cidr: {{ .Values.auth.networkPolicy.kanidmCIDR }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.auth.networkPolicy.kanidmPort }}
+{{- end }}
