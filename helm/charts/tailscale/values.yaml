@@ -6,10 +6,21 @@ subnetRouter:
   enabled: true
   # The hostname for the subnet router device on your tailnet.
   hostname: "lord-k3s-homelab"
-  # The list of CIDR ranges to advertise. Defaults are for K3s.
+  # The list of CIDR ranges to advertise.
   routes:
-    - "10.42.0.0/16"
-    - "10.43.0.0/16"
+    - "10.42.0.0/16"   # pod CIDR
+    - "10.43.0.0/16"   # service CIDR - includes k8s-gateway's DNS ClusterIP
+    # The Traefik LoadBalancer on the LAN. k8s-gateway answers every
+    # *.homelab.local name with this one address, so a /32 is enough to make
+    # the whole LAN ingress reachable from the tailnet - without advertising
+    # the rest of 192.168.0.0/24.
+    #
+    # Needed for SSO from the tailnet: an OIDC login sends the *browser* to
+    # Kanidm's authorize endpoint at https://kanidm.homelab.local, so a phone
+    # on the tailnet has to reach that host itself, not just the app.
+    # Pair this with a Tailscale split-DNS nameserver for `homelab.local`
+    # pointing at the k8s-gateway ClusterIP - see README.md.
+    - "192.168.0.142/32"
 
 tailscale-operator:
   oauth:
