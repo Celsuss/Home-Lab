@@ -1,0 +1,67 @@
+{{- if .Values.configureAgent.enabled }}
+---
+# Runs after every successful sync and re-asserts which agent OpenHands drives.
+# Git is the source of truth: switching the agent in Settings -> Agent is
+# reverted on the next sync. Everything else in the settings store (model
+# timeouts, skills, conversation settings) is left alone, because the API takes
+# a diff.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "openhands.fullname" . }}-configure
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "openhands.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    # Keep the finished Job around for inspection until the next sync replaces it.
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        # Matched by the NetworkPolicy - this is the only pod besides the two
+        # ingress paths that may reach port 8000.
+        app: {{ include "openhands.fullname" . }}-configure
+        {{- include "openhands.selectorLabels" . | nindent 8 }}
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      containers:
+        - name: configure
+          image: {{ .Values.configureAgent.image.repository }}:{{ .Values.configureAgent.image.tag }}
+          imagePullPolicy: {{ .Values.configureAgent.image.pullPolicy }}
+          command: ["python3", "/scripts/configure.py"]
+          env:
+            # The in-cluster Service: routing pod -> Traefik -> back in is
+            # exactly what the NetworkPolicy denies.
+            - name: OPENHANDS_URL
+              value: {{ include "openhands.serviceUrl" . | quote }}
+            - name: ACP_SERVER
+              value: {{ .Values.configureAgent.acpServer | quote }}
+            - name: ACP_MODEL
+              value: {{ .Values.configureAgent.acpModel | quote }}
+            {{- if and .Values.vault.enabled .Values.config.sessionApiKey.enabled }}
+            - name: OH_SESSION_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.vault.secretName }}
+                  key: {{ .Values.vault.sessionApiKeyKey }}
+            {{- end }}
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+              readOnly: true
+      volumes:
+        - name: scripts
+          configMap:
+            name: {{ include "openhands.fullname" . }}-configure
+{{- end }}

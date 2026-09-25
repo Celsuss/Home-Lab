@@ -1,0 +1,127 @@
+{{- if .Values.configureAgent.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "openhands.fullname" . }}-configure
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "openhands.labels" . | nindent 4 }}
+data:
+  configure.py: |
+    """Pin OpenHands to the Claude Code ACP agent.
+
+    The agent-server keeps this in its settings store on the PVC, set through
+    the UI (Settings -> Agent). There is no env var for it, so the only
+    declarative route is the API. Run as an ArgoCD PostSync hook.
+
+    PATCH /api/settings takes *diffs*, not whole objects:
+        {"agent_settings_diff": {"agent_kind": "acp", ...}}
+    A payload without one of the *_diff keys is rejected with 400, and every
+    field left out of the diff keeps its current value - so this script never
+    has to read-merge the way the cptr/Open WebUI hook does. It still reads
+    first, to stay quiet when nothing needs changing.
+
+    Auth: every /api route wants an `X-Session-API-Key` header. Preferred
+    source is OH_SESSION_API_KEY, seeded from Vault into the same env var the
+    server is given. If that is rejected - the server may keep honouring a key
+    it generated onto the PVC before the Vault one was wired up - fall back to
+    the key the static server injects into the served HTML, which is where the
+    frontend itself gets it.
+    """
+
+    import json
+    import os
+    import re
+    import sys
+    import time
+    import urllib.error
+    import urllib.request
+
+    BASE = os.environ["OPENHANDS_URL"].rstrip("/")
+    SETTINGS = BASE + "/api/settings"
+    ENV_KEY = os.environ.get("OH_SESSION_API_KEY", "").strip()
+
+    DESIRED = {
+        "agent_kind": "acp",
+        "acp_server": os.environ["ACP_SERVER"],
+    }
+    if os.environ.get("ACP_MODEL", "").strip():
+        DESIRED["acp_model"] = os.environ["ACP_MODEL"].strip()
+
+
+    def request(method, url, key=None, payload=None):
+        data = json.dumps(payload).encode() if payload is not None else None
+        headers = {"Content-Type": "application/json"}
+        if key:
+            headers["X-Session-API-Key"] = key
+        req = urllib.request.Request(url, data=data, method=method, headers=headers)
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            body = resp.read()
+            return json.loads(body) if body else {}
+
+
+    def wait_for_server(attempts=60, delay=5):
+        for attempt in range(1, attempts + 1):
+            try:
+                request("GET", BASE + "/alive")
+                return
+            except Exception as exc:  # noqa: BLE001 - any failure means not ready
+                print("waiting for agent-server (%d/%d): %s" % (attempt, attempts, exc))
+                time.sleep(delay)
+        sys.exit("agent-server never became ready at %s" % BASE)
+
+
+    def key_from_html():
+        """The static server injects the live session key into the SPA shell."""
+        with urllib.request.urlopen(BASE + "/canvas/", timeout=30) as resp:
+            html = resp.read().decode("utf-8", "replace")
+        match = re.search(r'sessionApiKey\s*=\s*"([0-9a-zA-Z._-]+)"', html)
+        if not match:
+            sys.exit("could not find a session API key in the served HTML")
+        return match.group(1)
+
+
+    def candidate_keys():
+        """Lazily, in order of preference - the HTML is only fetched if needed."""
+        if ENV_KEY:
+            yield "OH_SESSION_API_KEY", ENV_KEY
+        yield "served HTML", key_from_html()
+
+
+    def resolve_key():
+        for source, key in candidate_keys():
+            try:
+                settings = request("GET", SETTINGS, key=key)
+            except urllib.error.HTTPError as exc:
+                if exc.code in (401, 403):
+                    print("session key from %s was rejected (%d)" % (source, exc.code))
+                    continue
+                raise
+            print("authenticated with the session key from %s" % source)
+            return key, settings
+        sys.exit("no usable session API key")
+
+
+    def main():
+        wait_for_server()
+        key, settings = resolve_key()
+        current = settings.get("agent_settings") or {}
+
+        diff = {k: v for k, v in DESIRED.items() if current.get(k) != v}
+        if not diff:
+            print("agent settings already up to date: %s" % json.dumps(DESIRED, sort_keys=True))
+            return
+
+        print("applying agent_settings_diff: %s" % json.dumps(diff, sort_keys=True))
+        updated = request("PATCH", SETTINGS, key=key, payload={"agent_settings_diff": diff})
+        after = updated.get("agent_settings") or {}
+        wrong = {k: after.get(k) for k, v in DESIRED.items() if after.get(k) != v}
+        if wrong:
+            sys.exit("settings did not stick: %s" % json.dumps(wrong, sort_keys=True))
+        print("agent pinned to %s" % json.dumps(DESIRED, sort_keys=True))
+
+
+    if __name__ == "__main__":
+        main()
+{{- end }}

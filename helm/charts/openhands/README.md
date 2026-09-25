@@ -51,6 +51,20 @@ access is needed at all.
 | Kubernetes API | `automountServiceAccountToken: false`, no ServiceAccount, no RBAC. Upstream's chart has an `rbac.*` switch that can grant this pod namespace-admin or `cluster-admin`; it is deliberately not implemented here. |
 | Privileges | Non-root uid/gid 10001, `allowPrivilegeEscalation: false`, all capabilities dropped, `seccompProfile: RuntimeDefault`. |
 | The LAN and the rest of the cluster | NetworkPolicy, below. |
+| Who may drive the agent | **Nothing. See below.** |
+
+### There is no user authentication in front of this
+
+The agent-server's session API key is injected into the SPA shell by the static
+server — that is how the frontend obtains it. So anyone who can load the page
+gets the key, and with it the full API: start conversations, run commands in the
+container, and spend the Claude subscription. There is no login, no user list.
+
+**The ingress is the entire access boundary.** On the LAN that means everyone on
+the LAN. Tighten it by one of:
+
+- dropping `ingress.enabled` to `false` and reaching it only over the tailnet, or
+- putting a Traefik `basicAuth` middleware in front of the LAN ingress.
 
 **Do not add a `hostPath` mount to this chart.** Same rule as `cptr`: the moment
 the agent can write to the node's filesystem, every other boundary here is
@@ -58,8 +72,9 @@ decorative. To work on a repo, let the agent clone it.
 
 ### NetworkPolicy
 
-- **Ingress:** port 8000 from Traefik (`kube-system`) and the Tailscale proxy
-  pods only. No other pod in `ai-workloads` can reach it.
+- **Ingress:** port 8000 from Traefik (`kube-system`), the Tailscale proxy pods,
+  and the `openhands-configure` hook pod. No other pod in `ai-workloads` can
+  reach it.
 - **Egress:** cluster DNS; Forgejo on 3000/22; and `0.0.0.0/0` with all of
   `10/8`, `172.16/12` and `192.168/16` carved out — so `api.anthropic.com`,
   `registry.npmjs.org` and GitHub work, while the LAN, the router, Vault and
@@ -106,25 +121,41 @@ vault kv get secret/homelab/openhands
 - `oh-secret-key` → `OH_SECRET_KEY`, the settings-encryption key. Seeded from
   Vault (rather than auto-generated onto the PVC) so stored settings survive
   losing the volume.
-- `session-api-key` → `OH_SESSION_API_KEYS_0`, the agent-server's API key for
-  direct API calls. **Not wired up by default** (`config.sessionApiKey.enabled:
-  false`) until it is confirmed that setting it does not also gate the browser
-  UI. It is in Vault ready for whenever the settings-configuring hook lands.
+- `session-api-key` → `OH_SESSION_API_KEYS_0`, the key every `/api` route wants
+  in an `X-Session-API-Key` header. Seeded from Vault so the configure hook knows
+  it ahead of time; without the seed the server generates one onto the PVC. It
+  does **not** gate the browser UI either way — see the warning below.
 
 The pod cannot start before this secret exists — `openhands-secrets` is what the
 env vars reference — so do this first, or expect `CreateContainerConfigError`
 until the VaultStaticSecret syncs.
 
-### 2. Select the Claude Code agent (once, after the first sync)
+### 2. Nothing — the agent selection is a PostSync hook
 
-In the UI: **Settings → Agent → preset "Claude Code"**. That fills the command in
-as `npx -y @agentclientprotocol/claude-agent-acp` and persists `agent_kind` /
-`acp_server` / `acp_command` to `~/.openhands` on the PVC, so it survives
-restarts.
+`configureAgent` (on by default) runs after every successful sync and pins
+`agent_kind: acp`, `acp_server: claude-code` and `acp_model` through the settings
+API. Git is the source of truth: switching the agent in **Settings → Agent** is
+reverted on the next sync. Change `configureAgent.acpModel` in `values.yaml` to
+change models.
 
 Leave the Secrets panel empty. A local subscription login takes priority over an
 API key anyway, and `CLAUDE_CODE_OAUTH_TOKEN` from the environment is what
 authenticates here.
+
+#### The settings API, as verified against 1.23.0
+
+- `GET /api/settings` returns `agent_settings`, `conversation_settings`,
+  `misc_settings` and `active_agent_profile_id`.
+- `PATCH /api/settings` takes **diffs**, not whole objects:
+  `{"agent_settings_diff": {"agent_kind": "acp", ...}}`. A body without one of
+  the `*_diff` keys is rejected with `400`, and fields left out of the diff keep
+  their values — so the hook never has to read-merge the way the cptr/Open WebUI
+  hook does. It reads first only to stay quiet when nothing needs changing, and
+  the active agent profile id is unaffected.
+- Both calls need `X-Session-API-Key`. The hook tries `OH_SESSION_API_KEY` from
+  Vault first and falls back to the key the static server injects into the SPA
+  shell, so it still works if the server is honouring a key it generated onto the
+  PVC before the Vault one was wired up.
 
 ### Token rotation (~yearly)
 

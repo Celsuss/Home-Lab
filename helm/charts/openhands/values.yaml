@@ -24,12 +24,15 @@ service:
 config:
   agentServerPort: 18000
   automationPort: 18001
-  # Seeds OH_SESSION_API_KEYS_0 from Vault, which the agent-server requires on
-  # direct API calls. Left off until it is confirmed that it does not also gate
-  # the browser UI - turning it on blind risks locking the UI out on first sync.
-  # Needed before the (optional) settings-configuring PostSync hook can work.
+  # Seeds OH_SESSION_API_KEYS_0 from Vault. Every /api route requires this key
+  # in an `X-Session-API-Key` header; without the seed the server generates one
+  # onto the PVC instead. It does NOT gate the browser UI either way - the
+  # static server injects the live key into the served HTML, which is where the
+  # frontend reads it from (and why the ingress, not this key, is the real
+  # access boundary). Seeding it from Vault is what lets the configure hook
+  # authenticate with a key that is known ahead of time.
   sessionApiKey:
-    enabled: false
+    enabled: true
 
 # One RWO claim, mounted three times by subPath - see deployment.yaml. Nominal:
 # local-path is a bind mount of a node directory and does not enforce the
@@ -85,6 +88,9 @@ networkPolicy:
       kubernetes.io/metadata.name: kube-system
     traefikPodLabels:
       app.kubernetes.io/name: traefik
+    # The PostSync hook that pins the agent (configureAgent below).
+    configureJobPodLabels:
+      app: openhands-configure
   egress:
     dnsNamespaceLabels:
       kubernetes.io/metadata.name: kube-system
@@ -159,3 +165,26 @@ livenessProbe:
     port: http
   periodSeconds: 30
   failureThreshold: 5
+
+# ---------------------------------------------------------------------------
+# Agent configuration
+# ---------------------------------------------------------------------------
+# PostSync hook that pins which agent OpenHands drives. There is no env var for
+# this - the agent-server keeps it in its settings store on the PVC - so the API
+# is the only declarative route. See README.md.
+configureAgent:
+  enabled: true
+
+  # ACP preset. "claude-code" is resolved by the agent-server to
+  # `npx -y @agentclientprotocol/claude-agent-acp`, which spawns the `claude`
+  # CLI and therefore bills against the subscription.
+  acpServer: claude-code
+
+  # Model handed to Claude Code. "opus[1m]" is Opus with the 1M-token context
+  # window. Set to "" to leave whatever is currently selected alone.
+  acpModel: "opus[1m]"
+
+  image:
+    repository: python
+    tag: "3.12-alpine"
+    pullPolicy: IfNotPresent

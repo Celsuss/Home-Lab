@@ -42,6 +42,12 @@ spec:
           podSelector:
             matchLabels:
               {{- toYaml .Values.networkPolicy.ingress.traefikPodLabels | nindent 14 }}
+        {{- with .Values.networkPolicy.ingress.configureJobPodLabels }}
+        # The PostSync hook, which reaches the settings API over the Service.
+        - podSelector:
+            matchLabels:
+              {{- toYaml . | nindent 14 }}
+        {{- end }}
       ports:
         - protocol: TCP
           port: {{ .Values.service.port }}
