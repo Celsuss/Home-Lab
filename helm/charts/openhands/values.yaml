@@ -70,6 +70,21 @@ vault:
 auth:
   enabled: true
 
+  # Whether the TAILNET ingress also goes through the gate. It does not, and
+  # cannot: an OIDC login redirects the *browser* to Kanidm at
+  # kanidm.homelab.local, and `.local` is reserved for mDNS (RFC 6762), so
+  # phones intercept it before it reaches any unicast resolver - Tailscale
+  # split DNS included. Verified: the same phone, same resolver, same target IP
+  # resolves a `homelab.internal` name fine and `homelab.local` not at all.
+  #
+  # So the tailnet path backs onto the app directly and is authenticated by
+  # Tailscale instead: reaching it at all requires an enrolled, authorised
+  # tailnet device. That is a real boundary, just not Kanidm's.
+  #
+  # Flipping this to true only becomes possible once Kanidm lives on a domain
+  # that is not `.local` - see README.md.
+  protectTailnet: false
+
   image:
     repository: quay.io/oauth2-proxy/oauth2-proxy
     tag: "v7.15.4"
@@ -96,7 +111,6 @@ auth:
     # the login fails at the provider. See README.md.
     whitelistDomains:
       - openhands.homelab.local
-      - openhands.tail5517c5.ts.net
 
   # secret/homelab/openhands-auth, synced by VSO into `openhands-auth-secrets`:
   #   client-id       the Kanidm OAuth2 client name ("openhands")

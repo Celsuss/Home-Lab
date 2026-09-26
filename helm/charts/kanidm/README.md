@@ -129,9 +129,12 @@ kanidm group add-members openhands_users <your username>
 
 kanidm system oauth2 create openhands "OpenHands" https://openhands.homelab.local
 
-# One redirect URL per host oauth2-proxy serves: the LAN ingress and the tailnet.
+# LAN ingress only. The tailnet path deliberately does not use this client:
+# an OIDC login sends the browser to kanidm.homelab.local, and `.local` is
+# reserved for mDNS (RFC 6762), so phones intercept it before any unicast
+# resolver - Tailscale split DNS included. Measured, not assumed. The tailnet
+# is gated by Tailscale device auth instead; see helm/charts/openhands/README.md.
 kanidm system oauth2 add-redirect-url openhands https://openhands.homelab.local/oauth2/callback
-kanidm system oauth2 add-redirect-url openhands https://openhands.tail5517c5.ts.net/oauth2/callback
 
 # The scope map IS the access control: Kanidm refuses to issue a token to
 # anyone outside this group, which is why oauth2-proxy runs --email-domain=*

@@ -61,33 +61,55 @@ so **anyone who can load the page gets the key**, and with it the full API: star
 conversations, run commands in the container, and spend the Claude subscription.
 
 So the gate is in front of the page. An **oauth2-proxy** (`openhands-auth`,
-`auth.*` in `values.yaml`) terminates both ingresses and hands everything to
-Kanidm before proxying on:
+`auth.*` in `values.yaml`) fronts the LAN ingress and hands it to Kanidm before
+proxying on. **The tailnet path does not go through it** — see below:
 
 ```
-browser ──► Traefik (openhands.homelab.local)     ─┐
-browser ──► Tailscale proxy (openhands.<tailnet>)  ├─► openhands-auth:4180 ──► openhands:8000
-                                                   │
-PostSync configure hook ───────────────────────────┴────────────────────────► openhands:8000
+browser ──► Traefik (openhands.homelab.local) ──► openhands-auth:4180 ─┐
+                                                                       ├─► openhands:8000
+browser ──► Tailscale proxy (openhands.<tailnet>) ─────────────────────┤
+PostSync configure hook ───────────────────────────────────────────────┘
 ```
 
-Four things about this shape are deliberate:
+Three things about this shape are deliberate:
 
 - **It is a separate pod, not a sidecar.** The app's NetworkPolicy carves all of
   RFC1918 out of egress; a sidecar could not reach `kanidm.homelab.local`
   (`192.168.0.142`) without a hole that would also hand the agent's shell the
   whole LAN ingress surface. The proxy pod gets its own, far narrower policy:
   DNS, the app on 8000, and one IP on one port for Kanidm.
-- **The tailnet goes through it too.** Tailnet identity alone is not treated as
-  sufficient to spend the subscription.
 - **The `openhands` Service is untouched** on port 8000, so the PostSync
-  configure hook keeps working — it just is no longer reachable from outside the
-  cluster. The app's NetworkPolicy now admits *only* the proxy and that hook, so
-  bypassing the gate is not a matter of knowing the Service name.
+  configure hook keeps working. Traefik is not admitted to it, so LAN traffic
+  cannot go around the gate by knowing the Service name.
 - **`--redirect-url` is unset.** oauth2-proxy derives the callback from
-  `X-Forwarded-Host` per request, which is how one deployment serves both the LAN
-  host and the tailnet host. Both must be registered on the Kanidm client and
-  listed in `auth.oidc.whitelistDomains`.
+  `X-Forwarded-Host` per request. With only the LAN host in play this is not
+  load-bearing today, but it is what would let one deployment serve a second
+  host without reconfiguration.
+
+#### Why the tailnet is not behind Kanidm
+
+`auth.protectTailnet` is **false**, and it cannot currently be true. An OIDC
+login redirects the *browser* to the provider at `https://kanidm.homelab.local`,
+and `.local` is reserved for mDNS by RFC 6762 — phones intercept it before it
+reaches any unicast resolver, Tailscale split DNS included. This was measured,
+not assumed: on the same phone, over the same tailnet, through the same
+k8s-gateway resolver and to the same target IP, a `homelab.internal` name
+resolved and `homelab.local` did not.
+
+So the tailnet ingress backs onto the app directly and **Tailscale is the
+authentication there**: reaching it at all requires an enrolled, authorised
+tailnet device. That is a real boundary, just a different one — it authenticates
+the *device*, not the person, and it is not the `openhands_users` group.
+
+Flipping `auth.protectTailnet` to true only becomes correct once Kanidm lives on
+a domain that is not `.local`. That move is not free: `kanidmd domain rename`
+invalidates **every passkey and existing OAuth token** and regenerates all SPNs,
+and the phone would also need the `homelab-ca` certificate installed, since a
+`homelab.internal` name still gets a private-CA cert (the `.ts.net` hostname
+avoids this only because Tailscale issues it a publicly trusted one). The chart
+is already wired for it — the switch, both NetworkPolicies and the tailnet
+Ingress all follow `protectTailnet` — so the day Kanidm moves, this is one
+boolean plus a redirect URL.
 
 Access control lives in **Kanidm**, not in oauth2-proxy: only the
 `openhands_users` group is scope-mapped to the client, so Kanidm refuses to issue
@@ -102,8 +124,8 @@ XHRs and the `/sockets` websocket during a long agent run. Keep `cookieRefresh`
 comfortably under that 15-minute token lifetime.
 
 `auth.enabled: false` restores the pre-SSO behaviour exactly — both ingresses
-point straight at the app, the NetworkPolicy readmits Traefik and the tailscale
-proxy — and exists for debugging the gate, not for running that way.
+point straight at the app, the NetworkPolicy readmits Traefik — and exists for
+debugging the gate, not for running that way.
 
 Everyone who logs in still shares one agent, one PVC and one session API key;
 the SSO layer says *who may drive it*, not *whose work is whose*.
@@ -118,9 +140,11 @@ Two policies, one per pod.
 
 **`openhands`** (the app):
 
-- **Ingress:** port 8000 from the `openhands-auth` proxy and the
-  `openhands-configure` hook pod — and nothing else, Traefik and the tailscale
-  proxy included. (With `auth.enabled: false` those two are readmitted directly.)
+- **Ingress:** port 8000 from the `openhands-auth` proxy, the tailscale proxy
+  pods, and the `openhands-configure` hook pod. **Traefik is not on the list** —
+  LAN traffic must come through the gate. The tailscale proxy is there only
+  because `auth.protectTailnet` is false; set it true and it drops off.
+  (`auth.enabled: false` readmits Traefik directly.)
 - **Egress:** cluster DNS; Forgejo on 3000/22; and `0.0.0.0/0` with all of
   `10/8`, `172.16/12` and `192.168/16` carved out — so `api.anthropic.com`,
   `registry.npmjs.org` and GitHub work, while the LAN, the router, Vault and
@@ -128,8 +152,8 @@ Two policies, one per pod.
 
 **`openhands-auth`** (the proxy) — narrower in every direction except Kanidm:
 
-- **Ingress:** port 4180 from Traefik (`kube-system`) and the Tailscale proxy
-  pods.
+- **Ingress:** port 4180 from Traefik (`kube-system`); plus the tailscale proxy
+  pods when `auth.protectTailnet` is true, which it is not.
 - **Egress:** cluster DNS; the app on 8000; and `192.168.0.142:443` only — the
   Traefik LoadBalancer IP, which is how it reaches Kanidm (k8s-gateway answers
   `kanidm.homelab.local` with that address, and Traefik passes the TLS through to
@@ -201,18 +225,21 @@ kanidm group add-members openhands_users celsuss
 
 kanidm system oauth2 create openhands "OpenHands" https://openhands.homelab.local
 kanidm system oauth2 add-redirect-url openhands https://openhands.homelab.local/oauth2/callback
-kanidm system oauth2 add-redirect-url openhands https://openhands.tail5517c5.ts.net/oauth2/callback
 kanidm system oauth2 update-scope-map openhands openhands_users openid profile email groups
 kanidm system oauth2 prefer-short-username openhands
 
 kanidm system oauth2 show-basic-secret openhands
 ```
 
+Only the LAN host is registered: the tailnet path does not use the gate, for the
+reason above. If `auth.protectTailnet` ever becomes true, add
+`https://openhands.<tailnet>.ts.net/oauth2/callback` here and to
+`auth.oidc.whitelistDomains` — and if Kanidm rejects it for an origin mismatch,
+use `kanidm system oauth2 add-origin` rather than reaching for
+`disable-strict-redirect-url`.
+
 PKCE stays **on**. The argocd client had to disable it; oauth2-proxy speaks
-`S256`, so there is no `warning-insecure-client-disable-pkce` here. Likewise, if
-the tailnet redirect URL is rejected for an origin mismatch, add the origin —
-`kanidm system oauth2 add-origin openhands https://openhands.tail5517c5.ts.net` —
-rather than reaching for `disable-strict-redirect-url`.
+`S256`, so there is no `warning-insecure-client-disable-pkce` here.
 
 Kanidm only emits an `email` claim if the person has `mail` set, and
 oauth2-proxy wants one:
@@ -280,8 +307,10 @@ kubectl rollout restart -n ai-workloads deploy/openhands
 - LAN: <https://openhands.homelab.local/canvas/>
 - Tailnet: `https://openhands.<tailnet>.ts.net/canvas/`
 
-Both redirect to Kanidm first; you need to be in the `openhands_users` group.
-`/oauth2/sign_out` on either host clears the session.
+The **LAN** host redirects to Kanidm first; you need to be in the
+`openhands_users` group, and `/oauth2/sign_out` clears the session. The
+**tailnet** host does not — it is gated by Tailscale device authentication
+instead, for the reason in [Containment](#why-the-tailnet-is-not-behind-kanidm).
 
 The UI is served under **`/canvas/`**; `/api`, `/sockets` and `/alive` sit at the
 root of the same port, which is why the Ingress routes `/` (Prefix) rather than
@@ -339,10 +368,13 @@ kubectl exec -n ai-workloads deploy/searxng -- \
 
 In a browser: <https://openhands.homelab.local/> should redirect to Kanidm, and
 after signing in as a member of `openhands_users` land on `/canvas/` with a
-working `/sockets` websocket. Repeat from a tailnet device — if that callback
-comes back as `http://` rather than `https://`, the tailscale proxy is not
-setting `X-Forwarded-Proto` and `--redirect-url` has to be pinned instead.
-Signing in as a person *outside* the group must be refused by Kanidm itself.
+working `/sockets` websocket. Signing in as a person *outside* the group must be
+refused by Kanidm itself.
+
+From a tailnet device, `https://openhands.<tailnet>.ts.net/` should load
+`/canvas/` with **no** login prompt — that is the expected behaviour, not a
+regression. If you want to confirm the split is real rather than a cached
+session, use a private window.
 
 Then, from inside the pod, confirm the egress fence is actually enforced (instant
 failures, not hangs):

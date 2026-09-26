@@ -25,28 +25,34 @@ spec:
     - Ingress
     - Egress
   ingress:
-    # Port 8000 from the login gate and the PostSync hook only. Nothing else in
-    # the cluster can reach it - not Traefik, not the tailscale proxy, not
-    # another pod in this namespace. Going around the gate is not a matter of
-    # knowing the Service name.
+    # Who may reach port 8000. Traefik is NOT on this list while the gate is up:
+    # LAN traffic has to come through the oauth2-proxy, so going around the
+    # login is not a matter of knowing the Service name. The tailscale proxy is
+    # here only because the tailnet path deliberately bypasses the gate (see
+    # auth.protectTailnet). No other pod in this namespace can reach it.
     - from:
         {{- if .Values.auth.enabled }}
-        # oauth2-proxy. The only path in from either ingress.
+        # oauth2-proxy - the only way in from the LAN.
         - podSelector:
             matchLabels:
               app: {{ include "openhands.authFullname" . }}
-        {{- else }}
-        # Unauthenticated fallback: the ingresses reach the app directly, which
-        # means everyone on the LAN and every device on the tailnet can drive
-        # the agent. Only for temporarily debugging the gate.
-        # Tailscale proxy pods (remote access over the tailnet).
+        {{- end }}
+        {{- if or (not .Values.auth.enabled) (not .Values.auth.protectTailnet) }}
+        # Tailscale proxy pods. Present because the tailnet path does not go
+        # through the gate - Kanidm sits on a `.local` name a phone cannot
+        # resolve, so tailnet device auth is the boundary there instead. See
+        # auth.protectTailnet in values.yaml.
         - namespaceSelector:
             matchLabels:
               {{- toYaml .Values.networkPolicy.ingress.tailscaleNamespaceLabels | nindent 14 }}
           podSelector:
             matchLabels:
               {{- toYaml .Values.networkPolicy.ingress.tailscalePodLabels | nindent 14 }}
-        # Traefik (LAN access on {{ .Values.ingress.host }}).
+        {{- end }}
+        {{- if not .Values.auth.enabled }}
+        # Traefik direct. Only when the gate is off entirely, which means
+        # everyone on the LAN can drive the agent - for debugging the gate,
+        # not for running that way.
         - namespaceSelector:
             matchLabels:
               {{- toYaml .Values.networkPolicy.ingress.traefikNamespaceLabels | nindent 14 }}

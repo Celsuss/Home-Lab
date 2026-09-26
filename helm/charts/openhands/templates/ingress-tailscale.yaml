@@ -1,11 +1,14 @@
 {{/*
-Tailnet access. The hostname stays `openhands` (the helper names it from
-fullname), but with auth enabled the backend is the oauth2-proxy, not the app -
-so the tailnet path gets the same Kanidm login as the LAN. Tailnet identity
-alone is not treated as sufficient to spend the Claude subscription.
+Tailnet access. Backed by the oauth2-proxy only when auth.protectTailnet is on,
+which it is not and cannot be while Kanidm lives on a `.local` domain - an OIDC
+login needs the *browser* to reach the provider, and phones intercept `.local`
+for mDNS before any resolver sees it. See values.yaml and README.md.
+
+Otherwise this backs onto the app directly, and the tailnet's own device
+authentication is the boundary.
 */}}
 {{- $args := dict "Values" .Values "fullname" (include "openhands.fullname" .) "labels" (include "openhands.labels" . | trim) "namespace" .Values.namespace -}}
-{{- if .Values.auth.enabled -}}
+{{- if and .Values.auth.enabled .Values.auth.protectTailnet -}}
 {{- $_ := set $args "serviceName" (include "openhands.authFullname" .) -}}
 {{- $_ := set $args "servicePort" .Values.auth.service.port -}}
 {{- end -}}

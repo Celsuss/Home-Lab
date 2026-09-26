@@ -22,16 +22,17 @@ spec:
     - Ingress
     - Egress
   ingress:
-    # The two ingress paths, and nothing else - reusing the same selectors the
-    # app policy uses, because it is the same Traefik and the same tailscale
-    # proxy StatefulSet.
+    # Reusing the app policy's selectors - it is the same Traefik and the same
+    # tailscale proxy StatefulSet.
     - from:
+        {{- if .Values.auth.protectTailnet }}
         - namespaceSelector:
             matchLabels:
               {{- toYaml .Values.networkPolicy.ingress.tailscaleNamespaceLabels | nindent 14 }}
           podSelector:
             matchLabels:
               {{- toYaml .Values.networkPolicy.ingress.tailscalePodLabels | nindent 14 }}
+        {{- end }}
         - namespaceSelector:
             matchLabels:
               {{- toYaml .Values.networkPolicy.ingress.traefikNamespaceLabels | nindent 14 }}
