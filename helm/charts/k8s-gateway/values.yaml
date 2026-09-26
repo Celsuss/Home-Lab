@@ -33,3 +33,17 @@ k8s-gateway:
       contents: |
         kanidm.homelab.local.   IN  SOA sns.dns.icann.org. noc.dns.icann.org. 2015082541 7200 3600 1209600 3600
         kanidm.homelab.local.   IN  A   192.168.0.142
+    # TEMPORARY DIAGNOSTIC - remove once the tailnet DNS question is settled.
+    #
+    # `.local` is reserved for mDNS (RFC 6762) and phones intercept it before it
+    # reaches any unicast resolver, which is the suspected reason Tailscale
+    # split DNS cannot resolve *.homelab.local on a phone. This zone is the
+    # control: same resolver, same target IP, a TLD that is NOT .local.
+    # If a tailnet phone resolves this but not kanidm.homelab.local, the TLD is
+    # the blocker. Expect a Traefik 404 - no IngressRoute matches this name,
+    # which is fine: the 404 itself proves resolution plus reachability.
+    - filename: test-internal.db
+      domains: test.homelab.internal
+      contents: |
+        test.homelab.internal.   IN  SOA sns.dns.icann.org. noc.dns.icann.org. 2015082541 7200 3600 1209600 3600
+        test.homelab.internal.   IN  A   192.168.0.142
