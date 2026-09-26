@@ -154,11 +154,19 @@ Two policies, one per pod.
 
 - **Ingress:** port 4180 from Traefik (`kube-system`); plus the tailscale proxy
   pods when `auth.protectTailnet` is true, which it is not.
-- **Egress:** cluster DNS; the app on 8000; and `192.168.0.142:443` only — the
-  Traefik LoadBalancer IP, which is how it reaches Kanidm (k8s-gateway answers
-  `kanidm.homelab.local` with that address, and Traefik passes the TLS through to
-  `kanidm-0`). This is the same hairpin ArgoCD's OIDC already uses. No route to
-  the public internet at all.
+- **Egress:** cluster DNS; the app on 8000; and the **Traefik pod** on 8443,
+  which is how it reaches Kanidm (k8s-gateway answers `kanidm.homelab.local`
+  with the Traefik LoadBalancer IP, and Traefik passes the TLS through to
+  `kanidm-0`). No route to the public internet at all.
+
+  > **Do not rewrite that last rule as an `ipBlock` for `192.168.0.142/32`.** It
+  > reads more precisely and is completely inert: kube-proxy DNATs the
+  > connection to the Traefik *pod* before kube-router evaluates egress, so the
+  > policy sees `10.42.0.102:8443` and REJECTs. The symptom is nasty to
+  > diagnose — the browser half of the login works perfectly and only the
+  > server-side token exchange fails, with `connection refused` on
+  > `/oauth2/token` and an HTTP 500 at `/oauth2/callback`. This chart shipped
+  > that bug once already.
 
 K3s enforces policies with kube-router, which **REJECTs** rather than DROPs: a
 blocked connection fails with an *instant* `curl: (7)`, never a hang. A policy is

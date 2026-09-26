@@ -131,12 +131,25 @@ auth:
 
   networkPolicy:
     enabled: true
-    # Kanidm is reached the way ArgoCD reaches it: out to the Traefik
-    # LoadBalancer IP and back in through the TLS-passthrough IngressRouteTCP,
-    # because k8s-gateway answers kanidm.homelab.local with this address. One
-    # host and one port, not a route to the LAN.
-    kanidmCIDR: 192.168.0.142/32
-    kanidmPort: 443
+    # How the proxy reaches Kanidm. `kanidm.homelab.local` resolves to the
+    # Traefik LoadBalancer IP, but kube-proxy DNATs the connection to the
+    # Traefik POD before kube-router evaluates egress - so the rule has to
+    # select that pod. An ipBlock for the LoadBalancer IP silently never
+    # matches, kube-router REJECTs, and the token exchange fails with
+    # "connection refused" while the browser half of the login looks fine.
+    # That was this chart's original bug; do not "simplify" it back.
+    #
+    # Cost, stated plainly: this lets the proxy reach Traefik, and therefore
+    # any ingress host - wider than "Kanidm only". Acceptable because this pod
+    # is a trusted component with no agent and no shell, unlike the app pod
+    # next to it. Do NOT copy this rule into the app's policy.
+    kanidmVia:
+      namespaceLabels:
+        kubernetes.io/metadata.name: kube-system
+      podLabels:
+        app.kubernetes.io/name: traefik
+      # Traefik's `websecure` entrypoint container port, not the Service's 443.
+      port: 8443
 
   resources:
     requests:

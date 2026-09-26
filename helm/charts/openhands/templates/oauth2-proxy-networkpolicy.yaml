@@ -62,13 +62,18 @@ spec:
       ports:
         - protocol: TCP
           port: {{ .Values.service.port }}
-    # Kanidm, reached the same way ArgoCD reaches it: out to the Traefik
-    # LoadBalancer IP on the LAN and back in through the TLS-passthrough
-    # IngressRouteTCP. One host, one port - not a route to the LAN.
+    # Kanidm, via Traefik. This MUST select the Traefik pod, not the
+    # LoadBalancer IP: kube-proxy DNATs the connection before kube-router
+    # evaluates egress, so an ipBlock for the VIP never matches. See the note
+    # in values.yaml.
     - to:
-        - ipBlock:
-            cidr: {{ .Values.auth.networkPolicy.kanidmCIDR }}
+        - namespaceSelector:
+            matchLabels:
+              {{- toYaml .Values.auth.networkPolicy.kanidmVia.namespaceLabels | nindent 14 }}
+          podSelector:
+            matchLabels:
+              {{- toYaml .Values.auth.networkPolicy.kanidmVia.podLabels | nindent 14 }}
       ports:
         - protocol: TCP
-          port: {{ .Values.auth.networkPolicy.kanidmPort }}
+          port: {{ .Values.auth.networkPolicy.kanidmVia.port }}
 {{- end }}
