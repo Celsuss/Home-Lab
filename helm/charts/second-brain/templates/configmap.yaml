@@ -1,0 +1,16 @@
+---
+# sync.py lives at files/sync.py rather than inline here so it can be run
+# directly against a checkout for dry runs:
+#
+#   OPEN_WEBUI_URL=... OPEN_WEBUI_API_KEY=... REPO_DIR=~/workspace/second-brain \
+#     INSECURE_TLS=1 python3 files/sync.py --dry-run
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "second-brain.fullname" . }}-sync
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "second-brain.labels" . | nindent 4 }}
+data:
+  sync.py: |
+{{ .Files.Get "files/sync.py" | indent 4 }}

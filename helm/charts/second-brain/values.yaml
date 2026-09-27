@@ -1,0 +1,96 @@
+---
+namespace: ai-workloads
+name: second-brain
+
+# ---------------------------------------------------------------------------
+# Source of the notes
+# ---------------------------------------------------------------------------
+# Forgejo in-cluster, not GitHub. Two reasons: this pod then needs no internet
+# egress at all, and it stays correct when Forgejo stops being a pull mirror
+# and becomes the writable origin - the clone URL does not change.
+#
+# `celsuss/second-brain` is PRIVATE in Forgejo, so the token below is required
+# even though the other three mirrors are public.
+git:
+  url: http://forgejo-http.forgejo.svc.cluster.local:3000/celsuss/second-brain.git
+  # Verified against the repo: origin/HEAD -> origin/master. (There are stray
+  # `main` and `mster` branches upstream; neither is the default.)
+  branch: master
+  # Subtree holding the notes. hugo/, images/ and stats/ are not indexed.
+  notesSubdir: org-roam
+
+# ---------------------------------------------------------------------------
+# Open WebUI
+# ---------------------------------------------------------------------------
+openWebui:
+  url: http://open-webui.ai-workloads.svc.cluster.local:8080
+  # Admin API key (sk-...), minted under Settings -> Account -> API keys and
+  # stored in Vault at secret/homelab/open-webui. Shared with the cptr and
+  # open-terminal hooks - this chart only reads it.
+  apiKeySecret: open-webui-secret
+  apiKeySecretKey: admin-api-key
+
+knowledge:
+  # Matched by name. Renaming this orphans the old knowledge base rather than
+  # renaming it - delete the old one by hand if you change it.
+  name: "Second Brain"
+  description: "org-roam second brain, synced from git by the second-brain chart. Read-only."
+
+# Off the hour: Forgejo's mirror pull and the volsync window both cluster
+# around :00, and this job is I/O heavy on a single node.
+schedule: "17 * * * *"
+
+# Measured 0.27 s/note against the live instance (35 real notes in 9.6s), so
+# the ~1680-note first run takes roughly 8 minutes and steady-state runs finish
+# in seconds. This is headroom, not an estimate of the expected runtime.
+activeDeadlineSeconds: 3600
+
+image:
+  # python:3.12-alpine + `apk add git` at start. The script is stdlib-only, so
+  # there is no pip install to fail - see helm/charts/mcpo/README.md for why
+  # that matters.
+  repository: python
+  tag: "3.12-alpine"
+  pullPolicy: IfNotPresent
+
+# Holds the Forgejo read-only token. Keep the chart unsynced until
+# secret/homelab/second-brain exists, or the VaultStaticSecret sits in error.
+vault:
+  secretPath: homelab/second-brain
+  secretName: second-brain-secrets
+  usernameKey: forgejo-user
+  tokenKey: forgejo-token
+
+# The git clone. Not backed up: it is a disposable copy of a remote repo, and
+# restoring it costs one `git clone`. Deliberately absent from
+# helm/charts/volsync-backups/values.yaml.
+persistence:
+  storage: 1Gi
+  # storageClass: ""   # K3s default (local-path)
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# This pod reads a private repo and holds an Open WebUI admin key, so it gets
+# the same treatment as the other ai-workloads pods: it may reach exactly two
+# services and nothing else. No internet rule - it has no reason to leave the
+# cluster.
+networkPolicy:
+  enabled: true
+  dnsNamespaceLabels:
+    kubernetes.io/metadata.name: kube-system
+  forgejo:
+    namespaceLabels:
+      kubernetes.io/metadata.name: forgejo
+    podLabels:
+      app.kubernetes.io/name: forgejo
+    port: 3000
+  openWebui:
+    podLabels:
+      app: open-webui
+    port: 8080

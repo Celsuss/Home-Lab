@@ -1,0 +1,23 @@
+---
+# Hourly reconcile. `Forbid` matters: the first run can take an hour, and two
+# of these writing the same PVC would corrupt the clone.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "second-brain.fullname" . }}-sync
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "second-brain.labels" . | nindent 4 }}
+spec:
+  schedule: {{ .Values.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  # Don't fire a backlog of missed runs after the node has been down.
+  startingDeadlineSeconds: 300
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: {{ .Values.activeDeadlineSeconds }}
+      template:
+        {{- include "second-brain.syncPodSpec" . | nindent 8 }}

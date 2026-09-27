@@ -1,0 +1,9 @@
+# Patterns to ignore when packaging. NOTE: files/ is deliberately NOT ignored -
+# templates/configmap.yaml reads files/sync.py with .Files.Get.
+.DS_Store
+.git/
+.gitignore
+*.swp
+*.tmp
+*.orig
+*~

@@ -1,0 +1,20 @@
+---
+# Runs the same sync once after every successful ArgoCD sync, so a fresh deploy
+# populates the knowledge base immediately instead of waiting up to an hour.
+# Idempotent: on an already-synced knowledge base it uploads nothing.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "second-brain.fullname" . }}-initial-sync
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "second-brain.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    # Keep the finished Job around for inspection until the next sync replaces it.
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 2
+  activeDeadlineSeconds: {{ .Values.activeDeadlineSeconds }}
+  template:
+    {{- include "second-brain.syncPodSpec" . | nindent 4 }}

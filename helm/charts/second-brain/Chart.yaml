@@ -1,0 +1,14 @@
+---
+apiVersion: v2
+name: second-brain
+description: |
+  Syncs the org-roam second brain from Forgejo into an Open WebUI knowledge
+  base, so chats can retrieve from the user's own notes. Read-only: nothing
+  here ever writes back to git.
+type: application
+
+# Chart version. Bump on every change to the chart itself.
+version: 0.1.0
+
+# Tracks the sync script, not an upstream product - there is no upstream here.
+appVersion: "0.1.0"

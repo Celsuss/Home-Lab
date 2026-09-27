@@ -1,0 +1,56 @@
+{{- if .Values.networkPolicy.enabled }}
+---
+# This pod reads a private notes repo and carries an Open WebUI admin key, so
+# it is allowed to reach exactly two services. There is no internet egress rule
+# and no ingress rule - nothing ever connects *to* a CronJob.
+#
+# K3s enforces policies with kube-router (not disabled here - see
+# ansible/roles/k3s/templates/config.yaml.j2), whose default action is REJECT.
+# A blocked connection therefore fails *instantly* rather than hanging; a
+# timeout means the policy is not matching. See README.md.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "second-brain.fullname" . }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "second-brain.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app: {{ include "second-brain.fullname" . }}
+  policyTypes:
+    - Egress
+  egress:
+    # Cluster DNS.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              {{- toYaml .Values.networkPolicy.dnsNamespaceLabels | nindent 14 }}
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Forgejo, to clone the notes. Selects the backend pod and its container
+    # port: an ipBlock naming the Service VIP would never match, because the
+    # VIP is DNAT'd to the pod IP before the policy is evaluated.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              {{- toYaml .Values.networkPolicy.forgejo.namespaceLabels | nindent 14 }}
+          podSelector:
+            matchLabels:
+              {{- toYaml .Values.networkPolicy.forgejo.podLabels | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.networkPolicy.forgejo.port }}
+    # Open WebUI, to push the knowledge base up.
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- toYaml .Values.networkPolicy.openWebui.podLabels | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.networkPolicy.openWebui.port }}
+{{- end }}
