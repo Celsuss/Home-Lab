@@ -118,8 +118,10 @@ def fetch_repo():
     if (REPO_DIR / ".git").is_dir():
         run(["git", "-C", str(REPO_DIR), "fetch", "--depth", "1", "origin", GIT_BRANCH], env=env)
         run(["git", "-C", str(REPO_DIR), "reset", "--hard", "FETCH_HEAD"])
-        # A shallow fetch leaves the previous tip unreferenced; without this the
-        # PVC grows by a pack every run.
+        # A shallow fetch leaves the previous tip unreferenced, so the repo
+        # grows by a pack every run. In the cluster REPO_DIR is an emptyDir and
+        # this branch never runs, but it keeps the script correct against any
+        # persistent checkout.
         run(["git", "-C", str(REPO_DIR), "reflog", "expire", "--expire=now", "--all"])
         run(["git", "-C", str(REPO_DIR), "gc", "--prune=now", "--quiet"])
     else:

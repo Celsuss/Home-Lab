@@ -12,7 +12,7 @@ every run.
 GitHub ──mirror──► Forgejo celsuss/second-brain (private)
                      │  read-only token, in-cluster
                      ▼
-               second-brain-pvc ──► sync CronJob (hourly, :17)
+               emptyDir clone ──► sync CronJob (hourly, :17)
                                       │  manifest {path, filename, sha256, size}
                                       ▼
                                     Open WebUI  POST /api/v1/knowledge/{id}/sync/diff
@@ -124,13 +124,33 @@ in the admin UI, or add a PostSync hook here on the `open-terminal` configure-jo
 **Changing the embedding model invalidates the index** and requires
 `POST /api/v1/knowledge/reindex` plus a full re-embed.
 
-## Storage
+## Storage: none, on purpose
 
-One 1Gi RWO PVC on `local-path` holding a shallow clone (~38 MB). The script expires the
-reflog and runs `git gc` after each fetch, or shallow fetches accumulate a pack per run.
+The clone lives in an **emptyDir** (1Gi limit), re-created on every run. Nothing needs to
+survive between runs — the state lives in Open WebUI's database — and a `--depth 1` clone
+of the notes repo is 19 MB from a Service in this same cluster.
 
-**Not backed up, deliberately.** It is a disposable copy of a remote repo — restoring it
-costs one `git clone`. Do not add it to `helm/charts/volsync-backups/values.yaml`.
+There is nothing to add to `helm/charts/volsync-backups/values.yaml`.
+
+### Why not a PVC (this was a real bug, briefly)
+
+The first version of this chart used a 1Gi PVC, which deadlocked the very first deploy:
+
+- `local-path` is `VolumeBindingMode: WaitForFirstConsumer`, so the claim only binds once
+  a pod that mounts it is **scheduled**.
+- The only pods that mount it are the PostSync hook Job and the CronJob.
+- ArgoCD will not run a PostSync hook until the Sync phase is healthy, and it does not
+  consider a `Pending` PVC healthy.
+
+So ArgoCD parked on `waiting for healthy state of /PersistentVolumeClaim/second-brain-pvc`
+and stayed there until the hourly CronJob happened to fire and break the tie by accident.
+With a daily schedule it would have hung for a day.
+
+The PVC also let the PostSync Job and a scheduled run write the same ReadWriteOnce clone
+simultaneously — `concurrencyPolicy: Forbid` only guards CronJob runs against each other,
+not against the hook.
+
+If you ever reintroduce a PVC here, both problems come back.
 
 ## Containment
 

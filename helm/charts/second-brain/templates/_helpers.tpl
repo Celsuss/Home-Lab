@@ -109,9 +109,21 @@ spec:
           mountPath: /scripts
           readOnly: true
   volumes:
+    # emptyDir, deliberately not a PVC. Nothing needs to survive between runs -
+    # the state lives in Open WebUI's database - and a `--depth 1` clone of the
+    # notes repo is 19 MB from a Service in this same cluster.
+    #
+    # A PVC here was actively harmful: `local-path` is WaitForFirstConsumer, so
+    # the claim only binds once a pod mounting it is scheduled, but the only
+    # pods that mount it are the PostSync hook (which ArgoCD will not start
+    # until the Sync phase is healthy) and the CronJob. ArgoCD therefore parked
+    # on "waiting for healthy state of .../second-brain-pvc" until the CronJob
+    # happened to fire. It also let the PostSync Job and a scheduled run write
+    # the same RWO clone at once, which `concurrencyPolicy: Forbid` does not
+    # guard against.
     - name: repo
-      persistentVolumeClaim:
-        claimName: {{ include "second-brain.fullname" . }}-pvc
+      emptyDir:
+        sizeLimit: 1Gi
     - name: scripts
       configMap:
         name: {{ include "second-brain.fullname" . }}-sync

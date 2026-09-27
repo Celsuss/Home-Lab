@@ -61,12 +61,9 @@ vault:
   usernameKey: forgejo-user
   tokenKey: forgejo-token
 
-# The git clone. Not backed up: it is a disposable copy of a remote repo, and
-# restoring it costs one `git clone`. Deliberately absent from
-# helm/charts/volsync-backups/values.yaml.
-persistence:
-  storage: 1Gi
-  # storageClass: ""   # K3s default (local-path)
+# No persistence block, and no PVC: the clone lives in an emptyDir that is
+# re-created each run. See the volumes comment in templates/_helpers.tpl for
+# why a PVC was wrong here, not merely unnecessary.
 
 resources:
   requests:
