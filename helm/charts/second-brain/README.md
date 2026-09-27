@@ -212,6 +212,39 @@ kubectl -n ai-workloads logs -f job/sync-now
 The run is idempotent, so a second one immediately after should report
 `added=0 modified=0 deleted=0` — that is the single best check that everything is wired up.
 
+## When Open WebUI dies mid-ingest
+
+The first bulk ingest OOMKilled Open WebUI three times (exit 137). The sync recovered on
+its own — later CronJob runs re-uploaded whatever was missing — but it left three file
+rows stuck as "processing" in the UI that **could not be deleted from the knowledge base
+view**, failing with `We could not find what you're looking for :/`.
+
+That error is not a bug, it is the diagnosis. Uploading with `knowledge_id` extracts,
+embeds, and only then *links* the file. A crash in between leaves a file row belonging to
+no knowledge base. `POST /knowledge/{id}/file/remove` checks `has_file()` first, which is
+false by definition for an unlinked row — so the knowledge-base UI legitimately cannot see
+it. The row is only reachable through `DELETE /api/v1/files/{id}`.
+
+`sync.py` now sweeps these automatically at the end of each run
+(`cleanup_orphaned_pending`), and only for filenames it has already confirmed linked, so a
+genuine in-flight upload from the UI is never touched. To inspect them by hand:
+
+```bash
+K=$(vault kv get -field=admin-api-key secret/homelab/open-webui)
+B=https://open-webui.homelab.local
+ID=$(curl -sk -H "Authorization: Bearer $K" $B/api/v1/knowledge/ \
+       | jq -r '.items[] | select(.name=="Second Brain") | .id')
+curl -sk -H "Authorization: Bearer $K" "$B/api/v1/knowledge/$ID/files/pending" \
+  | jq -r '.[] | "\(.id)  \(.filename)"'
+```
+
+**`residual=0` alone does not mean healthy.** `sync/diff` only compares checksums of
+*linked* files, so it is blind to a half-finished upload. That is why the run line also
+reports `orphans_cleaned`.
+
+Open WebUI's memory limit was raised from 2Gi to 4Gi in response — with a populated
+knowledge base it idles at ~1.7Gi, so it had almost no headroom for bulk embedding.
+
 ## Notes
 
 - **Deleting a knowledge base orphans its files.** `DELETE /api/v1/knowledge/{id}/delete`

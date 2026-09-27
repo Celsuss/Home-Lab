@@ -337,6 +337,40 @@ def upload_note(entry, kb_id, directory_id):
     )
 
 
+def cleanup_orphaned_pending(kb_id, manifest_names, needs_upload_names):
+    """Delete file rows an interrupted earlier run left unlinked.
+
+    Uploading with `knowledge_id` extracts the file, embeds it, and only then
+    links it to the knowledge base. If the Open WebUI pod dies in between - it
+    was OOMKilled three times during the first bulk ingest - the file row
+    survives with `status: pending` and belongs to no knowledge base.
+
+    Open WebUI shows those forever as "processing", and they cannot be removed
+    from the knowledge-base UI: `POST /knowledge/{id}/file/remove` checks
+    `has_file()` first, which is false by definition for an unlinked row, so it
+    answers "We could not find what you're looking for". `DELETE /files/{id}`
+    is the endpoint that can actually see them.
+
+    Only rows whose filename is a note we already have properly linked are
+    touched, so a genuine in-flight upload from the UI is never deleted.
+    """
+    pending = request(f"/api/v1/knowledge/{kb_id}/files/pending") or []
+    orphans = [
+        f
+        for f in pending
+        if f.get("filename") in manifest_names and f.get("filename") not in needs_upload_names
+    ]
+    if not orphans:
+        return 0
+    for orphan in orphans:
+        try:
+            request(f"/api/v1/files/{orphan['id']}", method="DELETE")
+        except Exception as exc:  # noqa: BLE001 - report, never fail the run over cleanup
+            log(f"could not delete orphan {orphan['filename']} ({orphan['id']}): {exc}")
+    log(f"deleted {len(orphans)} orphaned file rows left by an interrupted run")
+    return len(orphans)
+
+
 def create_directories(kb_id, mkdir_paths, directory_map):
     # sync/diff returns these parent-first, but sorting by depth again makes
     # the invariant local rather than an assumption about the server.
@@ -431,9 +465,20 @@ def main():
     # honest check is to ask it again what it thinks is missing.
     verify = request(f"/api/v1/knowledge/{kb_id}/sync/diff", method="POST", body={"manifest": manifest})
     residual = len(verify["added"]) + len(verify["modified"])
+
+    # The diff only compares checksums of *linked* files, so it cannot see a
+    # half-finished upload. Sweep those separately or they accumulate in the
+    # UI as permanently "processing" rows.
+    orphans = cleanup_orphaned_pending(
+        kb_id,
+        manifest_names={e["filename"] for e in entries},
+        needs_upload_names={item["filename"] for item in verify["added"] + verify["modified"]},
+    )
+
     log(
         f"result: uploaded={len(pending) - len(failures)} failed={len(failures)} "
-        f"removed={len(removals)} in_sync={verify['unmodified_count']} residual={residual}"
+        f"removed={len(removals)} orphans_cleaned={orphans} "
+        f"in_sync={verify['unmodified_count']} residual={residual}"
     )
     if residual or failures:
         sys.exit(f"{residual} notes still out of sync after this run")

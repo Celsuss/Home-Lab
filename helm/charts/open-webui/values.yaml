@@ -69,13 +69,19 @@ ingress:
 persistence:
   storage: 3Gi
 
+# Raised from 2Gi/512Mi after three OOMKills (exit 137) during the initial
+# second-brain ingest on 2026-09-27. The standard image keeps the local
+# embedding and reranking models resident, so this pod idles at ~1.7Gi with a
+# populated knowledge base - it was living inside ~300Mi of headroom and any
+# bulk embedding tipped it over. The 512Mi request was fiction and misled the
+# scheduler. Node has 62Gi (41% used), so this costs nothing real.
 resources:
   limits:
     cpu: 1000m
-    memory: 2Gi
+    memory: 4Gi
   requests:
     cpu: 500m
-    memory: 512Mi
+    memory: 2Gi
 
 # This is to setup the liveness and readiness probes more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
 # /ready returns 503 until startup work (including alembic migrations) has
