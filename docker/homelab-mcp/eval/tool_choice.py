@@ -34,6 +34,7 @@ import yaml
 HERE = pathlib.Path(__file__).resolve().parent
 REPO = HERE.parents[2]
 PREFIX = "homelab__"  # HA's MCP integration namespaces the tools with this
+HA_PREFIX = "assist__"  # and, with two LLM APIs selected, HA's own tools too
 # gemma4's native call syntax leaking into the reply (`name{arg:<|"|>x<|"|>}`).
 TEXT_CALL = re.compile(r'<\|"\|>|<\|?tool_call|\b\w+\{\w+:')
 
@@ -106,6 +107,10 @@ def chat(ollama_url: str, body: dict) -> tuple[str, str]:
     return ("text tool call" if TEXT_CALL.search(content) else "no call"), snippet
 
 
+def short(outcome: str) -> str:
+    return outcome.removeprefix(PREFIX).removeprefix(HA_PREFIX)
+
+
 def passed(case: dict, outcome: str) -> bool:
     if outcome == "text tool call":
         return False
@@ -114,7 +119,7 @@ def passed(case: dict, outcome: str) -> bool:
     expect = case["expect"]
     if outcome == "no call":
         return "none" in expect
-    return outcome.removeprefix(PREFIX) in expect
+    return short(outcome) in expect
 
 
 def main() -> int:
@@ -147,7 +152,7 @@ def main() -> int:
     )
     print("  " + ", ".join(t["name"] for t in remote))
 
-    tools = [as_ollama(t["name"], t["description"], t["parameters"]) for t in ha["tools"]]
+    tools = [as_ollama(HA_PREFIX + t["name"], t["description"], t["parameters"]) for t in ha["tools"]]
     tools += [as_ollama(PREFIX + t["name"], t.get("description", ""), strip_titles(t["inputSchema"])) for t in remote]
     body = {
         "model": args.model,
@@ -166,7 +171,7 @@ def main() -> int:
         outcomes, ok, started = collections.Counter(), 0, time.monotonic()
         for _ in range(args.n):
             outcome, detail = chat(args.ollama_url, body)
-            outcomes[outcome.removeprefix(PREFIX)] += 1
+            outcomes[short(outcome)] += 1
             hit = passed(case, outcome)
             ok += hit
             if args.verbose:

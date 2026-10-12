@@ -107,9 +107,11 @@ ha:
     - {name: Den speaker 2, domain: media_player, area: Den}
     - {name: Kitchen light, domain: light, area: Kitchen}
     - {name: Bedroom lamp, domain: light, area: Bedroom}
-    - {name: Shopping list, domain: todo, area: ""}
+    - {name: Shopping List, domain: todo, area: ""}
   # HA's own tools (Assist API + exposed scripts), in Ollama's format minus
-  # the {"type": "function"} wrapper.
+  # the {"type": "function"} wrapper. Names without the `assist__` prefix HA
+  # adds when a second LLM API (homelab-mcp) is selected; tool_choice.py adds
+  # it (seen live 2026-10-13: `assist__HassListAddItem`).
   tools:
     - name: HassTurnOn
       description: Turns on/opens/presses a device or entity
