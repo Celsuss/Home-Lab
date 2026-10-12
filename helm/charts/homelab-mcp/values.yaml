@@ -7,7 +7,7 @@ image:
   # tagged `latest` and `1.0.<run number>` (the GHCR package is public). Bump
   # to the new number after each image build.
   repository: ghcr.io/celsuss/homelab-mcp
-  tag: "1.0.15"
+  tag: "1.0.16"
   pullPolicy: IfNotPresent
 
 service:

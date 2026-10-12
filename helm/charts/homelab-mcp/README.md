@@ -19,7 +19,7 @@ http://homelab-mcp.ai-workloads.svc.cluster.local:8000/mcp
 | `fetch_page(url)` | the page itself, main text via trafilatura, truncated to 4000 chars | `FETCH_ENABLED=1` |
 | `add_chore(name, due_date?)` | Donetick `POST /eapi/v1/chore` | `DONETICK_URL` + `DONETICK_TOKEN` |
 | `list_chores()` | Donetick `GET /eapi/v1/chore` | same |
-| `search_recipes(query)` | Tandoor `GET /api/recipe/?query=` | `TANDOOR_URL` + `TANDOOR_TOKEN` |
+| `search_recipes(query?)` | Tandoor `GET /api/recipe/?query=` (empty or "all" lists everything, up to 30, with the total count) | `TANDOOR_URL` + `TANDOOR_TOKEN` |
 | `get_recipe(recipe_id)` | Tandoor `GET /api/recipe/{id}/` | same |
 
 Design rules. Keep them when adding tools:

@@ -232,16 +232,24 @@ def fmt_amount(amount) -> str:
 if TANDOOR_URL and TANDOOR_TOKEN:
 
     @tool
-    async def search_recipes(query: str) -> str:
-        """Search the user's own recipe collection by name, ingredient or keyword."""
+    async def search_recipes(query: str = "") -> str:
+        """Search the user's recipes by name, ingredient or keyword. Leave query empty to list all recipes."""
+        # Models tend to search for the literal word "all" when asked to list
+        # everything; Tandoor would fuzzy-match that against recipe text.
+        if query.strip().lower() in ("all", "*", "everything", "any"):
+            query = ""
+        page_size = 8 if query else 30
         async with tandoor() as client:
-            resp = await client.get("/recipe/", params={"query": query, "page_size": 8})
+            resp = await client.get("/recipe/", params={"query": query, "page_size": page_size})
             resp.raise_for_status()
-            recipes = resp.json().get("results", [])
+            data = resp.json()
+        recipes, total = data.get("results", []), data.get("count", 0)
         if not recipes:
-            return f"No recipes match {query!r}."
-        return "\n".join(
-            f"- {r['name']} (id {r['id']})" + (f": {clip(' '.join(r['description'].split()), 100)}" if r.get("description") else "")
+            return f"No recipes match {query!r}." if query else "The recipe collection is empty."
+        what = f"{total} recipes match {query!r}" if query else f"{total} recipes in total"
+        shown = f", showing {len(recipes)}" if total > len(recipes) else ""
+        return f"{what}{shown}:\n" + "\n".join(
+            f"- {r['name']} (id {r['id']})" + (f": {clip(' '.join(r['description'].split()), 100)}" if query and r.get("description") else "")
             for r in recipes
         )
 
