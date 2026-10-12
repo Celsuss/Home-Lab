@@ -140,6 +140,25 @@ curl -s "http://$IP:8000/mcp" \
 `/healthz` lists the registered tools. Expect all seven once the Vault tokens
 and the calendar link exist.
 
+## Tool-choice eval
+
+Run it after any tool, docstring or system-prompt change. It sends each case in
+`docker/homelab-mcp/eval/cases.yaml` to Ollama 8 times, in HA's request shape
+(HA's prompt from `docs/home-assistant/system-prompt.md`, HA's own tools, the
+live `tools/list` prefixed `homelab__`). It prints the pass rate per case and
+the schema size against the 2.2 KB budget. Tools are never executed.
+
+```bash
+MCP=$(kubectl -n ai-workloads get svc homelab-mcp -o jsonpath='{.spec.clusterIP}')
+OLLAMA=$(kubectl -n ai-workloads get svc ollama -o jsonpath='{.spec.clusterIP}')
+uv run docker/homelab-mcp/eval/tool_choice.py --mcp-url "http://$MCP:8000/mcp" --ollama-url "http://$OLLAMA:11434"
+```
+
+`--only <text>` runs matching cases, and `-v` shows every call's arguments or
+reply. A full run takes about 2 minutes. The baseline is in
+`docs/plans/2026-10-12-mcp-improvements.md` → Discoveries. Add cases for a new
+tool in the same change.
+
 ## Local development
 
 ```bash

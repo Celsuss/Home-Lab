@@ -1,0 +1,135 @@
+---
+# Tool-choice regression cases for tool_choice.py.
+#
+# Each case is one utterance sent N times to Ollama the way Home Assistant
+# sends it: HA's system prompt, HA's own Assist tools (below) and the live
+# homelab-mcp tools, prefixed `homelab__` as HA's MCP integration does.
+#
+#   expect: [tool, ...]   pass if the first call is one of these. Names
+#                         without the homelab__ prefix. `none` = a plain text
+#                         answer (no call) also passes.
+#   avoid: homelab        pass on anything except a homelab-mcp call (HA
+#                         intents or a text answer are fine).
+#
+# A call written as text (gemma4's `name{arg:<|"|>x<|"|>}`) always fails.
+# Add the cases for each new tool in the same change that adds the tool.
+
+cases:
+  # web_search
+  - utterance: "what's the latest news about the James Webb telescope?"
+    expect: [web_search]
+  - utterance: "who won the Formula 1 race last weekend?"
+    expect: [web_search]
+  # fetch_page
+  - utterance: "read https://en.wikipedia.org/wiki/Aperture_Science and tell me what it says"
+    expect: [fetch_page]
+  - utterance: "summarise this page: https://www.home-assistant.io/blog/"
+    expect: [fetch_page]
+  # add_chore
+  - utterance: "add buy milk to my chores"
+    expect: [add_chore]
+  - utterance: "remind me to take out the trash on Friday"
+    expect: [add_chore]
+  # list_chores
+  - utterance: "what chores do I have?"
+    expect: [list_chores]
+  - utterance: "is anything overdue on my to-do list?"
+    expect: [list_chores, todo_get_items]
+  # search_recipes
+  - utterance: "what can I cook with banana?"
+    expect: [search_recipes]
+  - utterance: "list all my recipes"
+    expect: [search_recipes]
+  # get_recipe (the id comes from an earlier search, so the model must ask
+  # for the recipe it was just shown)
+  - utterance: "give me the ingredients for recipe 12"
+    expect: [get_recipe]
+  - utterance: "how do I make the pancakes recipe? It's recipe id 4."
+    expect: [get_recipe]
+  # calendar_agenda
+  - utterance: "what's on my calendar today?"
+    expect: [calendar_agenda]
+  - utterance: "do I have any appointments on Thursday?"
+    expect: [calendar_agenda]
+
+  # Negative: home control and chit-chat must not reach homelab-mcp.
+  - utterance: "turn on the kitchen light"
+    avoid: homelab
+  - utterance: "turn off the bedroom lamp"
+    avoid: homelab
+  - utterance: "play some Daft Punk"
+    avoid: homelab
+  - utterance: "pause the music"
+    avoid: homelab
+  # The prompt allows web_search for facts the model is unsure of; a search
+  # here is slower but not wrong.
+  - utterance: "what is the capital of Australia?"
+    expect: [none, web_search]
+  - utterance: "tell me a joke"
+    avoid: homelab
+
+# --- What HA adds around the tools --------------------------------------------
+# Kept here so the request matches HA's shape. Update when entity exposure or
+# HA's Assist API changes (Assist debug view shows the real tool list).
+ha:
+  # Appended after the user's instructions by HA's Assist API.
+  api_prompt: >-
+    When controlling Home Assistant always call the intent tools. Use
+    HassTurnOn to lock and HassTurnOff to unlock a lock. When controlling a
+    device, prefer passing just name and domain. When controlling an area,
+    prefer passing just area name and domain.
+  # Exposed entities, as HA's static context lists them.
+  entities:
+    - {name: Den speaker, domain: media_player, area: Den}
+    - {name: Den speaker 2, domain: media_player, area: Den}
+    - {name: Kitchen light, domain: light, area: Kitchen}
+    - {name: Bedroom lamp, domain: light, area: Bedroom}
+    - {name: Shopping list, domain: todo, area: ""}
+  # HA's own tools (Assist API + exposed scripts), in Ollama's format minus
+  # the {"type": "function"} wrapper.
+  tools:
+    - name: HassTurnOn
+      description: Turns on/opens/presses a device or entity
+      parameters: {type: object, properties: {name: {type: string}, area: {type: string}, domain: {type: array, items: {type: string}}}, required: []}
+    - name: HassTurnOff
+      description: Turns off/closes a device or entity
+      parameters: {type: object, properties: {name: {type: string}, area: {type: string}, domain: {type: array, items: {type: string}}}, required: []}
+    - name: HassLightSet
+      description: Sets the brightness percentage or color of a light
+      parameters: {type: object, properties: {name: {type: string}, area: {type: string}, brightness: {type: integer}}, required: []}
+    - name: HassMediaPause
+      description: Pauses a media player
+      parameters: {type: object, properties: {name: {type: string}, area: {type: string}}, required: []}
+    - name: HassMediaUnpause
+      description: Resumes a media player
+      parameters: {type: object, properties: {name: {type: string}, area: {type: string}}, required: []}
+    - name: HassMediaNext
+      description: Skips a media player to the next item
+      parameters: {type: object, properties: {name: {type: string}}, required: []}
+    - name: HassSetVolume
+      description: Sets the volume percentage of a media player
+      parameters: {type: object, properties: {name: {type: string}, volume_level: {type: integer}}, required: [volume_level]}
+    - name: HassListAddItem
+      description: Add item to a todo list
+      parameters: {type: object, properties: {item: {type: string}, name: {type: string}}, required: [item, name]}
+    - name: HassListCompleteItem
+      description: Complete item on a todo list
+      parameters: {type: object, properties: {item: {type: string}, name: {type: string}}, required: [item, name]}
+    - name: HassCancelAllTimers
+      description: Cancels all timers
+      parameters: {type: object, properties: {area: {type: string}}, required: []}
+    - name: HassBroadcast
+      description: Broadcast a message through the home
+      parameters: {type: object, properties: {message: {type: string}}, required: [message]}
+    - name: GetDateTime
+      description: Provides the current date and time.
+      parameters: {type: object, properties: {}, required: []}
+    - name: GetLiveContext
+      description: Provides real-time information about the CURRENT state, value, or mode of devices, sensors, entities, or areas.
+      parameters: {type: object, properties: {}, required: []}
+    - name: todo_get_items
+      description: Query a to-do list to find out what items are on it.
+      parameters: {type: object, properties: {todo_list: {type: string}}, required: [todo_list]}
+    - name: play_music
+      description: Play music from the user's own music library on the speaker in the den.
+      parameters: {type: object, properties: {query: {type: string}, media_type: {type: string}, artist: {type: string}, enqueue: {type: string}}, required: [query, media_type]}
