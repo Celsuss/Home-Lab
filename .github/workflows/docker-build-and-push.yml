@@ -7,6 +7,9 @@ on:
       - main
     paths:
       - 'docker/**'
+      # Workflow edits rebuild homelab-mcp (see its filter below), so a fix
+      # here is tested by the push that makes it.
+      - '.github/workflows/docker-build-and-push.yml'
 
 jobs:
   identify-changes:
@@ -28,6 +31,7 @@ jobs:
               - 'docker/argo-cd-repo-server-sops/**'
             homelab-mcp:
               - 'docker/homelab-mcp/**'
+              - '.github/workflows/docker-build-and-push.yml'
 
   build-and-push:
     needs: identify-changes
@@ -60,7 +64,10 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GHCR_TOKEN }}
+          # The job's own token (permissions: packages: write above) - unlike a
+          # personal access token it never expires. The image's
+          # org.opencontainers.image.source label links the package to this repo.
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push Docker image
         id: build-and-push
