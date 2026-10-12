@@ -79,7 +79,15 @@ APIs*. The full steps are in `helm/charts/home-assistant/README.md` → "Homelab
 tools (MCP)".
 
 **Open WebUI:** Admin → Settings → External Tools → **+** → type **MCP
-(Streamable HTTP)**, the same URL, auth None. Open WebUI's own `search_web` and
+(Streamable HTTP)**, the same URL, auth None. Then enable it for the model
+(Workspace → Models → the model → Tools → homelab) or per chat.
+
+The type defaults to **OpenAPI**, and Open WebUI doesn't show an error when
+it's wrong. The symptom is `GET /mcp/openapi.json 404` from the open-webui pod
+in this server's log, and the model never sees the tools. It then reaches for
+calendar/memory tools or `ask_user` instead. Changing the type on an existing
+entry didn't save in 0.11.4, so delete the entry and recreate it. Working
+looks like `POST /mcp 200` from the open-webui pod IP. Open WebUI's own `search_web` and
 `fetch_url` stay on. `web_search`/`fetch_page` here are extras, which you can
 disable per tool if the duplicates confuse a model.
 
