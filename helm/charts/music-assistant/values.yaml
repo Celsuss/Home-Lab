@@ -1,0 +1,59 @@
+---
+namespace: home-assistant           # next to HA and the Wyoming services
+
+image:
+  repository: ghcr.io/music-assistant/server
+  pullPolicy: IfNotPresent
+  tag: "2.10.6"
+
+# Required, same as the home-assistant chart:
+#  - Cast speakers are discovered over mDNS, which only works on the LAN.
+#  - The Google Home pulls the audio from MA's stream server (8097) by the
+#    node's LAN IP — Cast devices bypass LAN DNS, so the stream can't sit
+#    behind Traefik/Tailscale.
+# MA binds 8095 (web UI/API) and 8097 (streams) directly on the node.
+hostNetwork: true
+
+timezone: "Europe/Stockholm"
+
+service:
+  type: ClusterIP
+  port: 8095                        # web UI + websocket API (HA integration)
+
+ingress:
+  enabled: true
+  className: "traefik"
+  annotations:
+    cert-manager.io/cluster-issuer: homelab-ca
+  host: music-assistant.homelab.local
+  tls:
+    - secretName: music-assistant-tls
+      hosts:
+        - music-assistant.homelab.local
+
+tailscale:
+  enabled: true
+  serviceName: music-assistant
+
+persistence:
+  storageClassName: "local-path"
+  dataStorage: 2Gi                  # settings.json, library DB, artwork cache
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 256Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi
+
+livenessProbe:
+  tcpSocket:
+    port: http
+  initialDelaySeconds: 30
+  periodSeconds: 15
+readinessProbe:
+  tcpSocket:
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 10

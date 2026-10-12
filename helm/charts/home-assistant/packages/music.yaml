@@ -1,0 +1,78 @@
+# Music from Navidrome on the Google Home, via Music Assistant.
+#
+# Prerequisites: the music-assistant chart, its Subsonic provider pointed at
+# Navidrome, and the Music Assistant integration in HA (steps in
+# helm/charts/music-assistant/README.md). The script must be exposed to Assist
+# (Settings → Voice assistants → Expose) for the Ollama agent to call it.
+#
+# Pause/resume/next/volume need nothing here — HA's built-in media intents
+# handle them on the exposed Music Assistant player.
+script:
+  play_music:
+    alias: "Play music"
+    description: >
+      Play music from the user's own music library on the speaker in the den.
+      Use this whenever the user asks to play or put on music, a song, an
+      artist, a band, an album or a playlist.
+    mode: restart
+    icon: mdi:music
+    fields:
+      query:
+        name: Query
+        description: >
+          What to play: the name of an artist, album, song or playlist, for
+          example "Daft Punk" or "Random Access Memories". Just the name,
+          without words like "play" or "some".
+        required: true
+        example: "Daft Punk"
+        selector:
+          text:
+      media_type:
+        name: Media type
+        description: >
+          What kind of thing the query is: "artist" when only a band or
+          musician is named, "album", "track" for a single song, or
+          "playlist".
+        required: true
+        example: "artist"
+        selector:
+          select:
+            options:
+              - artist
+              - album
+              - track
+              - playlist
+      artist:
+        name: Artist
+        description: >
+          Optional. The artist, when the user names both an album or song and
+          who made it.
+        required: false
+        example: "Daft Punk"
+        selector:
+          text:
+      enqueue:
+        name: Enqueue
+        description: >
+          Optional. "replace" (default) stops what is playing and plays this
+          now; "add" puts it at the end of the queue.
+        required: false
+        example: "replace"
+        selector:
+          select:
+            options:
+              - replace
+              - add
+    variables:
+      # The Music Assistant player for the Google Home — NOT the plain Cast
+      # entity media_player.den_speaker, which stays the TTS target. Update if
+      # the integration names it differently.
+      player: media_player.den_speaker_2
+    sequence:
+      - action: music_assistant.play_media
+        target:
+          entity_id: "{{ player }}"
+        data: >-
+          {% set d = {'media_id': query, 'media_type': media_type,
+                      'enqueue': enqueue | default('replace', true)} %}
+          {{ dict(d, artist=artist) if artist | default('') else d }}

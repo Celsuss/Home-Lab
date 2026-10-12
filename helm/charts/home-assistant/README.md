@@ -49,7 +49,9 @@ templating inside packages.
   Settings → System → Repairs, or `ha` logs.
 
 Current packages: `announcements.yaml` (Phase 2 Google Home smoke test),
-`telegram.yaml` (Phase 4 Telegram chat).
+`telegram.yaml` (Phase 4 Telegram chat), `music.yaml` (`script.play_music`
+tool for the agent — Navidrome via Music Assistant, see
+`helm/charts/music-assistant/README.md`).
 
 ## Secrets
 

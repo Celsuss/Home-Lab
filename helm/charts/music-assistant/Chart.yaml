@@ -1,0 +1,10 @@
+apiVersion: v2
+name: music-assistant
+description: Music Assistant server — plays the Navidrome library on Cast speakers for Home Assistant
+type: application
+version: 0.1.0
+appVersion: "2.10.6"
+dependencies:
+  - name: homelab-common
+    version: 0.1.0
+    repository: "file://../homelab-common"
