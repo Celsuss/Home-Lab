@@ -21,6 +21,7 @@ http://homelab-mcp.ai-workloads.svc.cluster.local:8000/mcp
 | `list_chores()` | Donetick `GET /eapi/v1/chore` | same |
 | `search_recipes(query?)` | Tandoor `GET /api/recipe/?query=` (empty or "all" lists everything, up to 30, with the total count) | `TANDOOR_URL` + `TANDOOR_TOKEN` |
 | `get_recipe(recipe_id)` | Tandoor `GET /api/recipe/{id}/` | same |
+| `calendar_agenda(start_date?, days=1)` | Proton Calendar share link (ICS), cached `CALENDAR_CACHE_SECONDS` | `PROTON_ICS_URL` |
 
 Design rules. Keep them when adding tools:
 
@@ -50,10 +51,35 @@ secret changes.
 |---|---|
 | `DONETICK_TOKEN` | Donetick → Settings → Access tokens → create |
 | `TANDOOR_TOKEN` | Tandoor → Settings → API → new token (scope `read`) |
+| `PROTON_ICS_URL` | Proton Calendar (web) → Settings → Calendars → the calendar → Share with anyone → **Full view** → copy link |
 
 ```bash
 vault kv put secret/homelab/homelab-mcp DONETICK_TOKEN=<donetick-token> TANDOOR_TOKEN=<tandoor-token>
+# Add one key without touching the others:
+vault kv patch secret/homelab/homelab-mcp PROTON_ICS_URL='<proton-share-link>'
 ```
+
+## Calendar (Proton)
+
+Proton Calendar has no API and no CalDAV, so `calendar_agenda` reads the
+calendar's official **Full view share link**, which serves the calendar as ICS.
+The plan and the rejected alternatives are in
+`docs/plans/2026-10-12-proton-calendar.md`.
+
+- **The link is a password.** It contains the key that decrypts the calendar.
+  It lives only in Vault. httpx request logging is turned off in `server.py`
+  for this reason, and errors only name the host.
+- **Read-only, and up to 8 hours behind.** Proton refreshes the shared feed
+  slowly, so an event created a minute ago may be missing. The server reuses a
+  fetched copy for 15 minutes and falls back to the last good copy when a
+  refresh fails.
+- **Times** are rendered in `CALENDAR_TZ`. Recurring events are expanded,
+  cancelled ones hidden. `start_date` takes `YYYY-MM-DD`, `today`, `tomorrow`
+  or a weekday name, so small models don't have to do date arithmetic.
+
+**If the link leaks, or to rotate it:** Proton → Settings → Calendars → the
+calendar → the link → *Delete link*. Every copy stops working at once. Create a
+new Full view link and `vault kv patch` it as above. VSO rolls the pod.
 
 ## Access control
 
@@ -104,8 +130,8 @@ curl -s "http://$IP:8000/mcp" \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | jq '.result.tools[].name'
 ```
 
-`/healthz` lists the registered tools. Expect all six once the Vault tokens
-exist.
+`/healthz` lists the registered tools. Expect all seven once the Vault tokens
+and the calendar link exist.
 
 ## Local development
 

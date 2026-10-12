@@ -23,9 +23,14 @@ config:
   DONETICK_URL: "http://donetick.utils.svc.cluster.local:2021"
   TANDOOR_URL: "http://tandoor-recipes.tandoor.svc.cluster.local"
   TANDOOR_PUBLIC_URL: "https://tandoor.homelab.local"
+  # calendar_agenda: times are shown in this zone. The calendar itself is the
+  # PROTON_ICS_URL secret (a Proton "Full view" share link) from Vault.
+  CALENDAR_TZ: "Europe/Stockholm"
+  CALENDAR_CACHE_SECONDS: "900"
 
-# DONETICK_TOKEN and TANDOOR_TOKEN. The Secret is mounted `optional`, so the pod
-# starts (with search + fetch only) before the Vault entry exists.
+# DONETICK_TOKEN, TANDOOR_TOKEN and PROTON_ICS_URL. The Secret is mounted
+# `optional`, so the pod starts (with search + fetch only) before the Vault
+# entry exists.
 vault:
   secretPath: homelab/homelab-mcp
   secretName: homelab-mcp-secrets
@@ -83,8 +88,9 @@ networkPolicy:
         podLabels:
           app.kubernetes.io/name: tandoor-recipes
         port: 80
-    # fetch_page: public internet only. Private ranges are excluded here and
-    # refused again in server.py.
+    # fetch_page and calendar_agenda (calendar.proton.me): public internet
+    # only. Private ranges are excluded here and refused again in server.py
+    # (fetch_page).
     internet:
       enabled: true
       except:

@@ -21,6 +21,10 @@ Environment:
   TANDOOR_URL          e.g. http://tandoor-recipes.tandoor.svc.cluster.local
   TANDOOR_TOKEN        Tandoor API token (read scope is enough)
   TANDOOR_PUBLIC_URL   base for recipe links, e.g. https://tandoor.homelab.local
+  PROTON_ICS_URL       Proton Calendar "Full view" share link. It contains the
+                       calendar's decryption key: Vault only, never logged
+  CALENDAR_TZ          timezone events are shown in (default UTC)
+  CALENDAR_CACHE_SECONDS  how long a fetched calendar is reused (default 900)
   HOST / PORT          bind address (default 0.0.0.0:8000)
 """
 
@@ -31,9 +35,13 @@ import ipaddress
 import logging
 import os
 import socket
+import time
 import urllib.parse
+import zoneinfo
 
 import httpx
+import icalendar
+import recurring_ical_events
 import trafilatura
 from mcp.server.mcpserver import MCPServer
 from starlette.requests import Request
@@ -47,7 +55,7 @@ USER_AGENT = "homelab-mcp/0.1 (+https://github.com/Celsuss/Home-Lab)"
 
 mcp = MCPServer(
     name="homelab",
-    instructions="Tools for the user's homelab: web search, reading web pages, chores and recipes.",
+    instructions="Tools for the user's homelab: web search, reading web pages, chores, recipes and calendar.",
 )
 
 
@@ -287,6 +295,149 @@ if TANDOOR_URL and TANDOOR_TOKEN:
         if steps:
             parts += ["Steps:", *steps]
         return clip("\n".join(parts), 4000)
+
+
+# --- Calendar (Proton share link, read-only) ----------------------------------
+
+PROTON_ICS_URL = env("PROTON_ICS_URL")
+# httpx logs every request URL at INFO, and this URL is a decryption key. Set
+# at import, not in main(): the MCP library configures logging on its own.
+logging.getLogger("httpx").setLevel(logging.WARNING)
+CALENDAR_TZ = zoneinfo.ZoneInfo(env("CALENDAR_TZ", "UTC"))
+CALENDAR_CACHE_SECONDS = int(env("CALENDAR_CACHE_SECONDS", "900"))
+WEEKDAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+
+_calendar_cache: tuple[float, icalendar.Calendar] | None = None
+_calendar_lock = asyncio.Lock()
+
+
+async def proton_calendar() -> icalendar.Calendar:
+    """The parsed calendar, refetched at most every CALENDAR_CACHE_SECONDS.
+
+    Proton itself only refreshes the shared feed every few hours, so polling
+    faster gains nothing. A failed refresh falls back to the last good copy.
+    """
+    global _calendar_cache
+    async with _calendar_lock:
+        if _calendar_cache and time.monotonic() - _calendar_cache[0] < CALENDAR_CACHE_SECONDS:
+            return _calendar_cache[1]
+        try:
+            async with httpx.AsyncClient(
+                timeout=TIMEOUT, headers={"User-Agent": USER_AGENT}, follow_redirects=True
+            ) as client:
+                resp = await client.get(PROTON_ICS_URL)
+                resp.raise_for_status()
+            cal = icalendar.Calendar.from_ical(resp.content)
+        except (httpx.HTTPError, ValueError):
+            if _calendar_cache:
+                log.warning("calendar refresh failed, serving the cached copy")
+                return _calendar_cache[1]
+            raise
+        _calendar_cache = (time.monotonic(), cal)
+        return cal
+
+
+def parse_day(text: str, today: datetime.date) -> datetime.date:
+    """YYYY-MM-DD, 'today', 'tomorrow' or a weekday name (the next one, today included).
+
+    Small models also send "this friday" / "on friday" / "next friday", so
+    those prefixes are accepted; "next" skips today.
+    """
+    words = text.strip().lower().split()
+    skip_today = bool(words) and words[0] == "next"
+    if words and words[0] in ("this", "on", "next", "coming"):
+        words = words[1:]
+    text = " ".join(words)
+    if text in ("", "today"):
+        return today
+    if text == "tomorrow":
+        return today + datetime.timedelta(days=1)
+    if text == "yesterday":
+        return today - datetime.timedelta(days=1)
+    if text == "week":  # "this week" starts today, "next week" on next Monday
+        return today + datetime.timedelta(days=(7 - today.weekday()) if skip_today else 0)
+    if text.rstrip("s") in WEEKDAYS:
+        ahead = (WEEKDAYS.index(text.rstrip("s")) - today.weekday()) % 7
+        return today + datetime.timedelta(days=ahead or (7 if skip_today else 0))
+    return datetime.date.fromisoformat(text)
+
+
+def as_local(value) -> datetime.datetime:
+    """An event time as an aware local datetime; dates become local midnight."""
+    if not isinstance(value, datetime.datetime):
+        return datetime.datetime.combine(value, datetime.time.min, CALENDAR_TZ)
+    # Floating times (no TZID) are the calendar owner's wall clock.
+    return value.astimezone(CALENDAR_TZ) if value.tzinfo else value.replace(tzinfo=CALENDAR_TZ)
+
+
+def fmt_day(day: datetime.date) -> str:
+    return day.strftime("%a %d %b")
+
+
+if PROTON_ICS_URL:
+
+    @tool
+    async def calendar_agenda(start_date: str = "", days: int = 1) -> str:
+        """List the user's calendar events from start_date (default today; YYYY-MM-DD, 'tomorrow' or a weekday) for days days (7 for a week)."""
+        today = datetime.datetime.now(CALENDAR_TZ).date()
+        try:
+            first = parse_day(start_date, today)
+        except ValueError:
+            return f"Could not read the date {start_date!r}; use YYYY-MM-DD, 'today', 'tomorrow' or a weekday."
+        days = max(1, min(int(days), 31))
+        last = first + datetime.timedelta(days=days - 1)
+        window_start = as_local(first)
+        window_end = as_local(last + datetime.timedelta(days=1))
+        try:
+            cal = await proton_calendar()
+            found = recurring_ical_events.of(cal).between(window_start, window_end)
+        except ValueError as exc:
+            return f"calendar_agenda failed: the calendar could not be parsed ({exc})."
+
+        events = []
+        for ev in found:
+            if str(ev.get("STATUS", "")).upper() == "CANCELLED":
+                continue
+            dtstart = ev.decoded("DTSTART")
+            all_day = not isinstance(dtstart, datetime.datetime)
+            start = as_local(dtstart)
+            if "DTEND" in ev:
+                end = as_local(ev.decoded("DTEND"))
+            elif "DURATION" in ev:
+                end = start + ev.decoded("DURATION")
+            else:
+                end = start + (datetime.timedelta(days=1) if all_day else datetime.timedelta(0))
+            events.append((start, end, all_day, ev))
+        events.sort(key=lambda e: (e[0], not e[2]))
+
+        span = fmt_day(first) if days == 1 else f"{fmt_day(first)} to {fmt_day(last)}"
+        header = f"Calendar for {span} (today is {fmt_day(today)}, times {CALENDAR_TZ.key})"
+        if not events:
+            return f"{header}: no events."
+
+        lines, current_day = [header + ":"], None
+        for start, end, all_day, ev in events[:40]:
+            # Events that began before the window (a trip, a late meeting)
+            # are listed under the first day they overlap.
+            day = max(start.date(), first)
+            if day != current_day:
+                lines.append(fmt_day(day))
+                current_day = day
+            last_day = (end - datetime.timedelta(microseconds=1)).date() if end > start else start.date()
+            if all_day:
+                when = "all day" if last_day <= start.date() else f"all day, {fmt_day(start.date())} to {fmt_day(last_day)}"
+            else:
+                when = start.strftime("%H:%M")
+                if end > start:
+                    when += "-" + (end.strftime("%H:%M") if last_day == start.date() else f"{fmt_day(last_day)} {end.strftime('%H:%M')}")
+                if start.date() < day:
+                    when = f"since {fmt_day(start.date())} {when}"
+            title = clip(str(ev.get("SUMMARY", "")).strip() or "(no title)", 100)
+            location = clip(str(ev.get("LOCATION", "")).strip(), 60)
+            lines.append(f"- {when} {title}" + (f" @ {location}" if location else ""))
+        if len(events) > 40:
+            lines.append(f"…and {len(events) - 40} more.")
+        return "\n".join(lines)
 
 
 def main() -> None:

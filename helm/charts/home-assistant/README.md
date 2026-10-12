@@ -51,7 +51,8 @@ templating inside packages.
 Current packages: `announcements.yaml` (Phase 2 Google Home smoke test),
 `telegram.yaml` (Phase 4 Telegram chat), `music.yaml` (`script.play_music`
 tool for the agent — Navidrome via Music Assistant, see
-`helm/charts/music-assistant/README.md`).
+`helm/charts/music-assistant/README.md`), `calendar.yaml` (morning briefing
+and event reminders, see "Calendar (Proton)").
 
 ## Secrets
 
@@ -195,7 +196,7 @@ notes.
 
 Phase 5.1 of the plan. The `homelab-mcp` chart gives the Ollama agent tools
 outside the home: `web_search`, `fetch_page`, `add_chore`, `list_chores`,
-`search_recipes` and `get_recipe`. Tool details and access control are in
+`search_recipes`, `get_recipe` and `calendar_agenda`. Tool details and access control are in
 `helm/charts/homelab-mcp/README.md`.
 
 One-time setup:
@@ -205,7 +206,8 @@ One-time setup:
    ```bash
    vault kv put secret/homelab/homelab-mcp DONETICK_TOKEN=<donetick-token> TANDOOR_TOKEN=<tandoor-token>
    ```
-   VSO restarts the pod after the sync. `/healthz` should then list six tools.
+   VSO restarts the pod after the sync. `/healthz` should then list six tools
+   (seven with the calendar link, see "Calendar" below).
 2. **HA UI → Settings → Devices & services → Add integration → Model Context
    Protocol.** URL:
    `http://homelab-mcp.ai-workloads.svc.cluster.local:8000/mcp`. HA runs with
@@ -224,6 +226,35 @@ One-time setup:
 Every tool schema is sent to the model on every request, so keep the server
 lean. Add a tool there only if it can't be an HA integration or script (plan
 5.2's order of preference).
+
+## Calendar (Proton)
+
+Plan: `docs/plans/2026-10-12-proton-calendar.md`. The assistant **reads** the
+Proton calendar through homelab-mcp's `calendar_agenda` (set-up in
+`helm/charts/homelab-mcp/README.md`, "Calendar"). It can't add events.
+`packages/calendar.yaml` adds a morning briefing and event reminders.
+
+One-time setup, after `PROTON_ICS_URL` is in Vault:
+
+1. **System prompt.** Paste the updated prompt from
+   `docs/home-assistant/system-prompt.md` (it routes calendar questions to
+   `calendar_agenda`). Test: "what do I have tomorrow?"
+2. **Remote Calendar** (only for the reminders). Settings → Devices &
+   services → Add integration → **Remote Calendar**. Name: `Proton` (this
+   gives `calendar.proton`, which the package expects). URL: the same Proton
+   share link (`vault kv get -field=PROTON_ICS_URL secret/homelab/homelab-mcp`).
+3. **Unexpose it.** Settings → Voice assistants → Expose → `calendar.proton`
+   → off. Exposed, it gives the model a second calendar tool next to
+   `calendar_agenda`, and the model picks the wrong one.
+4. **Spoken briefing (optional).** Turn on
+   `input_boolean.morning_briefing_speak` to also hear the 07:00 briefing on the
+   den speaker. It's off by default, so nothing talks at 07:00 unasked.
+5. **Test the briefing now.** Settings → Automations → "Morning briefing:
+   calendar and chores" → ⋮ → Run actions. A Telegram message should arrive.
+
+Remote Calendar only polls every 24 hours on its own, so the package refreshes
+it hourly. Proton's share link lags by up to 8 hours anyway, so an event added
+minutes before it starts may get no reminder.
 
 ## Media: Jellyfin and Immich
 

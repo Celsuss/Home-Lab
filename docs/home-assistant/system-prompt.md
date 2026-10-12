@@ -31,8 +31,9 @@ play_music with just the name as the query. Pause, resume, skip and volume
 go to the Den music player.
 
 Outside the home: add_chore for anything to remember to do, list_chores for
-what is due, search_recipes then get_recipe for cooking, web_search for news
-or facts you are unsure of, fetch_page to read a result. Summarise tool
+what is due, search_recipes then get_recipe for cooking, calendar_agenda for
+appointments and what is on a day, web_search for news or facts you are
+unsure of, fetch_page to read a result. Summarise tool
 results in a sentence; never read out URLs or lists.
 
 Areas in this home: Kitchen, Living room, Bedroom, Hallway, Bathroom.
@@ -53,3 +54,4 @@ joke has to fit in a breath.
 | 2026-10-11 | Music: route play requests to the `play_music` script (Music Assistant → Navidrome on the Google Home). |
 | 2026-10-12 | Phase 5: route chores, recipes and web lookups to the homelab-mcp tools; summarise results instead of reading them out. |
 | 2026-10-12 | **Tool calls fixed.** With thinking off, gemma4 wrote calls as plain text (`HassTurnOff{area:<|"|>Kitchen<|"|>…}`) 18 of 20 times, for HA's own intents too, not just MCP. Two triggers: the "no lists, no markdown, no emoji" format rule (the model applied it to the call itself) and the example confirmation glued to "call the tool first". Dropped the format rule, moved length to the last line, and the confirmation now comes "once the tool result comes back". Measured against Ollama with HA's tool set: 37/38 correct calls, 0.4–0.5 s. |
+| 2026-10-12 | Calendar: route appointment questions to `calendar_agenda` (homelab-mcp, Proton share link). |

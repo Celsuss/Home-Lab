@@ -1,0 +1,107 @@
+# Calendar automations — docs/plans/2026-10-12-proton-calendar.md, Phase 2.
+#
+# Morning briefing: the Ollama agent reads today's calendar (homelab-mcp
+# calendar_agenda) and chores (list_chores) and the answer goes to Telegram,
+# and to the den speaker when input_boolean.morning_briefing_speak is on.
+#
+# Event reminders: a Telegram message 15 minutes before each timed event. They
+# use HA's own Remote Calendar integration on the same Proton share link,
+# because automations can't trigger on an MCP tool. That entity must stay
+# UNEXPOSED to Assist, or the model gets a second calendar tool next to
+# calendar_agenda.
+#
+# Manual prerequisites (HA UI, see helm/charts/home-assistant/README.md,
+# "Calendar"):
+#   - homelab-mcp with PROTON_ICS_URL set (calendar_agenda in /healthz)
+#   - Remote Calendar integration named "Proton" → calendar.proton, not exposed
+#   - Telegram bot integration with your chat allow-listed. send_message has no
+#     chat_id below: it goes to the bot's first allowed chat.
+input_boolean:
+  morning_briefing_speak:
+    name: "Morning briefing on the den speaker"
+    icon: mdi:account-voice
+
+automation:
+  - id: morning_briefing
+    alias: "Morning briefing: calendar and chores"
+    description: >
+      At 07:00, ask the Ollama agent for today's calendar and due chores and
+      send the answer to Telegram (and speak it if the toggle is on).
+    mode: single
+    triggers:
+      - trigger: time
+        at: "07:00:00"
+    actions:
+      - action: conversation.process
+        data:
+          agent_id: conversation.ollama_conversation   # same agent as telegram.yaml
+          text: >-
+            Morning briefing. Call calendar_agenda for today and list_chores,
+            then tell me in at most four short sentences what is on my
+            calendar today and which chores are due or overdue.
+        response_variable: briefing
+      - variables:
+          message: >-
+            {{ briefing.response.speech.plain.speech
+               | default('The morning briefing got no answer from the assistant.', true) }}
+      - action: telegram_bot.send_message
+        data:
+          parse_mode: plain_text       # LLM output is not valid Markdown
+          message: "{{ message }}"
+      - if:
+          - condition: state
+            entity_id: input_boolean.morning_briefing_speak
+            state: "on"
+        then:
+          - action: tts.speak
+            target:
+              entity_id: tts.piper
+            data:
+              media_player_entity_id: media_player.den_speaker
+              message: "{{ message }}"
+              language: en_US
+              options:
+                voice: en_US-glados-medium
+
+  - id: calendar_event_reminder
+    alias: "Calendar: Telegram reminder before an event"
+    description: >
+      15 minutes before each timed event on calendar.proton (Remote
+      Calendar), send its title, time and place to Telegram. All-day events
+      are skipped; the morning briefing covers them.
+    mode: queued                       # two events can start at the same time
+    max: 10
+    triggers:
+      - trigger: calendar
+        event: start
+        entity_id: calendar.proton
+        offset: "-00:15:00"
+    conditions:
+      - condition: template
+        value_template: "{{ not trigger.calendar_event.all_day }}"
+    actions:
+      - action: telegram_bot.send_message
+        data:
+          parse_mode: plain_text
+          message: >-
+            In 15 minutes, at {{ as_local(as_datetime(trigger.calendar_event.start)).strftime('%H:%M') }}:
+            {{ trigger.calendar_event.summary }}{% if trigger.calendar_event.location %}
+            @ {{ trigger.calendar_event.location }}{% endif %}
+
+  - id: calendar_proton_refresh
+    alias: "Calendar: refresh calendar.proton hourly"
+    description: >
+      Remote Calendar only polls every 24 hours, so reminders would miss
+      events added during the day. Proton's share link itself lags by up to
+      8 hours, so hourly is plenty.
+    mode: single
+    triggers:
+      - trigger: time_pattern
+        minutes: 5
+    conditions:
+      - condition: template              # quiet until the integration is set up
+        value_template: "{{ states.calendar.proton is not none }}"
+    actions:
+      - action: homeassistant.update_entity
+        target:
+          entity_id: calendar.proton

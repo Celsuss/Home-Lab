@@ -267,7 +267,7 @@ Not a cluster change — a client choice. Document the decision in `helm/charts/
 **Priority**: Low — after everything above is stable
 
 - [ ] **Multiple assistants**: a fast voice assistant (small model, few tools) and a capable text assistant (larger model, all tools) — HA supports several pipelines, and Telegram can target the text one.
-- [ ] **Proactive agent**: scheduled/triggered automations that ask the LLM to summarise (morning briefing to Telegram: calendar, weather, chores due, anything down in the lab). Same briefing can be spoken on the Google Home via `tts.speak` (Phase 2).
+- [ ] **Proactive agent**: scheduled/triggered automations that ask the LLM to summarise (morning briefing to Telegram: calendar, weather, chores due, anything down in the lab). Same briefing can be spoken on the Google Home via `tts.speak` (Phase 2). _2026-10-12: calendar + chores briefing at 07:00 written (`packages/calendar.yaml`, Proton calendar via homelab-mcp `calendar_agenda`; plan in `docs/plans/2026-10-12-proton-calendar.md`). Weather and lab status not yet._
 - [ ] **Long-term memory**: `mcp-server-memory` (or a small Postgres-backed one) so the assistant remembers preferences.
 - [ ] **HA as an MCP server**: HA's *MCP Server* integration exposes the home to other clients — lets Open WebUI (via mcpo) or a desktop agent control the house with the same entity permissions.
 - [ ] **Custom wake word** trained with openWakeWord for the assistant's name.

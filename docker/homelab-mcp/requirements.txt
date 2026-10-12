@@ -27,7 +27,9 @@ charset-normalizer==3.5.2
     #   htmldate
     #   trafilatura
 click==8.5.0
-    # via uvicorn
+    # via
+    #   uvicorn
+    #   x-wr-timezone
 courlan==1.4.0
     # via trafilatura
 cryptography==50.0.2
@@ -49,6 +51,11 @@ httpx==0.28.1
     # via -r requirements.in
 httpx2==2.13.1
     # via mcp
+icalendar==7.3.0
+    # via
+    #   -r requirements.in
+    #   recurring-ical-events
+    #   x-wr-timezone
 idna==3.20
     # via
     #   anyio
@@ -88,10 +95,14 @@ python-dateutil==2.9.0.post0
     # via
     #   dateparser
     #   htmldate
+    #   icalendar
+    #   recurring-ical-events
 python-multipart==0.0.32
     # via mcp
 pytz==2026.5
     # via dateparser
+recurring-ical-events==3.8.2
+    # via -r requirements.in
 referencing==0.37.0
     # via
     #   jsonschema
@@ -122,6 +133,7 @@ typing-extensions==4.16.0
     # via
     #   anyio
     #   httpx2
+    #   icalendar
     #   mcp
     #   mcp-types
     #   opentelemetry-api
@@ -134,6 +146,12 @@ typing-inspection==0.4.4
     # via
     #   mcp
     #   pydantic
+tzdata==2026.5
+    # via
+    #   -r requirements.in
+    #   icalendar
+    #   recurring-ical-events
+    #   x-wr-timezone
 tzlocal==5.4.4
     # via dateparser
 urllib3==2.8.0
@@ -143,3 +161,5 @@ urllib3==2.8.0
     #   trafilatura
 uvicorn==0.54.0
     # via mcp
+x-wr-timezone==2.0.1
+    # via recurring-ical-events
