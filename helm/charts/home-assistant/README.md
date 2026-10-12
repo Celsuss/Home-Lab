@@ -210,9 +210,11 @@ One-time setup:
    Protocol.** URL:
    `http://homelab-mcp.ai-workloads.svc.cluster.local:8000/mcp`. HA runs with
    `ClusterFirstWithHostNet`, so cluster DNS resolves.
-3. **Ollama → Configure** (the conversation agent options). Under *Control
-   Home Assistant*, select the new MCP server **as well as** "Assist". With
-   only one selected, the agent loses either the home or the tools.
+3. **Settings → Devices & services → Ollama → the model's conversation-agent
+   entry → ⚙ (Configure).** The setting is on that per-model entry, not on the
+   integration's own Configure. Under *Control Home Assistant*, tick
+   **homelab** (the MCP server's name) **as well as** "Assist". With only one
+   ticked, the agent loses either the home or the tools.
 4. **System prompt.** Paste the updated prompt from
    `docs/home-assistant/system-prompt.md`. It tells the model which requests
    go to which tool.
