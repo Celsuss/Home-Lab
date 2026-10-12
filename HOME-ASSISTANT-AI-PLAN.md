@@ -12,10 +12,11 @@ Progress is tracked with checkboxes in this file. Mark a phase `✅ DONE` with a
 
 | Component | Status | Notes |
 |---|---|---|
+| 2026-10-11 | 5.2 (music) | `music-assistant` chart (MA 2.10.6, hostNetwork for Cast discovery + stream on 192.168.0.142:8097, Traefik + Tailscale UI) and `root-app` Application; HA `packages/music.yaml` with `script.play_music` (→ `music_assistant.play_media` on the MA Google Home player); system prompt gained a music line. **Next (manual):** Navidrome user → MA onboarding + Subsonic provider → HA integration → expose script + player → validate. |
 | `helm/charts/home-assistant` | Deployed | HA Container, `hostNetwork: true` + `dnsPolicy: ClusterFirstWithHostNet` (so it can resolve `*.svc.cluster.local`), 10Gi `/config` PVC, Traefik + Tailscale ingress. No add-ons (container flavour). |
 | `helm/charts/ollama` | Deployed in `ai-workloads` | `ollama:0.30.5`, 1 GPU share, 100Gi models PVC. `models.enabled: false` — models on the PVC (several coding models + `gemma4:e4b-it-q8_0`) were pulled by hand and are not in git yet. Reachable at `http://ollama.ai-workloads.svc.cluster.local:11434`. |
 | `helm/charts/open-webui` | Deployed | Already talks to Ollama via `OLLAMA_BASE_URL`. Useful for testing models/prompts. |
-| `helm/charts/mcpo` | Deployed in `ai-workloads` | MCP→OpenAPI proxy (fetch + memory servers) for Open WebUI. Not usable by HA directly (HA speaks MCP/SSE, not OpenAPI). |
+| `helm/charts/homelab-mcp` | Deployed 2026-10-12 (Phase 5), `ai-workloads` | Custom lean MCP server (Streamable HTTP) shared by HA and Open WebUI: web search, page fetch, Donetick, Tandoor. Replaces the deleted `mcpo` chart (it was at zero replicas, serving nothing). |
 | GPU | RTX 4070 Ti SUPER, 16 GB VRAM | Time-sliced 4 ways by `nvidia-device-plugin`. Shared with ComfyUI. VRAM is the real budget, not GPU slots. |
 | Cluster | Single node (192.168.0.142) | Two Raspberry Pis available. See Phase 6 on how to use them. |
 | Google Home speaker | Discovered in HA (Google Cast) | A `media_player` entity. **Output only** — HA can play TTS/announcements/media on it, but Google exposes no mic stream, so it can never be an Assist satellite. See Phase 2 note. |
@@ -197,32 +198,38 @@ Outcome: Message your bot on Telegram, get an answer from the same Ollama-backed
 Outcome: The assistant can act on other homelab services: add a chore to Donetick, look up a recipe in Tandoor, save a link to Karakeep, check Jellyfin/Immich, search the web via SearXNG, check monitors in Uptime Kuma, etc.
 
 ### 5.1 Give HA's LLM external tools via MCP
-HA has a native **Model Context Protocol** integration (client) that lets the Ollama conversation agent call tools from external MCP servers over SSE/streamable-HTTP. This reuses the mcpo idea but in the shape HA needs.
-- [ ] Add a chart (e.g. `helm/charts/mcp-servers`) that runs the MCP servers HA should use, each exposed over SSE. Many stdio servers can be bridged with a small SSE gateway sidecar (e.g. `supergateway`). Start with:
-  - web search (SearXNG MCP server — SearXNG is already in the cluster)
-  - fetch (`mcp-server-fetch`, already used by mcpo)
-  - memory (`mcp-server-memory`, persistent notes across conversations — needs a PVC)
-- [ ] Add each server in HA via the MCP integration; verify tools appear in the Assist debug view.
-- [ ] Refactor `mcpo` to consume the same MCP servers so Open WebUI and HA share one set of tool deployments.
+HA has a native **Model Context Protocol** integration (client) that lets the Ollama conversation agent call tools from external MCP servers over SSE/streamable-HTTP.
+- [x] ~~Chart of upstream MCP servers behind an SSE gateway (`supergateway`)~~ → **one custom lean server instead** (decision 2026-10-12, see Discoveries): `docker/homelab-mcp/` (Python, official `mcp` SDK 2.2 `MCPServer`, Streamable HTTP, pinned lockfile) → GHCR via the existing CI workflow; chart `helm/charts/homelab-mcp` (VSO secret, NetworkPolicy as access control) + `root-app` Application. _(2026-10-12: deployed (image `1.0.15`, public GHCR package; CI now logs in with `GITHUB_TOKEN`), all six tools registered with the Vault tokens and exercised from the host against live SearXNG/Donetick/Tandoor.)_
+  - [x] web search → `web_search` (SearXNG JSON API)
+  - [x] fetch → `fetch_page` (trafilatura, public addresses only, 4k chars)
+  - [ ] ~~memory~~ — deferred to Phase 7 (Open WebUI already has native memory; HA would need a design for what to remember).
+- [ ] Add the server in HA via the MCP integration, enable it next to Assist in the Ollama options; verify tools appear in the Assist debug view. _(Steps: `helm/charts/home-assistant/README.md` → "Homelab tools (MCP)".)_
+- [x] ~~Refactor `mcpo` to consume the same MCP servers~~ → `mcpo` **deleted**; Open WebUI registers homelab-mcp directly in its native MCP client (`helm/charts/open-webui/README.md`). Nothing lost: its search/fetch/memory are native, terminal/cptr/second-brain use other mechanisms.
 
 ### 5.2 Service-specific tools
 For each homelab service, pick the cheapest path in this order: (a) existing HA integration, (b) existing MCP server, (c) HA REST command / script exposed as an Assist intent, (d) write a tiny MCP server (Python, `docker/<name>/` → GHCR via the existing CI workflow).
-- [ ] Jellyfin → HA Jellyfin integration (media player entity; "play X on the TV" — pairs with the TV client after the move)
-- [ ] Donetick → REST command/script or small MCP server ("add 'buy milk' to my chores")
-- [ ] Tandoor → small MCP server ("what can I cook with…")
-- [ ] Karakeep → small MCP server ("bookmark this")
-- [ ] Uptime Kuma / Beszel → status tools ("is anything down?")
-- [ ] Immich → HA integration or MCP ("show me photos from last summer" — as a link/Telegram photo)
+- [ ] Navidrome → Music Assistant (`helm/charts/music-assistant`, hostNetwork, Subsonic provider + Google Cast) + HA Music Assistant integration + `script.play_music` tool in `packages/music.yaml` ("play Daft Punk" on the Google Home). _2026-10-11: chart + package written; UI setup per `helm/charts/music-assistant/README.md` pending._
+- [ ] Jellyfin → HA Jellyfin integration (media player entity; "play X on the TV" — pairs with the TV client after the move). _(2026-10-12: steps in HA README → "Media: Jellyfin and Immich"; UI setup pending.)_
+- [x] Donetick → `add_chore` / `list_chores` in homelab-mcp (external API `/eapi/v1/chore`, `secretkey` header, verified against the live v0.1.60). Needs `DONETICK_TOKEN` in Vault.
+- [x] Tandoor → `search_recipes` / `get_recipe` in homelab-mcp. Needs `TANDOOR_TOKEN` in Vault.
+- [ ] Karakeep → small MCP server ("bookmark this") — **deferred** (not in the 2026-10-12 scope).
+- [ ] Uptime Kuma / Beszel → status tools ("is anything down?") — **deferred** (not in the 2026-10-12 scope; HA has a core Uptime Kuma integration — try that first).
+- [ ] Immich → HA integration (sensors + media source). _(2026-10-12: steps in HA README; UI setup pending.)_ Photo search as an LLM tool (`search_photos` in homelab-mcp) is the follow-up.
 
 ### 5.3 Model and prompt tuning for tool use
 - [ ] Re-evaluate model choice once there are 20+ tools; small models degrade with many tools. Options: a larger model for Telegram/text (e.g. `qwen3:14b` fits at Q4 if ComfyUI is idle) while voice keeps the fast 8B model — HA supports multiple conversation agents, one per assistant.
 - [ ] Keep the system prompt versioned in this repo (`docs/home-assistant/system-prompt.md`) and paste it into the integration options on change.
 
 ### 5.4 Guardrails
-- [ ] Only expose destructive actions (unlock doors, disarm, delete) through HA intents that require confirmation, or don't expose them at all.
+- [ ] Only expose destructive actions (unlock doors, disarm, delete) through HA intents that require confirmation, or don't expose them at all. _(homelab-mcp side done: read/add-only tools by design — no delete/update/complete.)_
 - [ ] Telegram: single allowed chat id, no group chats.
+- [x] homelab-mcp has no auth (HA's MCP client has no static-header option), so its NetworkPolicy is the access control: ingress only from the Open WebUI pod and the node (HA is `hostNetwork`).
 
-**Discoveries**: _(fill in)_
+**Discoveries**:
+- 2026-10-12: **Custom server over upstream MCP servers.** HA sends every tool schema on every Assist request and the agent is a small local model, so tool count and schema size are the budget. Six one-sentence tools with flat args come to ~1.5 KB for the whole `tools/list`; `structured_output=False` stops the SDK duplicating each result as `structuredContent`. Upstream memory alone is 9 tools. Dependencies are baked into the image — mcpo's failure mode (resolve at boot, run with zero tools) is written up in `helm/charts/homelab-mcp/README.md` → History.
+- 2026-10-12: `mcp` SDK 2.x renamed `FastMCP` → `mcp.server.mcpserver.MCPServer`. Server runs `stateless_http=True, json_response=True` so a pod restart never strands HA/Open WebUI on a dead session id. DNS-rebinding protection is only auto-enabled for a 127.0.0.1 bind; on 0.0.0.0 it is off, and the NetworkPolicy covers it.
+- 2026-10-12: Wikipedia 403s a fake-browser User-Agent with extras appended; an honest `homelab-mcp/0.1 (+repo URL)` UA gets 200.
+- 2026-10-12: root-app has no `prune`, so deleting `mcpo-app.yaml` from git does not remove the `mcpo-app` Application — delete it once by hand (its resources finalizer cleans up the rest).
 
 ---
 
@@ -270,6 +277,7 @@ Not a cluster change — a client choice. Document the decision in `helm/charts/
 
 | Date | Phase | What was done |
 |---|---|---|
+| 2026-10-12 | 5.1/5.2/5.4 (cluster side) | Phase 5 planned + built: custom `homelab-mcp` (web_search, fetch_page, add_chore, list_chores, search_recipes, get_recipe) in `docker/` + chart + CI filter + root-app; image built and tools tested locally against live services. `mcpo` deleted (references repointed). HA README: MCP + Jellyfin/Immich steps; system prompt routes to the new tools. Karakeep/Uptime Kuma deferred. **Next (manual):** push → first CI image → pin tag; delete `mcpo-app`; Vault tokens; HA MCP integration + Ollama options + prompt; Open WebUI MCP connection; Jellyfin/Immich integrations; verify + latency. |
 | 2026-09-24 | 4.1/4.2 ✅ | Telegram bot created, integration added (Polling, chat id allow-listed), Ollama agent entity id confirmed. Messaging the bot returns an answer — the git-managed `packages/` mechanism verified live. Left in 4.4: cellular test, two-turn context test, device commands (after the move). |
 | 2026-09-15 | 4.2 (cluster side ✅), 4.1/4.2-UI/4.4 pending | Phase 3 skipped for now (no hardware). `packages/` mechanism added to the HA chart (ConfigMap → `/config/packages`, seed + init-container include, checksum restart), `packages/telegram.yaml` (Telegram ↔ Ollama automation, `/start` reply) and `packages/announcements.yaml` (moved from docs). HA README gained "YAML in git" + "Telegram" sections. **Next (manual):** BotFather → Vault → add the Telegram bot integration (Polling, allow-list chat id) → confirm `conversation.ollama_conversation` entity id → 4.4 validation. |
 | 2026-09-15 | 2 ✅ | HA side done: Wyoming integrations, "Ollama" assistant (Whisper/Piper-GLaDOS/openWakeWord), voice in+out in the Companion app, GLaDOS on the Google Home, speaker exposed. GLaDOS custom voice added to `wyoming-piper` (language-code fix needed for HA's picker). Phase 2 closed; next is Phase 3 (satellites, hardware-gated) or Phase 4 (Telegram). |

@@ -241,7 +241,7 @@ if TANDOOR_URL and TANDOOR_TOKEN:
         if not recipes:
             return f"No recipes match {query!r}."
         return "\n".join(
-            f"- {r['name']} (id {r['id']})" + (f": {clip(r['description'], 100)}" if r.get("description") else "")
+            f"- {r['name']} (id {r['id']})" + (f": {clip(' '.join(r['description'].split()), 100)}" if r.get("description") else "")
             for r in recipes
         )
 
@@ -259,7 +259,15 @@ if TANDOOR_URL and TANDOOR_TOKEN:
             for ing in step.get("ingredients", []):
                 if ing.get("is_header"):
                     continue
+                # An ingredient line that was never linked to a food (e.g. an
+                # import Tandoor could not parse) only has its original text.
                 food = (ing.get("food") or {}).get("name", "")
+                if not food:
+                    if ing.get("original_text"):
+                        ingredients.append(f"- {ing['original_text'].strip()}")
+                        continue
+                    if not ing.get("note"):
+                        continue
                 unit = (ing.get("unit") or {}).get("name", "")
                 note = f" ({ing['note']})" if ing.get("note") else ""
                 ingredients.append(f"- {fmt_amount(ing.get('amount'))}{unit + ' ' if unit else ''}{food}{note}".rstrip())
