@@ -5,7 +5,7 @@ image:
   repository: louislam/uptime-kuma
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart's appVersion.
-  tag: "2.0.0-beta.4"
+  tag: "2.5.6"
 
 imagePullSecrets:
 nameOverride: ""
@@ -56,6 +56,19 @@ resources:
   requests:
     cpu: 100m
     memory: 256Mi
+
+# Holds off the liveness probe while Kuma starts. A version upgrade migrates
+# the database on first start (one-way), and a liveness kill halfway through
+# that would leave it half-migrated. 60 x 10 s = up to 10 minutes.
+startupProbe:
+  enabled: true
+  httpGet:
+    path: /api/entry-page
+    port: 3001
+    scheme: HTTP
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 60
 
 livenessProbe:
   enabled: true

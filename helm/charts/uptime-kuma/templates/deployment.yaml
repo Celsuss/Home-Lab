@@ -8,6 +8,11 @@ metadata:
     {{- include "uptime-kuma.labels" . | nindent 4 }}
 spec:
   replicas: {{.Values.replicaCount }}
+  # One SQLite file on an RWO volume: never run the old and new pod together
+  # (a rolling update would let the new version migrate the database while
+  # the old one still writes to it).
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       {{- include "uptime-kuma.selectorLabels" . | nindent 6 }}
@@ -39,6 +44,16 @@ spec:
               protocol: TCP
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+          {{- if .Values.startupProbe.enabled }}
+          startupProbe:
+            httpGet:
+              path: {{ .Values.startupProbe.httpGet.path }}
+              port: {{ .Values.startupProbe.httpGet.port }}
+              scheme: {{ .Values.startupProbe.httpGet.scheme }}
+            periodSeconds: {{ .Values.startupProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.startupProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.startupProbe.failureThreshold }}
+          {{- end }}
           {{- if .Values.livenessProbe.enabled }}
           livenessProbe:
             httpGet:
