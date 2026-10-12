@@ -104,6 +104,13 @@ tick the new MCP API **next to** "Assist" under *Control Home Assistant / LLM
 APIs*. The full steps are in `helm/charts/home-assistant/README.md` → "Homelab
 tools (MCP)".
 
+**After adding a tool or a token, reload HA's MCP integration** (Settings →
+Devices & services → Model Context Protocol → ⋮ → Reload). HA keeps the tool
+list it fetched when it connected, so a new tool stays invisible to the model
+until then. The model then answers without calling it. The symptom is no
+`tools/call` session in this server's log. 2026-10-12: `calendar_agenda` was
+missing this way because homelab-mcp restarted (Vault patch) after HA did.
+
 **Open WebUI:** Admin → Settings → External Tools → **+** → type **MCP
 (Streamable HTTP)**, the same URL, auth None. Then enable it for the model
 (Workspace → Models → the model → Tools → homelab) or per chat.

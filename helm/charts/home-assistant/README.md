@@ -252,6 +252,14 @@ One-time setup, after `PROTON_ICS_URL` is in Vault:
 5. **Test the briefing now.** Settings → Automations → "Morning briefing:
    calendar and chores" → ⋮ → Run actions. A Telegram message should arrive.
 
+**If the calendar arrived after HA started**, reload the MCP integration
+(Settings → Devices & services → Model Context Protocol → ⋮ → Reload) and the
+automations (Developer tools → YAML → Automations). Without the first, the
+model doesn't see `calendar_agenda`, because HA caches the MCP tool list. Without
+the second, the reminder automation logs `Error setting up trigger … KeyError:
+'calendar'`: a calendar trigger can't attach before a calendar integration
+exists, and it doesn't retry.
+
 Remote Calendar only polls every 24 hours on its own, so the package refreshes
 it hourly. Proton's share link lags by up to 8 hours anyway, so an event added
 minutes before it starts may get no reminder.
