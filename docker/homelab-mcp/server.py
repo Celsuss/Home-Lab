@@ -74,6 +74,11 @@ def tool(fn):
     Without this the model only sees "Error executing tool …" and guesses.
     structured_output=False drops the outputSchema/structuredContent copy that
     would otherwise double every result in the model's context.
+
+    The schema's pydantic `title` keys ("Query", "web_searchArguments") are
+    dropped: clients may pass them to the model, and they are ~20% of
+    tools/list. The schema is only listed, never used for validation, so
+    editing it is safe. _tool_manager is private: re-check on an mcp upgrade.
     """
 
     @functools.wraps(fn)
@@ -85,7 +90,20 @@ def tool(fn):
         except httpx.HTTPError as exc:
             return f"{fn.__name__} failed: {exc.request.url.host} is unreachable ({type(exc).__name__})."
 
-    return mcp.tool(structured_output=False)(wrapper)
+    registered = mcp.tool(structured_output=False)(wrapper)
+    info = mcp._tool_manager.get_tool(fn.__name__)
+    info.parameters = strip_titles(info.parameters)
+    return registered
+
+
+def strip_titles(schema):
+    if isinstance(schema, dict):
+        if "properties" in schema:  # property names are arguments, even one called "title"
+            schema = {**schema, "properties": {k: strip_titles(v) for k, v in schema["properties"].items()}}
+        return {k: (v if k == "properties" else strip_titles(v)) for k, v in schema.items() if k != "title"}
+    if isinstance(schema, list):
+        return [strip_titles(v) for v in schema]
+    return schema
 
 
 def clip(text: str, limit: int) -> str:
