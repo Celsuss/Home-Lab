@@ -144,7 +144,7 @@ if FETCH_ENABLED:
 
     @tool
     async def fetch_page(url: str) -> str:
-        """Read the main text of a public web page, e.g. a search result."""
+        """Read the main text of a public web page: any URL the user gives, or a search result."""
         async with httpx.AsyncClient(
             timeout=TIMEOUT, headers={"User-Agent": USER_AGENT}, follow_redirects=False
         ) as client:

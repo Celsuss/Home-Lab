@@ -25,8 +25,18 @@ cases:
     expect: [fetch_page]
   - utterance: "summarise this page: https://www.home-assistant.io/blog/"
     expect: [fetch_page]
+  # Other wordings, so the "a URL means fetch it" rule isn't fitted to one
+  # sentence. Answering without a fetch is a hallucinated summary.
+  - utterance: "what does https://github.com/home-assistant/core/releases say?"
+    expect: [fetch_page]
+  - utterance: "tl;dr https://ollama.com/blog"
+    expect: [fetch_page]
+  - utterance: "can you check https://www.smhi.se/en for me"
+    expect: [fetch_page]
   # add_chore
-  - utterance: "add buy milk to my chores"
+  # Was "add buy milk to my chores": since the 0b.2 split, anything to buy
+  # goes to the Shopping list, so the model is right to send milk there.
+  - utterance: "add vacuum the hallway to my chores"
     expect: [add_chore]
   - utterance: "remind me to take out the trash on Friday"
     expect: [add_chore]
@@ -34,7 +44,14 @@ cases:
   - utterance: "what chores do I have?"
     expect: [list_chores]
   - utterance: "is anything overdue on my to-do list?"
-    expect: [list_chores, todo_get_items]
+    expect: [list_chores]
+  # HA Shopping list = things to buy; Donetick (add_chore) = chores and to-dos.
+  - utterance: "add eggs to the shopping list"
+    expect: [HassListAddItem]
+  - utterance: "what's on my shopping list?"
+    expect: [todo_get_items]
+  - utterance: "I need to buy milk"
+    expect: [HassListAddItem]
   # search_recipes
   - utterance: "what can I cook with banana?"
     expect: [search_recipes]
@@ -61,10 +78,16 @@ cases:
     avoid: homelab
   - utterance: "pause the music"
     avoid: homelab
-  # The prompt allows web_search for facts the model is unsure of; a search
-  # here is slower but not wrong.
+  # Well-known facts are answered directly: a search adds a SearXNG round
+  # trip and a second model pass on the voice path.
   - utterance: "what is the capital of Australia?"
-    expect: [none, web_search]
+    expect: [none]
+  # Guards for the "well-known facts directly" rule: things that change still
+  # search, trivia doesn't.
+  - utterance: "what's the weather in Stockholm tomorrow?"
+    expect: [web_search]
+  - utterance: "how many legs does a spider have?"
+    expect: [none]
   - utterance: "tell me a joke"
     avoid: homelab
 
