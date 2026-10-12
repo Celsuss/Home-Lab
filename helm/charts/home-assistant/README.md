@@ -239,18 +239,28 @@ vault kv patch secret/homelab/home-assistant JELLYFIN_USER=<jellyfin-user> JELLY
 in the Jellyfin dashboard first. Then HA → Add integration → **Jellyfin** →
 URL `http://jellyfin.media.svc.cluster.local:8096`, with that user. This
 creates a media source (browse and play Jellyfin media on any HA media
-player, e.g. the Google Home) and a media player entity for each active
-Jellyfin client. "Play X on the TV" needs a TV client, which comes after the
+player, e.g. the Google Home), a media player entity for each active
+Jellyfin playback session, and a `remote` entity per client that supports
+remote control. "Play X on the TV" needs a TV client, which comes after the
 move (plan 6.2). Expose the TV's media player to Assist once it exists.
 
-**Immich.** In Immich → Account settings → API keys → new key. Give it
-read-only permissions (`asset.read`, `album.read`, `server.statistics`) if
-your Immich version offers scopes. HA → Add integration → **Immich** →
-`http://immich-server.media.svc.cluster.local:2283` (or host + port `2283`
-with SSL off if the form asks for them separately), plus the API key. This creates
-server/storage sensors and an Immich media source (albums in the HA media
-browser). There's no LLM tool for photo search yet. A `search_photos` tool
-in homelab-mcp is the planned follow-up.
+**Immich** (v2.7.5, so API keys have scoped permissions). Log in to Immich as
+the user whose library HA should see → Account settings → API keys → New API
+key, name `home-assistant`. Tick the permissions HA's integration uses:
+`asset.read`, `asset.view`, `asset.download`, `album.read`, `person.read`,
+`tag.read`, `user.read`, `server.about`, `server.storage`,
+`server.versionCheck`. Optional extras:
+- `server.statistics` gives the library-size sensors. It's admin-only, so it
+  needs a key from the admin account.
+- `asset.upload` and `albumAsset.create` are only for HA's "upload file to
+  Immich" action. Leave them off unless you want that.
+
+Then HA → Add integration → **Immich** → URL
+`http://immich-server.media.svc.cluster.local:2283`, the API key, and
+*Verify SSL certificate* off (plain HTTP inside the cluster). This creates
+server/storage sensors and an Immich media source (albums and people in the
+HA media browser). There's no LLM tool for photo search yet. A
+`search_photos` tool in homelab-mcp is the planned follow-up.
 
 ## Future: Zigbee / Z-Wave USB coordinators
 
