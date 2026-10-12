@@ -47,7 +47,7 @@ activeDeadlineSeconds: 3600
 
 image:
   # python:3.12-alpine + `apk add git` at start. The script is stdlib-only, so
-  # there is no pip install to fail - see helm/charts/mcpo/README.md for why
+  # there is no pip install to fail - see helm/charts/homelab-mcp/README.md ("History") for why
   # that matters.
   repository: python
   tag: "3.12-alpine"

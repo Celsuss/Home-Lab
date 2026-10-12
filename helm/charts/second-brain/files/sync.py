@@ -7,7 +7,7 @@ side: we send a `{path, filename, checksum}` manifest and it tells us what to
 add, replace and delete. Unmodified notes cost nothing, so this is cheap to run
 hourly.
 
-Stdlib only, on purpose. `helm/charts/mcpo/README.md` records what happens when
+Stdlib only, on purpose. `helm/charts/homelab-mcp/README.md` ("History") records what happens when
 a pod resolves its dependencies at start-up: a registry hiccup leaves a running
 pod that silently serves nothing. Hand-rolling ~20 lines of multipart is the
 cheaper trade.

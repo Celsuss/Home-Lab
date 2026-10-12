@@ -1,0 +1,72 @@
+{{- if .Values.networkPolicy.enabled }}
+---
+# The MCP endpoint has no authentication, so this policy is the access
+# control: Open WebUI and Home Assistant may connect, nothing else. Egress is
+# limited to DNS, the services the tools call, and the public internet for
+# fetch_page. See values.yaml for the reasoning behind each rule.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "homelab-mcp.fullname" . }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "homelab-mcp.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app: {{ include "homelab-mcp.fullname" . }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- toYaml .Values.networkPolicy.ingress.openWebui.podLabels | nindent 14 }}
+        {{- range .Values.networkPolicy.ingress.hostCidrs }}
+        - ipBlock:
+            cidr: {{ . }}
+        {{- end }}
+      ports:
+        - protocol: TCP
+          port: 8000
+  egress:
+    # Cluster DNS.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              {{- toYaml .Values.networkPolicy.dnsNamespaceLabels | nindent 14 }}
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    {{- range .Values.networkPolicy.egress.backends }}
+    # {{ .name }}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              {{- toYaml .namespaceLabels | nindent 14 }}
+          podSelector:
+            matchLabels:
+              {{- toYaml .podLabels | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: {{ .port }}
+    {{- end }}
+    {{- with .Values.networkPolicy.egress.internet }}
+    {{- if .enabled }}
+    # Public internet for fetch_page.
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              {{- toYaml .except | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 80
+        - protocol: TCP
+          port: 443
+    {{- end }}
+    {{- end }}
+{{- end }}

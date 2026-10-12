@@ -1,0 +1,13 @@
+apiVersion: v2
+name: homelab-mcp
+description: |
+  Lean MCP server (Streamable HTTP) giving the Home Assistant / Open WebUI
+  assistant tools for homelab services: web search via SearXNG, page fetch,
+  Donetick chores and Tandoor recipes. Read-or-add only; nothing destructive.
+type: application
+
+# Chart version. Bump on every change to the chart itself.
+version: 0.1.0
+
+# Tracks docker/homelab-mcp, not an upstream product.
+appVersion: "0.1.0"

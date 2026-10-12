@@ -4,12 +4,15 @@
 ## Post deployment
 Manual steps required before deploy:
 1. Create Vault secret: `vault kv put secret/homelab/open-webui webui-secret-key=<generated-key>`
-2. After deploy: nothing to register. 0.11.4 ships native `search_web`,
-   `fetch_url`, knowledge, memory, task and calendar tools, so no external tool
-   server is needed. The `mcpo` chart is scaled to zero — see
-   `helm/charts/mcpo/README.md` before re-enabling it.
+2. After deploy: 0.11.4 ships native `search_web`, `fetch_url`, knowledge,
+   memory, task and calendar tools. Homelab tools (Donetick chores, Tandoor
+   recipes) come from the `homelab-mcp` chart: Admin → Settings → External
+   Tools → **MCP (Streamable HTTP)** →
+   `http://homelab-mcp.ai-workloads.svc.cluster.local:8000/mcp`, auth None
+   (see `helm/charts/homelab-mcp/README.md`).
 
-   **Remove any leftover `mcpo` entries** (see [Web search](#web-search) below).
+   **Remove any leftover `mcpo` entries.** The mcpo chart was deleted on
+   2026-10-12 and replaced by homelab-mcp.
    Tool server and MCP server connections are PersistentConfig stored in the
    database, so `TOOL_SERVER_CONNECTIONS` will NOT override an existing value —
    they have to be deleted in the UI.
@@ -49,7 +52,8 @@ problem, and `just smoke-search` checks it in one command.
 - **"Failed to connect to MCP server 'Web fetch'" / `Connection failed` on
   Verify connection.** Unrelated to web search: `mcpo` was serving zero tools,
   and was registered under 0.11's MCP servers section even though it is an
-  MCP → *OpenAPI* proxy. Details in `helm/charts/mcpo/README.md`.
+  MCP → *OpenAPI* proxy. Details in `helm/charts/homelab-mcp/README.md`
+  ("History").
 - **`KeyError: 'model'` in `run_initial_title_generation`.** Upstream 0.11.4
   bug; breaks auto-titling of new chats only, not responses.
 
@@ -76,8 +80,8 @@ Behaviour changes that need a decision in the UI after upgrading:
 
 - **Native tool calling became the default** in 0.10.0. Models that never explicitly
   picked a mode flip from the old behaviour (now named "Legacy") to Native. Local
-  Ollama models often handle native tool calls poorly — if the mcpo tools below stop
-  working, switch the model back to Legacy (per chat, per model, or in the default
+  Ollama models often handle native tool calls poorly — if tool calls (native or
+  homelab-mcp) stop working, switch the model back to Legacy (per chat, per model, or in the default
   model parameters).
 - **Admin settings moved** into the settings window under an Admin section (0.11.0),
   and LDAP/OAuth moved to their own Authentication page (0.10.0).

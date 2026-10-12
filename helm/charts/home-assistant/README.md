@@ -191,6 +191,65 @@ Not covered yet (plan 4.3): proactive notifications (`notify.telegram_bot_*`
 entities are created per allowed chat — use `notify.send_message`), voice
 notes.
 
+## Homelab tools (MCP)
+
+Phase 5.1 of the plan. The `homelab-mcp` chart gives the Ollama agent tools
+outside the home: `web_search`, `fetch_page`, `add_chore`, `list_chores`,
+`search_recipes` and `get_recipe`. Tool details and access control are in
+`helm/charts/homelab-mcp/README.md`.
+
+One-time setup:
+
+1. **Tokens → Vault.** These are only needed for the chore and recipe tools.
+   Search and fetch work without them:
+   ```bash
+   vault kv put secret/homelab/homelab-mcp DONETICK_TOKEN=<donetick-token> TANDOOR_TOKEN=<tandoor-token>
+   ```
+   VSO restarts the pod after the sync. `/healthz` should then list six tools.
+2. **HA UI → Settings → Devices & services → Add integration → Model Context
+   Protocol.** URL:
+   `http://homelab-mcp.ai-workloads.svc.cluster.local:8000/mcp`. HA runs with
+   `ClusterFirstWithHostNet`, so cluster DNS resolves.
+3. **Ollama → Configure** (the conversation agent options). Under *Control
+   Home Assistant*, select the new MCP server **as well as** "Assist". With
+   only one selected, the agent loses either the home or the tools.
+4. **System prompt.** Paste the updated prompt from
+   `docs/home-assistant/system-prompt.md`. It tells the model which requests
+   go to which tool.
+5. **Check in Settings → Voice assistants → Ollama → ⋮ → Debug.** Ask "search
+   the web for …" and the trace should show a `web_search` call.
+
+Every tool schema is sent to the model on every request, so keep the server
+lean. Add a tool there only if it can't be an HA integration or script (plan
+5.2's order of preference).
+
+## Media: Jellyfin and Immich
+
+Phase 5.2. Both are core HA integrations. They're set up in the UI and their
+credentials are recorded in Vault, the same way as the Telegram token. Use
+`kv patch`, not `kv put`, so the Telegram keys stay:
+
+```bash
+vault kv patch secret/homelab/home-assistant JELLYFIN_USER=<jellyfin-user> JELLYFIN_PASSWORD=<jellyfin-password> IMMICH_API_KEY=<immich-api-key>
+```
+
+**Jellyfin.** Create a dedicated, non-admin Jellyfin user `home-assistant`
+in the Jellyfin dashboard first. Then HA → Add integration → **Jellyfin** →
+URL `http://jellyfin.media.svc.cluster.local:8096`, with that user. This
+creates a media source (browse and play Jellyfin media on any HA media
+player, e.g. the Google Home) and a media player entity for each active
+Jellyfin client. "Play X on the TV" needs a TV client, which comes after the
+move (plan 6.2). Expose the TV's media player to Assist once it exists.
+
+**Immich.** In Immich → Account settings → API keys → new key. Give it
+read-only permissions (`asset.read`, `album.read`, `server.statistics`) if
+your Immich version offers scopes. HA → Add integration → **Immich** →
+`http://immich-server.media.svc.cluster.local:2283` (or host + port `2283`
+with SSL off if the form asks for them separately), plus the API key. This creates
+server/storage sensors and an Immich media source (albums in the HA media
+browser). There's no LLM tool for photo search yet. A `search_photos` tool
+in homelab-mcp is the planned follow-up.
+
 ## Future: Zigbee / Z-Wave USB coordinators
 
 When you add a USB coordinator stick you'll need a `hostPath` device volume

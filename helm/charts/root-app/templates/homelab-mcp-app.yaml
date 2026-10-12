@@ -2,7 +2,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: mcpo-app
+  name: homelab-mcp-app
   namespace: argo-cd
   finalizers:
   - resources-finalizer.argocd.argoproj.io
@@ -10,7 +10,7 @@ spec:
   project: default
   source:
     repoURL: https://github.com/Celsuss/Home-Lab.git
-    path: helm/charts/mcpo
+    path: helm/charts/homelab-mcp
     targetRevision: HEAD
     helm:
       valueFiles:

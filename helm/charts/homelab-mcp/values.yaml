@@ -1,0 +1,95 @@
+---
+namespace: ai-workloads
+name: homelab-mcp
+
+image:
+  # Built from docker/homelab-mcp by .github/workflows/docker-build-and-push.yml,
+  # tagged `latest` and `1.0.<run number>`. Pin the numbered tag (and switch
+  # pullPolicy to IfNotPresent) once the first build has published one.
+  repository: ghcr.io/celsuss/homelab-mcp
+  tag: "latest"
+  pullPolicy: Always
+
+service:
+  type: ClusterIP
+  port: 8000
+
+# Non-secret configuration. A service's tools are only registered when its URL
+# (and token, from Vault) are set - drop a URL here to remove those tools.
+config:
+  SEARXNG_URL: "http://searxng.ai-workloads.svc.cluster.local:8080"
+  FETCH_ENABLED: "1"
+  FETCH_MAX_CHARS: "4000"
+  DONETICK_URL: "http://donetick.utils.svc.cluster.local:2021"
+  TANDOOR_URL: "http://tandoor-recipes.tandoor.svc.cluster.local"
+  TANDOOR_PUBLIC_URL: "https://tandoor.homelab.local"
+
+# DONETICK_TOKEN and TANDOOR_TOKEN. The Secret is mounted `optional`, so the pod
+# starts (with search + fetch only) before the Vault entry exists.
+vault:
+  secretPath: homelab/homelab-mcp
+  secretName: homelab-mcp-secrets
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi
+
+# Nothing authenticates to an MCP endpoint here (HA's MCP client has no static
+# header option), so the NetworkPolicy IS the access control: only Open WebUI
+# and Home Assistant may connect, and the pod may only reach the services its
+# tools call plus the public internet for fetch_page.
+#
+# K3s enforces policies with kube-router, whose default action is REJECT: a
+# blocked connection fails *instantly* (curl error 7); a timeout means the
+# policy is not matching.
+networkPolicy:
+  enabled: true
+  dnsNamespaceLabels:
+    kubernetes.io/metadata.name: kube-system
+  ingress:
+    openWebui:
+      podLabels:
+        app: open-webui
+    # Home Assistant runs with hostNetwork, so it has no pod IP to select:
+    # its connections come from the node. Host -> pod traffic leaves via cni0
+    # (10.42.0.1); the LAN address is listed too in case the source is picked
+    # from the default route.
+    hostCidrs:
+      - 10.42.0.1/32
+      - 192.168.0.142/32
+  egress:
+    # Backend pods + container ports, never Service VIPs (DNAT happens before
+    # the policy is evaluated, so a VIP ipBlock never matches).
+    backends:
+      - name: searxng
+        namespaceLabels:
+          kubernetes.io/metadata.name: ai-workloads
+        podLabels:
+          app: searxng
+        port: 8080
+      - name: donetick
+        namespaceLabels:
+          kubernetes.io/metadata.name: utils
+        podLabels:
+          app.kubernetes.io/name: donetick
+        port: 2021
+      - name: tandoor
+        namespaceLabels:
+          kubernetes.io/metadata.name: tandoor
+        podLabels:
+          app.kubernetes.io/name: tandoor-recipes
+        port: 80
+    # fetch_page: public internet only. Private ranges are excluded here and
+    # refused again in server.py.
+    internet:
+      enabled: true
+      except:
+        - 10.0.0.0/8
+        - 172.16.0.0/12
+        - 192.168.0.0/16
+        - 100.64.0.0/10
+        - 169.254.0.0/16

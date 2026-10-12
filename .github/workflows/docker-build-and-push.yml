@@ -26,6 +26,8 @@ jobs:
           filters: |
             argo-cd-repo-server-sops:
               - 'docker/argo-cd-repo-server-sops/**'
+            homelab-mcp:
+              - 'docker/homelab-mcp/**'
 
   build-and-push:
     needs: identify-changes

@@ -62,7 +62,7 @@ spec:
       # git is not in the python image. Installing it here rather than baking
       # an image keeps this chart to plain upstream images; the script itself
       # has no dependencies to resolve, which is the failure mode that matters
-      # (helm/charts/mcpo/README.md).
+      # (helm/charts/homelab-mcp/README.md, "History").
       command:
         - /bin/sh
         - -c
