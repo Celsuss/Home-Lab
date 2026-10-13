@@ -9,6 +9,10 @@ metadata:
   namespace: {{ .Values.namespace }}
   labels:
     {{- include "mcp-memory-service.labels" . | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   ingressClassName: {{ .Values.ingress.className }}
   rules:
@@ -22,4 +26,14 @@ spec:
                 name: {{ include "mcp-memory-service.fullname" . }}
                 port:
                   number: {{ .Values.service.port }}
+  {{- with .Values.ingress.tls }}
+  tls:
+    {{- range . }}
+    - hosts:
+        {{- range .hosts }}
+        - {{ . | quote }}
+        {{- end }}
+      secretName: {{ .secretName }}
+    {{- end }}
+  {{- end }}
 {{- end }}

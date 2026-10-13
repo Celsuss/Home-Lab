@@ -17,6 +17,14 @@ ingress:
   enabled: true
   className: traefik
   host: "memory.homelab.local"
+  # The dashboard sends the API key on every call, so serve it over TLS only
+  # (homelab-ca, like the other *.homelab.local apps).
+  annotations:
+    cert-manager.io/cluster-issuer: homelab-ca
+  tls:
+    - secretName: mcp-memory-service-tls
+      hosts:
+        - memory.homelab.local
 
 persistence:
   enabled: true
