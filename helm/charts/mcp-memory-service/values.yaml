@@ -42,10 +42,11 @@ config:
   MCP_MDNS_ENABLED: "false"
 
 # The embedding model (~80 MB, chroma-onnx-models.s3.amazonaws.com) is fetched
-# on the first start. Leave this true for the first rollout; once the log shows
-# the model is cached, set it false: that closes internet egress and sets
-# MCP_MEMORY_ONNX_ALLOW_DOWNLOAD=0 so the pod fails loudly instead of trying again.
-modelDownload: true
+# on the first start and cached on the PVC (/data/.cache/mcp_memory). false
+# closes internet egress and sets MCP_MEMORY_ONNX_ALLOW_DOWNLOAD=0, so the pod
+# fails loudly instead of trying again. Set true for one start after losing
+# the PVC (cached 2026-10-13).
+modelDownload: false
 
 # MCP_API_KEY.
 vault:
