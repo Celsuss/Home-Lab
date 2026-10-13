@@ -1,8 +1,13 @@
-# Calendar automations — docs/plans/2026-10-12-proton-calendar.md, Phase 2.
+# Calendar and chores automations — docs/plans/2026-10-12-proton-calendar.md,
+# Phase 2, and docs/plans/2026-10-12-mcp-improvements.md, Phases 1b and 1c.
 #
 # Morning briefing: the Ollama agent reads today's calendar (homelab-mcp
-# calendar_agenda) and chores (list_chores) and the answer goes to Telegram,
-# and to the den speaker when input_boolean.morning_briefing_speak is on.
+# calendar_agenda), chores (list_chores) and lab status (lab_status, Uptime
+# Kuma) and the answer goes to Telegram, and to the den speaker when
+# input_boolean.morning_briefing_speak is on.
+#
+# Evening chore nudge: at 19:00 the agent checks list_chores and a Telegram
+# message goes out only if a chore is due today or overdue.
 #
 # Event reminders: a Telegram message 15 minutes before each timed event. They
 # use HA's own Remote Calendar integration on the same Proton share link,
@@ -23,10 +28,11 @@ input_boolean:
 
 automation:
   - id: morning_briefing
-    alias: "Morning briefing: calendar and chores"
+    alias: "Morning briefing: calendar, chores and lab status"
     description: >
-      At 07:00, ask the Ollama agent for today's calendar and due chores and
-      send the answer to Telegram (and speak it if the toggle is on).
+      At 07:00, ask the Ollama agent for today's calendar, due chores and
+      anything down in the lab, and send the answer to Telegram (and speak it
+      if the toggle is on).
     mode: single
     triggers:
       - trigger: time
@@ -36,9 +42,10 @@ automation:
         data:
           agent_id: conversation.ollama_conversation   # same agent as telegram.yaml
           text: >-
-            Morning briefing. Call calendar_agenda for today and list_chores,
-            then tell me in at most four short sentences what is on my
-            calendar today and which chores are due or overdue.
+            Morning briefing. Call calendar_agenda for today, list_chores and
+            lab_status, then tell me in at most four short sentences what is
+            on my calendar today, which chores are due or overdue, and
+            anything in the lab that is not up.
         response_variable: briefing
       - variables:
           message: >-
@@ -62,6 +69,39 @@ automation:
               language: en_US
               options:
                 voice: en_US-glados-medium
+
+  - id: evening_chore_nudge
+    alias: "Evening chore nudge"
+    description: >
+      At 19:00, ask the Ollama agent whether any chore is due today or
+      overdue. Telegram only (no speaker in the evening), and nothing is sent
+      when the agent answers NONE.
+    mode: single
+    triggers:
+      - trigger: time
+        at: "19:00:00"
+    actions:
+      - action: conversation.process
+        data:
+          agent_id: conversation.ollama_conversation
+          # list_chores also returns future chores: the model filters by date.
+          # Keep in sync with the case in docker/homelab-mcp/eval/cases.yaml.
+          text: >-
+            Evening check. Call list_chores. If no chore is due today or
+            overdue, reply only NONE. Otherwise name them in at most two short
+            sentences.
+        response_variable: nudge
+      - variables:
+          message: "{{ nudge.response.speech.plain.speech | default('', true) | trim }}"
+      # Silent when nothing is due. Letters only, so "None." or "NONE" count;
+      # an empty reply (agent error) is skipped too rather than sent.
+      - condition: template
+        value_template: >-
+          {{ message | upper | regex_replace('[^A-Z]', '') not in ['NONE', ''] }}
+      - action: telegram_bot.send_message
+        data:
+          parse_mode: plain_text
+          message: "{{ message }}"
 
   - id: calendar_event_reminder
     alias: "Calendar: Telegram reminder before an event"

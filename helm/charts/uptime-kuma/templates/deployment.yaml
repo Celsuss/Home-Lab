@@ -8,9 +8,9 @@ metadata:
     {{- include "uptime-kuma.labels" . | nindent 4 }}
 spec:
   replicas: {{.Values.replicaCount }}
-  # One SQLite file on an RWO volume: never run the old and new pod together
-  # (a rolling update would let the new version migrate the database while
-  # the old one still writes to it).
+  # One database (embedded MariaDB) on an RWO volume: never run the old and
+  # new pod together (a rolling update would let the new version migrate the
+  # database while the old one still writes to it).
   strategy:
     type: Recreate
   selector:

@@ -1,7 +1,8 @@
 {{- if .Values.networkPolicy.enabled }}
 ---
 # The MCP endpoint has no authentication, so this policy is the access
-# control: Open WebUI and Home Assistant may connect, nothing else. Egress is
+# control: Open WebUI, Home Assistant and Uptime Kuma (health checks) may
+# connect, nothing else. Egress is
 # limited to DNS, the services the tools call, and the public internet for
 # fetch_page. See values.yaml for the reasoning behind each rule.
 apiVersion: networking.k8s.io/v1
@@ -26,6 +27,15 @@ spec:
         {{- range .Values.networkPolicy.ingress.hostCidrs }}
         - ipBlock:
             cidr: {{ . }}
+        {{- end }}
+        {{- range .Values.networkPolicy.ingress.pods }}
+        # {{ .name }}
+        - namespaceSelector:
+            matchLabels:
+              {{- toYaml .namespaceLabels | nindent 14 }}
+          podSelector:
+            matchLabels:
+              {{- toYaml .podLabels | nindent 14 }}
         {{- end }}
       ports:
         - protocol: TCP

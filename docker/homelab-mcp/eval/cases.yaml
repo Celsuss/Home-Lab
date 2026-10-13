@@ -45,6 +45,9 @@ cases:
     expect: [list_chores]
   - utterance: "is anything overdue on my to-do list?"
     expect: [list_chores]
+  # The evening_chore_nudge automation's text (home-assistant/packages/calendar.yaml).
+  - utterance: "Evening check. Call list_chores. If no chore is due today or overdue, reply only NONE. Otherwise name them in at most two short sentences."
+    expect: [list_chores]
   # HA Shopping list = things to buy; Donetick (add_chore) = chores and to-dos.
   - utterance: "add eggs to the shopping list"
     expect: [HassListAddItem]
@@ -68,6 +71,13 @@ cases:
     expect: [calendar_agenda]
   - utterance: "do I have any appointments on Thursday?"
     expect: [calendar_agenda]
+  # lab_status (Uptime Kuma)
+  - utterance: "is anything down?"
+    expect: [lab_status]
+  - utterance: "is the server OK?"
+    expect: [lab_status]
+  - utterance: "is Jellyfin up?"
+    expect: [lab_status]
 
   # Negative: home control and chit-chat must not reach homelab-mcp.
   - utterance: "turn on the kitchen light"
@@ -77,6 +87,9 @@ cases:
   - utterance: "play some Daft Punk"
     avoid: homelab
   - utterance: "pause the music"
+    avoid: homelab
+  # "Is X on" is a device state, not lab_status.
+  - utterance: "is the kitchen light on?"
     avoid: homelab
   # Well-known facts are answered directly: a search adds a SearXNG round
   # trip and a second model pass on the voice path.

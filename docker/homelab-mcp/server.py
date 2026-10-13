@@ -25,6 +25,8 @@ Environment:
                        calendar's decryption key: Vault only, never logged
   CALENDAR_TZ          timezone events are shown in (default UTC)
   CALENDAR_CACHE_SECONDS  how long a fetched calendar is reused (default 900)
+  UPTIME_KUMA_URL      e.g. http://uptime-kuma.monitoring.svc.cluster.local:3001
+  UPTIME_KUMA_API_KEY  Uptime Kuma API key (Settings -> API Keys), for /metrics
   HOST / PORT          bind address (default 0.0.0.0:8000)
 """
 
@@ -34,6 +36,7 @@ import functools
 import ipaddress
 import logging
 import os
+import re
 import socket
 import time
 import urllib.parse
@@ -55,7 +58,7 @@ USER_AGENT = "homelab-mcp/0.1 (+https://github.com/Celsuss/Home-Lab)"
 
 mcp = MCPServer(
     name="homelab",
-    instructions="Tools for the user's homelab: web search, reading web pages, chores, recipes and calendar.",
+    instructions="Tools for the user's homelab: web search, reading web pages, chores, recipes, calendar and lab status.",
 )
 
 
@@ -456,6 +459,49 @@ if PROTON_ICS_URL:
         if len(events) > 40:
             lines.append(f"…and {len(events) - 40} more.")
         return "\n".join(lines)
+
+
+# --- Lab status (Uptime Kuma) -------------------------------------------------
+
+UPTIME_KUMA_URL = env("UPTIME_KUMA_URL").rstrip("/")
+UPTIME_KUMA_API_KEY = env("UPTIME_KUMA_API_KEY")
+# monitor_status gauge: 1 up, 0 down, 2 pending, 3 maintenance.
+KUMA_NOT_UP = {"0": "Down", "2": "Pending", "3": "In maintenance"}
+MONITOR_STATUS = re.compile(r"^monitor_status\{(.*)\}\s+(\S+)")
+METRIC_LABEL = re.compile(r'(\w+)="((?:[^"\\]|\\.)*)"')
+
+
+if UPTIME_KUMA_URL and UPTIME_KUMA_API_KEY:
+
+    @tool
+    async def lab_status() -> str:
+        """Check whether the homelab's servers and services are up."""
+        # /metrics takes an API key as the basic-auth password, with no user.
+        async with httpx.AsyncClient(timeout=TIMEOUT, auth=("", UPTIME_KUMA_API_KEY)) as client:
+            resp = await client.get(f"{UPTIME_KUMA_URL}/metrics")
+            resp.raise_for_status()
+        # Keyed by name: a monitor with tags can be listed once per tag.
+        status = {}
+        for line in resp.text.splitlines():
+            if match := MONITOR_STATUS.match(line):
+                labels = dict(METRIC_LABEL.findall(match.group(1)))
+                try:
+                    name = labels.get("monitor_name", "?").replace('\\"', '"').replace("\\\\", "\\")
+                    status[name] = str(int(float(match.group(2))))
+                except ValueError:
+                    continue
+        if not status:
+            return "Uptime Kuma reports no monitors."
+        groups = {
+            label: sorted(name for name, code in status.items() if code == value)
+            for value, label in KUMA_NOT_UP.items()
+        }
+        not_up = sum(len(names) for names in groups.values())
+        if not not_up:
+            return f"All {len(status)} monitors up."
+        return f"{not_up} of {len(status)} monitors not up. " + " ".join(
+            f"{label}: {', '.join(names)}." for label, names in groups.items() if names
+        )
 
 
 def main() -> None:

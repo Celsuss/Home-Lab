@@ -22,6 +22,7 @@ http://homelab-mcp.ai-workloads.svc.cluster.local:8000/mcp
 | `search_recipes(query?)` | Tandoor `GET /api/recipe/?query=` (empty or "all" lists everything, up to 30, with the total count) | `TANDOOR_URL` + `TANDOOR_TOKEN` |
 | `get_recipe(recipe_id)` | Tandoor `GET /api/recipe/{id}/` | same |
 | `calendar_agenda(start_date?, days=1)` | Proton Calendar share link (ICS), cached `CALENDAR_CACHE_SECONDS` | `PROTON_ICS_URL` |
+| `lab_status()` | Uptime Kuma `/metrics` (`monitor_status`), API key as basic-auth password | `UPTIME_KUMA_API_KEY` |
 
 Design rules. Keep them when adding tools:
 
@@ -52,11 +53,13 @@ secret changes.
 | `DONETICK_TOKEN` | Donetick → Settings → Access tokens → create |
 | `TANDOOR_TOKEN` | Tandoor → Settings → API → new token (scope `read`) |
 | `PROTON_ICS_URL` | Proton Calendar (web) → Settings → Calendars → the calendar → Share with anyone → **Full view** → copy link |
+| `UPTIME_KUMA_API_KEY` | Uptime Kuma → Settings → API Keys → add (no expiry). The first key permanently turns off username/password auth on `/metrics` |
 
 ```bash
 vault kv put secret/homelab/homelab-mcp DONETICK_TOKEN=<donetick-token> TANDOOR_TOKEN=<tandoor-token>
 # Add one key without touching the others:
 vault kv patch secret/homelab/homelab-mcp PROTON_ICS_URL='<proton-share-link>'
+vault kv patch secret/homelab/homelab-mcp UPTIME_KUMA_API_KEY='<kuma-api-key>'
 ```
 
 ## Calendar (Proton)

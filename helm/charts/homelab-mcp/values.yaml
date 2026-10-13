@@ -27,8 +27,11 @@ config:
   # PROTON_ICS_URL secret (a Proton "Full view" share link) from Vault.
   CALENDAR_TZ: "Europe/Stockholm"
   CALENDAR_CACHE_SECONDS: "900"
+  # lab_status: reads monitor_status from Kuma's /metrics with the
+  # UPTIME_KUMA_API_KEY secret from Vault.
+  UPTIME_KUMA_URL: "http://uptime-kuma.monitoring.svc.cluster.local:3001"
 
-# DONETICK_TOKEN, TANDOOR_TOKEN and PROTON_ICS_URL. The Secret is mounted
+# DONETICK_TOKEN, TANDOOR_TOKEN, PROTON_ICS_URL and UPTIME_KUMA_API_KEY. The Secret is mounted
 # `optional`, so the pod starts (with search + fetch only) before the Vault
 # entry exists.
 vault:
@@ -66,6 +69,14 @@ networkPolicy:
     hostCidrs:
       - 10.42.0.1/32
       - 192.168.0.142/32
+    # Pods in other namespaces. Uptime Kuma probes /healthz (opentofu/kuma);
+    # a NetworkPolicy can't limit by path, so it can reach /mcp too.
+    pods:
+      - name: uptime-kuma
+        namespaceLabels:
+          kubernetes.io/metadata.name: monitoring
+        podLabels:
+          app.kubernetes.io/name: uptime-kuma
   egress:
     # Backend pods + container ports, never Service VIPs (DNAT happens before
     # the policy is evaluated, so a VIP ipBlock never matches).
@@ -88,6 +99,12 @@ networkPolicy:
         podLabels:
           app.kubernetes.io/name: tandoor-recipes
         port: 80
+      - name: uptime-kuma
+        namespaceLabels:
+          kubernetes.io/metadata.name: monitoring
+        podLabels:
+          app.kubernetes.io/name: uptime-kuma
+        port: 3001
     # fetch_page and calendar_agenda (calendar.proton.me): public internet
     # only. Private ranges are excluded here and refused again in server.py
     # (fetch_page).

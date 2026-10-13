@@ -37,11 +37,14 @@ variable "monitored_services" {
     ezbookkeeping   = { url = "https://ezbookkeeping.homelab.local" }
     forgejo         = { url = "https://forgejo.homelab.local" }
     glance          = { url = "https://glance.homelab.local" }
+    # Cluster-internal only (no ingress); its NetworkPolicy admits the Kuma pod.
+    homelab-mcp     = { url = "http://homelab-mcp.ai-workloads.svc.cluster.local:8000/healthz" }
     jellyfin        = { url = "https://jellyfin.homelab.local" }
     kanidm          = { url = "https://kanidm.homelab.local" }
     karakeep        = { url = "https://karakeep.homelab.local" }
     khoj            = { url = "https://khoj.homelab.local" }
-    ollama          = { url = "https://ollama.homelab.local", interval = 120 }
+    # No Traefik ingress (Tailscale only), so probe the Service directly.
+    ollama          = { url = "http://ollama.ai-workloads.svc.cluster.local:11434", interval = 120 }
     open-webui      = { url = "https://open-webui.homelab.local" }
     tandoor-recipes = { url = "https://tandoor.homelab.local" }
     uptime-kuma     = { url = "https://uptime-kuma.homelab.local" }
