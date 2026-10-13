@@ -38,6 +38,11 @@ env:
     value: "5"
   - name: ENABLE_SEARCH_QUERY_GENERATION
     value: "True"
+  # --- Memory: off, homelab-mcp's remember/recall (mcp-memory-service) replace it ---
+  # Persistent config: this only seeds a fresh database. On the running install
+  # the Admin Panel toggle is what counts.
+  - name: ENABLE_MEMORIES
+    value: "False"
   # --- Image Generation (ComfyUI) ---
   - name: ENABLE_IMAGE_GENERATION
     value: "True"
