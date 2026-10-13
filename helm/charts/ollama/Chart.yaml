@@ -6,7 +6,7 @@ type: application
 
 version: 0.1.0
 
-appVersion: "0.30.5"
+appVersion: "0.40.3"
 dependencies:
   - name: homelab-common
     version: 0.1.0
