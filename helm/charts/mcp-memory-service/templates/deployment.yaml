@@ -1,0 +1,83 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "mcp-memory-service.fullname" . }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "mcp-memory-service.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  # One SQLite file on a ReadWriteOnce PVC: never run two pods on it.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "mcp-memory-service.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "mcp-memory-service.selectorLabels" . | nindent 8 }}
+        # What the NetworkPolicies (this chart's and homelab-mcp's) select on.
+        app: {{ include "mcp-memory-service.fullname" . }}
+    spec:
+      # Nothing here talks to the Kubernetes API.
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: server
+          image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8000
+          env:
+            {{- range $key, $value := .Values.config }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+            {{- if not .Values.modelDownload }}
+            - name: MCP_MEMORY_ONNX_ALLOW_DOWNLOAD
+              value: "0"
+            {{- end }}
+            - name: MCP_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.vault.secretName }}
+                  key: MCP_API_KEY
+          securityContext:
+            allowPrivilegeEscalation: false
+          # /api/health needs no API key. The first start downloads the
+          # embedding model, so give it time before liveness counts.
+          startupProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 10
+            failureThreshold: 60
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            periodSeconds: 30
+            timeoutSeconds: 5
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "mcp-memory-service.fullname" . }}-pvc
+          {{- else }}
+          emptyDir: {}
+          {{- end }}

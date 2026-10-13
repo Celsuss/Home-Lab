@@ -1,0 +1,87 @@
+---
+namespace: ai-workloads
+name: mcp-memory-service
+
+image:
+  # Docker Hub, built by the upstream project. The non-slim image; -slim
+  # variants exist too.
+  repository: docker.io/doobidoo/mcp-memory-service
+  tag: "11.15.0"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8000
+
+ingress:
+  enabled: true
+  className: traefik
+  host: "memory.homelab.local"
+
+persistence:
+  enabled: true
+  storage: "2Gi"
+
+# Non-secret configuration. MCP_API_KEY comes from Vault and gates both the
+# REST API and the dashboard (it asks for the key and sends it as X-API-Key).
+config:
+  MCP_MODE: "http"
+  MCP_HTTP_HOST: "0.0.0.0"
+  MCP_HTTP_PORT: "8000"
+  MCP_MEMORY_STORAGE_BACKEND: "sqlite_vec"
+  MCP_MEMORY_SQLITE_PATH: "/data/sqlite_vec.db"
+  MCP_MEMORY_BACKUPS_PATH: "/data/backups"
+  # The ONNX embedding model is cached under $HOME/.cache/mcp_memory, so a
+  # HOME on the PVC means it is downloaded once, not on every restart.
+  HOME: "/data"
+  MCP_ALLOW_ANONYMOUS_ACCESS: "false"
+  # The quality scorer loads a second model; consolidation can age memories
+  # out. Neither is wanted: you are the only one who deletes memories.
+  MCP_QUALITY_SYSTEM_ENABLED: "false"
+  MCP_CONSOLIDATION_ENABLED: "false"
+  MCP_MDNS_ENABLED: "false"
+
+# The embedding model (~80 MB, chroma-onnx-models.s3.amazonaws.com) is fetched
+# on the first start. Leave this true for the first rollout; once the log shows
+# the model is cached, set it false: that closes internet egress and sets
+# MCP_MEMORY_ONNX_ALLOW_DOWNLOAD=0 so the pod fails loudly instead of trying again.
+modelDownload: true
+
+# MCP_API_KEY.
+vault:
+  secretPath: homelab/mcp-memory-service
+  secretName: mcp-memory-service-secrets
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 256Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi
+
+# Ingress only from homelab-mcp (the remember/recall tools) and Traefik (the
+# dashboard). Rules select backend pods on container ports, never VIPs. K3s's
+# kube-router REJECTs, so a blocked connection fails instantly.
+networkPolicy:
+  enabled: true
+  dnsNamespaceLabels:
+    kubernetes.io/metadata.name: kube-system
+  ingress:
+    - name: homelab-mcp
+      namespaceLabels:
+        kubernetes.io/metadata.name: ai-workloads
+      podLabels:
+        app: homelab-mcp
+    - name: traefik
+      namespaceLabels:
+        kubernetes.io/metadata.name: kube-system
+      podLabels:
+        app.kubernetes.io/name: traefik
+  # Public internet, only while modelDownload is true.
+  internetExcept:
+    - 10.0.0.0/8
+    - 172.16.0.0/12
+    - 192.168.0.0/16
+    - 100.64.0.0/10
+    - 169.254.0.0/16

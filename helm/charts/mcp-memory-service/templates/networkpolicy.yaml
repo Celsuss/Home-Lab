@@ -1,0 +1,57 @@
+{{- if .Values.networkPolicy.enabled }}
+---
+# Every memory is readable and editable with the API key, so only homelab-mcp
+# (remember/recall) and Traefik (the dashboard) may connect. Embeddings are
+# local: egress is DNS only, plus the public internet while modelDownload is
+# on. See values.yaml.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "mcp-memory-service.fullname" . }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "mcp-memory-service.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app: {{ include "mcp-memory-service.fullname" . }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        {{- range .Values.networkPolicy.ingress }}
+        # {{ .name }}
+        - namespaceSelector:
+            matchLabels:
+              {{- toYaml .namespaceLabels | nindent 14 }}
+          podSelector:
+            matchLabels:
+              {{- toYaml .podLabels | nindent 14 }}
+        {{- end }}
+      ports:
+        - protocol: TCP
+          port: 8000
+  egress:
+    # Cluster DNS.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              {{- toYaml .Values.networkPolicy.dnsNamespaceLabels | nindent 14 }}
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    {{- if .Values.modelDownload }}
+    # First start only: the ONNX embedding model download.
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              {{- toYaml .Values.networkPolicy.internetExcept | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: 443
+    {{- end }}
+{{- end }}

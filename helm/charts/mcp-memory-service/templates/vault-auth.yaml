@@ -1,0 +1,19 @@
+---
+# Named (not `default`) because ai-workloads is shared with open-webui, cptr,
+# open-terminal, openhands, khoj and second-brain. `vso-service-account`
+# already exists in this namespace and is unmanaged; this chart references it
+# and must NOT create it, or ArgoCD ends up in the shared-ServiceAccount
+# OutOfSync loop.
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultAuth
+metadata:
+  name: mcp-memory-service-vault-auth
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "mcp-memory-service.labels" . | nindent 4 }}
+spec:
+  method: kubernetes
+  mount: kubernetes
+  kubernetes:
+    role: vso-role
+    serviceAccount: vso-service-account

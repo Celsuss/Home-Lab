@@ -1,0 +1,25 @@
+{{- if .Values.ingress.enabled }}
+---
+# The review dashboard. Every API call it makes needs MCP_API_KEY, which it
+# asks for on first load.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "mcp-memory-service.fullname" . }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "mcp-memory-service.labels" . | nindent 4 }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  rules:
+    - host: {{ .Values.ingress.host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "mcp-memory-service.fullname" . }}
+                port:
+                  number: {{ .Values.service.port }}
+{{- end }}

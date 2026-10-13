@@ -1,0 +1,13 @@
+apiVersion: v2
+name: mcp-memory-service
+description: |
+  Long-term memory store for the homelab assistant (doobidoo/mcp-memory-service):
+  SQLite-vec with local ONNX embeddings, REST API and a review dashboard at
+  memory.homelab.local. Clients never call it directly; homelab-mcp's
+  remember/recall tools are the only writers and readers.
+type: application
+
+# Chart version. Bump on every change to the chart itself.
+version: 0.1.0
+
+appVersion: "11.15.0"
