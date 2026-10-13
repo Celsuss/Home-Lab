@@ -27,6 +27,10 @@ Environment:
   CALENDAR_CACHE_SECONDS  how long a fetched calendar is reused (default 900)
   UPTIME_KUMA_URL      e.g. http://uptime-kuma.monitoring.svc.cluster.local:3001
   UPTIME_KUMA_API_KEY  Uptime Kuma API key (Settings -> API Keys), for /metrics
+  MEMORY_URL           e.g. http://mcp-memory-service.ai-workloads.svc.cluster.local:8000
+  MEMORY_API_KEY       mcp-memory-service's MCP_API_KEY
+  HA_SOURCE_IPS        client IPs tagged source:ha by remember (default
+                       10.42.0.1,192.168.0.142); everything else is open-webui
   HOST / PORT          bind address (default 0.0.0.0:8000)
 """
 
@@ -46,7 +50,7 @@ import httpx
 import icalendar
 import recurring_ical_events
 import trafilatura
-from mcp.server.mcpserver import MCPServer
+from mcp.server.mcpserver import Context, MCPServer
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
@@ -58,7 +62,7 @@ USER_AGENT = "homelab-mcp/0.1 (+https://github.com/Celsuss/Home-Lab)"
 
 mcp = MCPServer(
     name="homelab",
-    instructions="Tools for the user's homelab: web search, reading web pages, chores, recipes, calendar and lab status.",
+    instructions="Tools for the user's homelab: web search, reading web pages, chores, recipes, calendar, lab status and memory.",
 )
 
 
@@ -501,6 +505,68 @@ if UPTIME_KUMA_URL and UPTIME_KUMA_API_KEY:
             return f"All {len(status)} monitors up."
         return f"{not_up} of {len(status)} monitors not up. " + " ".join(
             f"{label}: {', '.join(names)}." for label, names in groups.items() if names
+        )
+
+
+# --- Memory (mcp-memory-service) ----------------------------------------------
+
+MEMORY_URL = env("MEMORY_URL").rstrip("/")
+MEMORY_API_KEY = env("MEMORY_API_KEY")
+MEMORY_MAX_CHARS = 300
+# Home Assistant runs with hostNetwork, so its requests come from the node;
+# anything else allowed in by the NetworkPolicy is Open WebUI.
+HA_SOURCE_IPS = set(env("HA_SOURCE_IPS", "10.42.0.1,192.168.0.142").split(","))
+
+
+def memory() -> httpx.AsyncClient:
+    return httpx.AsyncClient(base_url=f"{MEMORY_URL}/api", timeout=TIMEOUT, headers={"X-API-Key": MEMORY_API_KEY})
+
+
+if MEMORY_URL and MEMORY_API_KEY:
+
+    @tool
+    async def remember(fact: str, ctx: Context) -> str:
+        """Save a fact the user explicitly asks you to remember."""
+        fact = " ".join(fact.split())
+        if not fact:
+            return "Nothing to remember."
+        if len(fact) > MEMORY_MAX_CHARS:
+            return f"Too long ({len(fact)} characters); keep it under {MEMORY_MAX_CHARS}."
+        request = ctx.request_context.request
+        client_ip = request.client.host if request is not None and request.client else ""
+        source = "ha" if client_ip in HA_SOURCE_IPS else "open-webui"
+        # New memories wait in the dashboard's review queue (tag `unreviewed`);
+        # only the user approves, edits or deletes them.
+        async with memory() as client:
+            resp = await client.post("/memories", json={"content": fact, "tags": ["unreviewed", f"source:{source}"]})
+            resp.raise_for_status()
+            data = resp.json()
+        if data.get("success"):
+            return "Remembered."
+        message = data.get("message", "")
+        if message.startswith("Duplicate"):
+            # Semantic dedup also catches a changed value ("black" -> "with
+            # milk"), so don't claim the new fact is stored.
+            return "Not saved: a very similar memory already exists. The user can edit it in the memory dashboard."
+        return f"Not saved: {clip(message, 200)}"
+
+    @tool
+    async def recall(query: str = "") -> str:
+        """Recall what the user asked you to remember: preferences, people, dates. Use for any question about the user."""
+        async with memory() as client:
+            if query.strip():
+                resp = await client.post("/search", json={"query": query, "n_results": 5})
+                resp.raise_for_status()
+                memories = [r["memory"] for r in resp.json().get("results", [])]
+            else:
+                resp = await client.get("/memories", params={"page_size": 20})
+                resp.raise_for_status()
+                memories = resp.json().get("memories", [])
+        if not memories:
+            return "No saved memories match." if query.strip() else "No saved memories."
+        return "\n".join(
+            "- " + ("(unreviewed) " if "unreviewed" in m.get("tags", []) else "") + clip(m.get("content", ""), MEMORY_MAX_CHARS)
+            for m in memories
         )
 
 

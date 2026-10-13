@@ -30,10 +30,13 @@ config:
   # lab_status: reads monitor_status from Kuma's /metrics with the
   # UPTIME_KUMA_API_KEY secret from Vault.
   UPTIME_KUMA_URL: "http://uptime-kuma.monitoring.svc.cluster.local:3001"
+  # remember / recall: mcp-memory-service's REST API, with the MEMORY_API_KEY
+  # secret from Vault (the same value as that chart's MCP_API_KEY).
+  MEMORY_URL: "http://mcp-memory-service.ai-workloads.svc.cluster.local:8000"
 
-# DONETICK_TOKEN, TANDOOR_TOKEN, PROTON_ICS_URL and UPTIME_KUMA_API_KEY. The Secret is mounted
-# `optional`, so the pod starts (with search + fetch only) before the Vault
-# entry exists.
+# DONETICK_TOKEN, TANDOOR_TOKEN, PROTON_ICS_URL, UPTIME_KUMA_API_KEY and
+# MEMORY_API_KEY. The Secret is mounted `optional`, so the pod starts (with
+# search + fetch only) before the Vault entry exists.
 vault:
   secretPath: homelab/homelab-mcp
   secretName: homelab-mcp-secrets
@@ -105,6 +108,12 @@ networkPolicy:
         podLabels:
           app.kubernetes.io/name: uptime-kuma
         port: 3001
+      - name: mcp-memory-service
+        namespaceLabels:
+          kubernetes.io/metadata.name: ai-workloads
+        podLabels:
+          app: mcp-memory-service
+        port: 8000
     # fetch_page and calendar_agenda (calendar.proton.me): public internet
     # only. Private ranges are excluded here and refused again in server.py
     # (fetch_page).

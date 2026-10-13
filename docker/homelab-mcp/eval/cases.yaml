@@ -79,6 +79,23 @@ cases:
   - utterance: "is Jellyfin up?"
     expect: [lab_status]
 
+  # remember / recall (mcp-memory-service). remember only on an explicit ask.
+  - utterance: "remember that I take my coffee black"
+    expect: [remember]
+  - utterance: "please remember my sister's birthday is on May 3rd"
+    expect: [remember]
+  - utterance: "how do I take my coffee?"
+    expect: [recall]
+  - utterance: "what do you know about me?"
+    expect: [recall]
+  - utterance: "when is my sister's birthday?"
+    expect: [recall, calendar_agenda]
+  # A statement is not a request to remember, and "remind me" is a chore.
+  - utterance: "I like my coffee black"
+    expect: [none]
+  - utterance: "remind me to call the dentist tomorrow"
+    expect: [add_chore]
+
   # Negative: home control and chit-chat must not reach homelab-mcp.
   - utterance: "turn on the kitchen light"
     avoid: homelab
