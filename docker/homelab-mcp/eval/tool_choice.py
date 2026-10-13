@@ -37,6 +37,7 @@ PREFIX = "homelab__"  # HA's MCP integration namespaces the tools with this
 HA_PREFIX = "assist__"  # and, with two LLM APIs selected, HA's own tools too
 # gemma4's native call syntax leaking into the reply (`name{arg:<|"|>x<|"|>}`).
 TEXT_CALL = re.compile(r'<\|"\|>|<\|?tool_call|\b\w+\{\w+:')
+TEXT_WITH_CALL = " +text"  # a call that also carries reply text (see chat())
 
 
 def post(url: str, body: dict, headers: dict | None = None, timeout: float = 120):
@@ -102,7 +103,11 @@ def chat(ollama_url: str, body: dict) -> tuple[str, str]:
             calls += msg.get("tool_calls") or []
     if calls:
         fn = calls[0]["function"]
-        return fn["name"], json.dumps(fn.get("arguments", {}), ensure_ascii=False)
+        # A reply written next to the call is taken as the answer: HA's second
+        # pass after the tool result then comes back empty and Assist shows
+        # "Unable to get response". Seen live with remember (2026-10-13).
+        suffix = TEXT_WITH_CALL if content.strip() else ""
+        return fn["name"] + suffix, json.dumps(fn.get("arguments", {}), ensure_ascii=False)
     snippet = " ".join(content.split())[:80]
     return ("text tool call" if TEXT_CALL.search(content) else "no call"), snippet
 
@@ -112,7 +117,7 @@ def short(outcome: str) -> str:
 
 
 def passed(case: dict, outcome: str) -> bool:
-    if outcome == "text tool call":
+    if outcome == "text tool call" or outcome.endswith(TEXT_WITH_CALL):
         return False
     if case.get("avoid") == "homelab":
         return not outcome.startswith(PREFIX)
