@@ -45,9 +45,11 @@ models:
     # for the assistant model; fall back to qwen3:8b / llama3.1:8b if it
     # misbehaves in Assist.
     - "gemma4:e4b-it-q8_0"
-    # Coding models (Open WebUI). Not assistant candidates.
+    # Voice candidate (MCP plan, 2026-10-13): 620/640 on the tool-choice eval
+    # vs 555 for e4b, zero "+text". 7.2 GB on disk, 8.0 GB VRAM at ctx 32768.
+    - "gemma4:12b-it-qat"
+    # Coding model (Open WebUI). Not an assistant candidate.
     - "qwen2.5-coder:14b"   # 9.0 GB
-    - "deepseek-r1:14b"     # 9.0 GB
   initContainer:
     # Use the same Ollama image for consistency
     image:
