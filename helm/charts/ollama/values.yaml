@@ -40,16 +40,17 @@ env:
 models:
   enabled: false
   list:
-    # Home Assistant conversation agent (Phase 1). Needs `tools` capability.
-    # 8B params, Q8_0, ~8.5 GB on disk — at the top of the ~8 GB VRAM budget
-    # for the assistant model; fall back to qwen3:8b / llama3.1:8b if it
-    # misbehaves in Assist.
-    - "gemma4:e4b-it-q8_0"
-    # Voice candidate (MCP plan, 2026-10-13): 620/640 on the tool-choice eval
-    # vs 555 for e4b, zero "+text". 7.2 GB on disk, 8.0 GB VRAM at ctx 32768.
+    # Home Assistant conversation agent since 2026-10-13 (MCP plan): 620/640
+    # on the tool-choice eval vs 555 for e4b, zero "+text". Needs `tools`.
+    # 7.2 GB on disk, 8.0 GB VRAM at ctx 32768.
     - "gemma4:12b-it-qat"
-    # Coding model (Open WebUI). Not an assistant candidate.
-    - "qwen2.5-coder:14b"   # 9.0 GB
+    # Previous voice model, kept as a fallback while the 12B settles in.
+    # 11.6 GB on disk, 5.3 GB VRAM at ctx 32768.
+    - "gemma4:e4b-it-q8_0"
+    # Heavy Open WebUI model: Swift 1.5 (Qwen3.8-27B, GSQ-RCO IQ3_XXS), text
+    # only, Swift Open License (personal use). 10.1 GB; at ctx 32768 it takes
+    # 12.1 GB VRAM, all on the GPU (~48 tok/s). Swaps with the voice model.
+    - "hf.co/ukisai/Swift-1.5-Qwen3.8-27B-GSQ-RCO-GGUF:IQ3_XXS"
   initContainer:
     # Use the same Ollama image for consistency
     image:
