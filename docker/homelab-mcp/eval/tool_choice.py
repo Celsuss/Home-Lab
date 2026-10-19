@@ -21,7 +21,6 @@ Exit code 1 if tools/list (compact, titles stripped) is over --budget bytes.
 
 import argparse
 import collections
-import datetime
 import json
 import pathlib
 import re
@@ -81,16 +80,9 @@ def ha_prompt(path: pathlib.Path) -> str:
 
 
 def system_message(prompt: str, ha: dict) -> str:
-    now = datetime.datetime.now()
-    context = "\n".join(
-        f"- names: {e['name']}\n  domain: {e['domain']}" + (f"\n  areas: {e['area']}" if e.get("area") else "")
-        for e in ha["entities"]
-    )
-    return (
-        f"Current time is {now:%H:%M:%S}. Today's date is {now:%Y-%m-%d}.\n"
-        f"{prompt}\n{ha['api_prompt']}\n"
-        f"Static Context: An overview of the areas and the devices in this smart home:\n{context}"
-    )
+    # HA 2026.10: the user's instructions, then the merged API prompt (static
+    # context included), as the Assist debug view shows it.
+    return f"{prompt}\n{ha['api_prompt']}\n\n"
 
 
 def chat(ollama_url: str, body: dict) -> tuple[str, str, list[str]]:
@@ -141,7 +133,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--mcp-url", required=True, help="homelab-mcp /mcp endpoint")
     ap.add_argument("--ollama-url", required=True, help="Ollama base URL")
-    ap.add_argument("--model", default="gemma4:e4b-it-q8_0")
+    ap.add_argument("--model", default="gemma4:12b-it-qat", help="the HA voice model (default gemma4:12b-it-qat)")
     ap.add_argument("-n", type=int, default=8, help="runs per case (default 8)")
     ap.add_argument("--num-ctx", type=int, default=32768, help="matches the live n_ctx")
     ap.add_argument("--cases", type=pathlib.Path, default=HERE / "cases.yaml")

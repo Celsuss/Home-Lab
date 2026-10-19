@@ -6,7 +6,8 @@
 # homelab-mcp tools, prefixed `homelab__` as HA's MCP integration does.
 #
 #   expect: [tool, ...]   pass if the first call is one of these. Names
-#                         without the homelab__ prefix. `none` = a plain text
+#                         without the homelab__ / assist__ prefix (HA's own
+#                         keep their integration prefix: todo__get_items). `none` = a plain text
 #                         answer (no call) also passes.
 #   avoid: homelab        pass on anything except a homelab-mcp call (HA
 #                         intents or a text answer are fine).
@@ -46,6 +47,8 @@ cases:
   # list_chores
   - utterance: "what chores do I have?"
     expect: [list_chores]
+  # Known miss since HA 2026.10 (0/16 → todo__get_items, whose description
+  # now advertises "What's on my task list?"). Kept as a tracker.
   - utterance: "is anything overdue on my to-do list?"
     expect: [list_chores]
   # The evening_chore_nudge automation's text (home-assistant/packages/calendar.yaml).
@@ -53,11 +56,23 @@ cases:
     expect: [list_chores]
   # HA Shopping list = things to buy; Donetick (add_chore) = chores and to-dos.
   - utterance: "add eggs to the shopping list"
-    expect: [HassListAddItem]
-  - utterance: "what's on my shopping list?"
-    expect: [todo_get_items]
+    expect: [todo__HassListAddItem]
   - utterance: "I need to buy milk"
-    expect: [HassListAddItem]
+    expect: [todo__HassListAddItem]
+  # Reading the list must never add to it: gemma4:12b added "none" before
+  # reading, live on 2026-10-19 (HA runs every call in the turn).
+  - utterance: "what's on my shopping list?"
+    expect: [todo__get_items]
+    forbid: &list_writes [todo__HassListAddItem, todo__HassListCompleteItem, todo__HassListRemoveItem]
+  - utterance: "what do I need to buy?"
+    expect: [todo__get_items]
+    forbid: *list_writes
+  - utterance: "read me the shopping list"
+    expect: [todo__get_items]
+    forbid: *list_writes
+  - utterance: "is milk on the shopping list?"
+    expect: [todo__get_items]
+    forbid: *list_writes
   # search_recipes
   - utterance: "what can I cook with banana?"
     expect: [search_recipes]
@@ -99,17 +114,18 @@ cases:
   - utterance: "remind me to call the dentist tomorrow"
     expect: [add_chore]
 
-  # Negative: home control and chit-chat must not reach homelab-mcp.
-  - utterance: "turn on the kitchen light"
+  # Negative: home control and chit-chat must not reach homelab-mcp. Only
+  # devices that are exposed (no lights in the home since 2026-10).
+  - utterance: "turn on the Den TV"
     avoid: homelab
-  - utterance: "turn off the bedroom lamp"
+  - utterance: "turn off the Den TV"
     avoid: homelab
   - utterance: "play some Daft Punk"
     avoid: homelab
   - utterance: "pause the music"
     avoid: homelab
   # "Is X on" is a device state, not lab_status.
-  - utterance: "is the kitchen light on?"
+  - utterance: "is the Den TV on?"
     avoid: homelab
   # Well-known facts are answered directly: a search adds a SearXNG round
   # trip and a second model pass on the voice path.
@@ -125,69 +141,163 @@ cases:
     avoid: homelab
 
 # --- What HA adds around the tools --------------------------------------------
-# Kept here so the request matches HA's shape. Update when entity exposure or
-# HA's Assist API changes (Assist debug view shows the real tool list).
+# HA 2026.10.2, rebuilt 2026-10-19. Update when entity exposure or HA changes.
+# Exposed: Den TV, Den speaker (Cast + the Music Assistant player), the
+# Shopping list, script.play_music. No lights in the home.
 ha:
-  # Appended after the user's instructions by HA's Assist API.
-  api_prompt: >-
-    When controlling Home Assistant always call the intent tools. Use
-    HassTurnOn to lock and HassTurnOff to unlock a lock. When controlling a
-    device, prefer passing just name and domain. When controlling an area,
-    prefer passing just area name and domain.
-  # Exposed entities, as HA's static context lists them.
-  entities:
-    - {name: Den speaker, domain: media_player, area: Den}
-    - {name: Den speaker 2, domain: media_player, area: Den}
-    - {name: Kitchen light, domain: light, area: Kitchen}
-    - {name: Bedroom lamp, domain: light, area: Bedroom}
-    - {name: Shopping List, domain: todo, area: ""}
-  # HA's own tools (Assist API + exposed scripts), in Ollama's format minus
-  # the {"type": "function"} wrapper. Names without the `assist__` prefix HA
-  # adds when a second LLM API (homelab-mcp) is selected; tool_choice.py adds
-  # it (seen live 2026-10-13: `assist__HassListAddItem`).
+  # Everything HA appends after the user's instructions, verbatim from an
+  # Assist debug trace. Two LLM APIs are selected, so HA's MergedAPI wraps each
+  # API's prompt in "Follow these instructions for tools from ...". No time
+  # line any more: the date and time come from llm__GetDateTime.
+  api_prompt: |-
+    Follow these instructions for tools from "assist":
+    You ARE equipped to answer questions about the current state of
+    the home by retrieving live context. This is a primary function. Do not state you lack the
+    functionality if the question requires live data.
+    If the user asks about device existence/type (e.g., "Do I have lights in the bedroom?"): Answer
+    from the static context below.
+    If the user asks about the CURRENT state, value, or mode (e.g., "Is the lock locked?",
+    "Is the fan on?", "What mode is the thermostat in?", "What is the temperature outside?"):
+        1.  Recognize this requires live data.
+        2.  You MUST use the provided tool to retrieve live context. This tool will provide the needed real-time information (like temperature from the local weather, lock status, etc.).
+        3.  Use the tool's response** to answer the user accurately (e.g., "The temperature outside is [value from tool].").
+    For general knowledge questions not about the home: Answer truthfully from internal knowledge.
+
+    Static Context: An overview of the areas and the devices in this smart home:
+    - names: Den TV
+      domain: media_player
+    - names: Den speaker
+      domain: media_player
+    - names: Den speaker
+      domain: media_player
+      areas: Bedroom
+    - names: Shopping list
+      domain: todo
+
+    When controlling Home Assistant always call the intent tools. Use intent__HassTurnOn to lock and intent__HassTurnOff to unlock a lock. When controlling a device, prefer passing just name and domain. When controlling an area, prefer passing just area name and domain.
+    When a user asks to turn on all devices of a specific type, ask the user to specify an area, unless there is only one device of that type.
+    This device is not able to start timers.
+
+    Follow these instructions for tools from "homelab":
+    The following tools are available from a remote server named homelab.
+  # HA's own tools, in Ollama's format minus the {"type": "function"} wrapper.
+  # The debug view doesn't show them, so they are rebuilt from the 2026.10.2
+  # source for the exposed domains (media_player, todo, script). Names without
+  # the `assist__` prefix HA adds with two LLM APIs; tool_choice.py adds it.
+  # Exact for todo, GetLiveContext, media search/play and the script;
+  # intent__HassTurnOn/Off simplified (device_class without its enum).
   tools:
-    - name: HassTurnOn
-      description: Turns on/opens/presses a device or entity
-      parameters: {type: object, properties: {name: {type: string}, area: {type: string}, domain: {type: array, items: {type: string}}}, required: []}
-    - name: HassTurnOff
-      description: Turns off/closes a device or entity
-      parameters: {type: object, properties: {name: {type: string}, area: {type: string}, domain: {type: array, items: {type: string}}}, required: []}
-    - name: HassLightSet
-      description: Sets the brightness percentage or color of a light
-      parameters: {type: object, properties: {name: {type: string}, area: {type: string}, brightness: {type: integer}}, required: []}
-    - name: HassMediaPause
-      description: Pauses a media player
-      parameters: {type: object, properties: {name: {type: string}, area: {type: string}}, required: []}
-    - name: HassMediaUnpause
-      description: Resumes a media player
-      parameters: {type: object, properties: {name: {type: string}, area: {type: string}}, required: []}
-    - name: HassMediaNext
-      description: Skips a media player to the next item
-      parameters: {type: object, properties: {name: {type: string}}, required: []}
-    - name: HassSetVolume
-      description: Sets the volume percentage of a media player
-      parameters: {type: object, properties: {name: {type: string}, volume_level: {type: integer}}, required: [volume_level]}
-    - name: HassListAddItem
-      description: Add item to a todo list
-      parameters: {type: object, properties: {item: {type: string}, name: {type: string}}, required: [item, name]}
-    - name: HassListCompleteItem
-      description: Complete item on a todo list
-      parameters: {type: object, properties: {item: {type: string}, name: {type: string}}, required: [item, name]}
-    - name: HassCancelAllTimers
-      description: Cancels all timers
-      parameters: {type: object, properties: {area: {type: string}}, required: []}
-    - name: HassBroadcast
-      description: Broadcast a message through the home
-      parameters: {type: object, properties: {message: {type: string}}, required: [message]}
-    - name: GetDateTime
+    - name: llm__GetDateTime
       description: Provides the current date and time.
       parameters: {type: object, properties: {}, required: []}
-    - name: GetLiveContext
-      description: Provides real-time information about the CURRENT state, value, or mode of devices, sensors, entities, or areas.
-      parameters: {type: object, properties: {}, required: []}
-    - name: todo_get_items
-      description: Query a to-do list to find out what items are on it.
-      parameters: {type: object, properties: {todo_list: {type: string}}, required: [todo_list]}
-    - name: play_music
-      description: Play music from the user's own music library on the speaker in the den.
-      parameters: {type: object, properties: {query: {type: string}, media_type: {type: string}, artist: {type: string}, enqueue: {type: string}}, required: [query, media_type]}
+    - name: homeassistant__GetLiveContext
+      description: >-
+        Provides real-time information about the CURRENT state, value, or mode of devices, sensors,
+        entities, or areas. Use this tool for: 1. Answering questions about current conditions
+        (e.g., 'Is the light on?'). 2. As the first step in conditional actions (e.g., 'If the
+        weather is rainy, turn off sprinklers' requires checking the weather first). You may filter
+        for devices by name, domain, and area, including combining those filters. Prefer filtering
+        by domain when searching for multiple devices of the same type.
+      parameters:
+        type: object
+        properties:
+          name: {type: string, description: Filter entities by name or alias (case-insensitive).}
+          domain:
+            anyOf: [{type: string}, {type: array, items: {type: string}}]
+            description: Filter entities by domain (e.g. 'light', 'sensor'). Accepts a single domain or a list.
+          area: {type: string, description: Filter entities by area name or alias (case-insensitive).}
+        required: []
+    - name: intent__HassTurnOn
+      description: >-
+        Turns on/opens/presses a device or entity. For locks, this performs a 'lock' action. Use for
+        requests like 'turn on', 'activate', 'enable', or 'lock'.
+      parameters: {type: object, properties: {name: {type: string}, area: {type: string}, floor: {type: string}, domain: {type: array, items: {type: string}}, device_class: {type: array, items: {type: string}}}, required: []}
+    - name: intent__HassTurnOff
+      description: >-
+        Turns off/closes a device or entity. For locks, this performs an 'unlock' action. Use for
+        requests like 'turn off', 'deactivate', 'disable', or 'unlock'.
+      parameters: {type: object, properties: {name: {type: string}, area: {type: string}, floor: {type: string}, domain: {type: array, items: {type: string}}, device_class: {type: array, items: {type: string}}}, required: []}
+    - name: intent__HassCancelAllTimers
+      description: Cancels all timers
+      parameters: {type: object, properties: {area: {type: string}}, required: []}
+    - name: media_player__HassMediaNext
+      description: Skips a media player to the next item
+      parameters: &media_target {type: object, properties: {name: {type: string}, area: {type: string}, floor: {type: string}, domain: {type: array, items: {type: string, enum: [media_player]}}}, required: []}
+    - name: media_player__HassMediaPrevious
+      description: Replays the previous item for a media player
+      parameters: *media_target
+    - name: media_player__HassMediaPause
+      description: Pauses a media player
+      parameters: *media_target
+    - name: media_player__HassMediaUnpause
+      description: Resumes a media player
+      parameters: *media_target
+    - name: media_player__HassMediaPlayerMute
+      description: Mutes a media player
+      parameters: {type: object, properties: {name: {type: string}, area: {type: string}, floor: {type: string}, domain: {type: array, items: {type: string, enum: [media_player]}}, device_class: {type: array, items: {type: string, enum: [receiver, speaker, tv]}}, volume_muted: {type: boolean, description: Whether the media player should be muted or unmuted}}, required: []}
+    - name: media_player__HassMediaPlayerUnmute
+      description: Unmutes a media player
+      parameters: {type: object, properties: {name: {type: string}, area: {type: string}, floor: {type: string}, domain: {type: array, items: {type: string, enum: [media_player]}}, device_class: {type: array, items: {type: string, enum: [receiver, speaker, tv]}}, volume_muted: {type: boolean, description: Whether the media player should be muted or unmuted}}, required: []}
+    - name: media_player__HassSetVolume
+      description: Sets the volume percentage of a media player
+      parameters: {type: object, properties: {name: {type: string}, area: {type: string}, floor: {type: string}, domain: {type: array, items: {type: string, enum: [media_player]}}, volume_level: {type: integer, minimum: 0, maximum: 100, description: The volume percentage of the media player}}, required: [volume_level]}
+    - name: media_player__HassSetVolumeRelative
+      description: Increases or decreases the volume of a media player
+      parameters: {type: object, properties: {volume_step: {anyOf: [{type: string, enum: [up, down]}, {type: integer, minimum: -100, maximum: 100}]}, name: {type: string}, area: {type: string}, floor: {type: string}}, required: [volume_step]}
+    - name: media_player__search_media
+      description: Searches a media player for media. Can also search inside a result of an earlier search, such as an artist or an album.
+      parameters:
+        type: object
+        properties:
+          search_query: {type: string, description: "What to search for, such as a song, artist or album"}
+          within_media_content_id: {type: string, description: "The media_content_id of a result to search inside, such as an artist. Copy it from that result."}
+          within_media_content_type: {type: string, description: The media_content_type of the result to search inside. Copy it from that result.}
+          player_name: {type: string}
+          player_area: {type: string}
+          player_floor: {type: string}
+        required: [search_query]
+    - name: media_player__play_media
+      description: Plays a media item that the search media tool returned, or a URL. For a search result, pass the same player_name, player_area and player_floor as the search.
+      parameters:
+        type: object
+        properties:
+          media_content_id: {type: string, description: "The media_content_id of the search result, or a URL"}
+          media_content_type: {type: string, description: The media_content_type of the search result. Use music to play an audio URL.}
+          player_name: {type: string}
+          player_area: {type: string}
+          player_floor: {type: string}
+        required: [media_content_id, media_content_type]
+    # From helm/charts/home-assistant/packages/music.yaml: the script's
+    # description, and its fields' descriptions and selectors.
+    - name: script__play_music
+      description: >-
+        Play music from the user's own music library on the speaker in the den. Use this whenever
+        the user asks to play or put on music, a song, an artist, a band, an album or a playlist.
+      parameters:
+        type: object
+        properties:
+          query: {type: string, description: "What to play: the name of an artist, album, song or playlist, for example \"Daft Punk\" or \"Random Access Memories\". Just the name, without words like \"play\" or \"some\"."}
+          media_type: {type: string, enum: [artist, album, track, playlist], description: "What kind of thing the query is: \"artist\" when only a band or musician is named, \"album\", \"track\" for a single song, or \"playlist\"."}
+          artist: {type: string, description: Optional. The artist, when the user names both an album or song and who made it.}
+          enqueue: {type: string, enum: [replace, add], description: "Optional. \"replace\" (default) stops what is playing and plays this now; \"add\" puts it at the end of the queue."}
+        required: [query, media_type]
+    - name: todo__get_items
+      description: >-
+        Query a to-do list to find out what items are on it. Use this to answer questions like
+        'What's on my task list?' or 'Read my grocery list'. Filters items by status
+        (needs_action, completed, all).
+      parameters:
+        type: object
+        properties:
+          todo_list: {type: string, enum: [Shopping list]}
+          status: {type: string, enum: [needs_action, completed, all], description: "Filter returned items by status, by default returns incomplete items", default: needs_action}
+        required: [todo_list]
+    - name: todo__HassListAddItem
+      description: Add item to a todo list
+      parameters: &list_item {type: object, properties: {item: {type: string}, name: {type: string}}, required: [item, name]}
+    - name: todo__HassListCompleteItem
+      description: Complete item on a todo list
+      parameters: *list_item
+    - name: todo__HassListRemoveItem
+      description: Remove one or more items from a todo list
+      parameters: *list_item
