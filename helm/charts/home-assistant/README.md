@@ -15,11 +15,14 @@ node. Toggle via `hostNetwork` in `values.yaml`.
 - **LAN (Traefik):** https://home-assistant.homelab.local
 - **Remote (Tailscale):** `home-assistant.<tailnet>` via the Tailscale ingress.
 
-Both go through a reverse proxy that sets `X-Forwarded-For`. The chart seeds a
-`configuration.yaml` with `http.use_x_forwarded_for` + `trusted_proxies` (see
-`trustedProxies` in `values.yaml`) on first boot; without it HA returns
-`400 Bad Request` for proxied requests. The seed only runs when no
-`configuration.yaml` exists yet, so your later edits are preserved.
+Both go through a reverse proxy that sets `X-Forwarded-For`; without
+`use_x_forwarded_for` + `trusted_proxies` HA returns `400 Bad Request` for
+proxied requests. Since HA 2026.10 these live in the UI (**Settings > System >
+Network**), not in `configuration.yaml` (the YAML `http:` block stops working
+in 2027.2). The current install already has them (imported from the old YAML
+block, which the init container then strips). On a **fresh install**, onboard
+via `http://192.168.0.142:8123` (hostNetwork) and set: use X-Forwarded-For =
+on, trusted proxies = `10.42.0.0/16` (k3s pod CIDR) and `127.0.0.1`.
 
 ## Storage
 

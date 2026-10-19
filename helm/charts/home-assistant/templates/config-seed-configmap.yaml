@@ -23,11 +23,3 @@ data:
     automation: !include automations.yaml
     script: !include scripts.yaml
     scene: !include scenes.yaml
-
-    # Required so HA accepts requests forwarded by the Traefik ingress.
-    http:
-      use_x_forwarded_for: true
-      trusted_proxies:
-      {{- range .Values.trustedProxies }}
-        - {{ . }}
-      {{- end }}

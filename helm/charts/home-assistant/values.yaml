@@ -42,13 +42,6 @@ persistence:
   storageClassName: "local-path"
   configStorage: 10Gi               # holds SQLite recorder DB + config
 
-# Reverse-proxy CIDRs HA will trust for X-Forwarded-For (k3s default pod CIDR
-# plus loopback). Used by the seeded configuration.yaml. Update if your pod
-# CIDR differs.
-trustedProxies:
-  - 10.42.0.0/16
-  - 127.0.0.1
-
 resources:
   requests:
     cpu: 100m

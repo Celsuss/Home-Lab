@@ -39,11 +39,9 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       initContainers:
-        # Seed a working configuration.yaml on first boot only. Home Assistant
-        # sits behind Traefik, which sets X-Forwarded-For; without
-        # use_x_forwarded_for + trusted_proxies HA returns 400 for every
-        # request through the ingress. We only copy if no config exists yet so
-        # we never clobber the user's own edits on later restarts.
+        # Seed a working configuration.yaml on first boot only. We only copy
+        # if no config exists yet so we never clobber the user's own edits on
+        # later restarts.
         - name: config-seed
           image: busybox:1.36
           command:
@@ -69,6 +67,23 @@ spec:
               else
                 echo "Appending packages include to configuration.yaml"
                 printf '\n# Added by the home-assistant Helm chart: YAML from git (helm/charts/home-assistant/packages/).\nhomeassistant:\n  packages: !include_dir_named packages\n' >> /config/configuration.yaml
+              fi
+              # HA >= 2026.10 configures `http:` from the UI (Settings >
+              # System > Network) and imports an existing YAML block once;
+              # the YAML block stops working in 2027.2. Older seeds wrote
+              # one — drop it, but only after HA has imported it into
+              # .storage so the proxy settings are never lost.
+              if grep -q '^http:' /config/configuration.yaml; then
+                if grep -rqs 'use_x_forwarded_for' /config/.storage; then
+                  echo "Removing deprecated http: block (already imported by HA)"
+                  awk '/^# Required so HA accepts requests forwarded by the Traefik ingress\.$/ { next }
+                       /^http:/ { skip = 1; next }
+                       skip && /^[^ \t]/ { skip = 0 }
+                       !skip' /config/configuration.yaml > /config/configuration.yaml.tmp \
+                    && mv /config/configuration.yaml.tmp /config/configuration.yaml
+                else
+                  echo "http: block present but not yet imported by HA, leaving it"
+                fi
               fi
               # HA only creates these on a fresh onboarding (same contents as
               # HA would write); the seed's includes must not point at
