@@ -5,7 +5,7 @@ namespace: home-assistant
 image:
   repository: ghcr.io/home-assistant/home-assistant
   pullPolicy: IfNotPresent
-  tag: "stable"                     # pin a dated tag (e.g. 2026.6) for controlled upgrades
+  tag: "2026.10.2"                  # pinned; bump deliberately (2026.9 renamed the LLM tools, see docs/plans/2026-10-12-mcp-improvements.md)
 
 # Put the pod directly on the node's LAN so mDNS/DHCP device auto-discovery
 # works (Chromecast, HomeKit, ESPHome, etc.). Disable to run as a normal

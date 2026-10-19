@@ -10,6 +10,9 @@
 #                         answer (no call) also passes.
 #   avoid: homelab        pass on anything except a homelab-mcp call (HA
 #                         intents or a text answer are fine).
+#   forbid: [tool, ...]   fail if any call in the turn is one of these, not
+#                         just the first (HA runs them all). Combines with
+#                         expect/avoid.
 #
 # A call written as text (gemma4's `name{arg:<|"|>x<|"|>}`) always fails.
 # Add the cases for each new tool in the same change that adds the tool.

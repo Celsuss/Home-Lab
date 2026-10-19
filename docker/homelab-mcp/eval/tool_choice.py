@@ -93,8 +93,9 @@ def system_message(prompt: str, ha: dict) -> str:
     )
 
 
-def chat(ollama_url: str, body: dict) -> tuple[str, str]:
-    """One request. Returns (outcome, detail): outcome is a tool name, "text tool call" or "no call"."""
+def chat(ollama_url: str, body: dict) -> tuple[str, str, list[str]]:
+    """One request. Returns (outcome, detail, called): outcome is the first tool's name,
+    "text tool call" or "no call"; called is every tool called in the turn."""
     content, calls = "", []
     with post(f"{ollama_url}/api/chat", body) as resp:
         for line in resp:
@@ -107,17 +108,26 @@ def chat(ollama_url: str, body: dict) -> tuple[str, str]:
         # pass after the tool result then comes back empty and Assist shows
         # "Unable to get response". Seen live with remember (2026-10-13).
         suffix = TEXT_WITH_CALL if content.strip() else ""
-        return fn["name"] + suffix, json.dumps(fn.get("arguments", {}), ensure_ascii=False)
+        detail = " ; ".join(
+            f"{c['function']['name']} {json.dumps(c['function'].get('arguments', {}), ensure_ascii=False)}"
+            for c in calls
+        )
+        return fn["name"] + suffix, detail, [c["function"]["name"] for c in calls]
     snippet = " ".join(content.split())[:80]
-    return ("text tool call" if TEXT_CALL.search(content) else "no call"), snippet
+    return ("text tool call" if TEXT_CALL.search(content) else "no call"), snippet, []
 
 
 def short(outcome: str) -> str:
     return outcome.removeprefix(PREFIX).removeprefix(HA_PREFIX)
 
 
-def passed(case: dict, outcome: str) -> bool:
+def passed(case: dict, outcome: str, called: list[str]) -> bool:
     if outcome == "text tool call" or outcome.endswith(TEXT_WITH_CALL):
+        return False
+    # HA runs every call in the turn, so a forbidden one anywhere has its side
+    # effect even when the first call is right (live 2026-10-19: add "none",
+    # then read the list).
+    if any(short(name) in case.get("forbid", []) for name in called):
         return False
     if case.get("avoid") == "homelab":
         return not outcome.startswith(PREFIX)
@@ -175,9 +185,9 @@ def main() -> int:
         body["messages"][1] = {"role": "user", "content": case["utterance"]}
         outcomes, ok, started = collections.Counter(), 0, time.monotonic()
         for _ in range(args.n):
-            outcome, detail = chat(args.ollama_url, body)
-            outcomes[short(outcome)] += 1
-            hit = passed(case, outcome)
+            outcome, detail, called = chat(args.ollama_url, body)
+            outcomes[short(outcome) + (" (+more)" if len(called) > 1 else "")] += 1
+            hit = passed(case, outcome, called)
             ok += hit
             if args.verbose:
                 print(f"    {'ok ' if hit else 'BAD'} {outcome}: {detail}")

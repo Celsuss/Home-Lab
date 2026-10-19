@@ -3,7 +3,7 @@ name: home-assistant
 description: Home Assistant home automation platform
 type: application
 version: 0.1.0
-appVersion: "stable"
+appVersion: "2026.10.2"
 dependencies:
   - name: homelab-common
     version: 0.1.0
