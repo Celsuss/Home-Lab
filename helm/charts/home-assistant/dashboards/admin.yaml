@@ -1,0 +1,63 @@
+# "System" dashboard (/dashboard-admin) — docs/plans/2026-10-20-apartment-dashboard.md.
+#
+# require_admin (packages/dashboard.yaml), so the future non-admin wall-tablet
+# user never sees it. Zigbee/Matter/Frigate health cards are added in the
+# phases that introduce them.
+title: System
+views:
+  - title: System
+    path: system
+    icon: mdi:cog-outline
+    type: sections
+    max_columns: 3
+    sections:
+      - type: grid
+        cards:
+          - type: heading
+            heading: Unavailable entities
+            icon: mdi:alert-circle-outline
+          - type: markdown
+            content: >-
+              {% set ids = states
+                 | selectattr('state', 'eq', 'unavailable')
+                 | map(attribute='entity_id') | list %}
+              {% if ids %}{% for id in ids %}
+              - `{{ id }}` ({{ state_attr(id, 'friendly_name') }})
+              {% endfor %}{% else %}
+              Everything is reachable.
+              {% endif %}
+            grid_options:
+              columns: full
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Updates
+            icon: mdi:update
+          - type: markdown
+            content: >-
+              {% set ups = states.update | selectattr('state', 'eq', 'on') | list %}
+              {% if ups %}{% for u in ups %}
+              - **{{ u.name }}**: {{ u.attributes.installed_version }} →
+                {{ u.attributes.latest_version }}
+              {% endfor %}{% else %}
+              No updates pending. Home Assistant itself is pinned in
+              `helm/charts/home-assistant/values.yaml`.
+              {% endif %}
+            grid_options:
+              columns: full
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Lab
+            icon: mdi:server-network
+          - type: markdown
+            content: |
+              - [Uptime Kuma](https://uptime-kuma.homelab.local)
+              - [Glance](https://glance.homelab.local)
+              - [Integrations](/config/integrations/dashboard)
+              - [Repairs](/config/repairs)
+              - [Logs](/config/logs)
+            grid_options:
+              columns: full

@@ -1,0 +1,41 @@
+# Dashboards in git — docs/plans/2026-10-20-apartment-dashboard.md, Phase 0.
+#
+# Registers the YAML dashboards in helm/charts/home-assistant/dashboards/
+# (mounted read-only at /config/dashboards). Registering or renaming a
+# dashboard needs an HA restart (this package carries the pod's checksum);
+# editing a dashboard file does not — the ConfigMap volume updates in place
+# within ~1 min and HA re-reads the file on the next page load.
+#
+# The template sensors below feed the dashboards' badges and the admin view.
+lovelace:
+  dashboards:
+    dashboard-home:
+      mode: yaml
+      filename: dashboards/home.yaml
+      title: Home
+      icon: mdi:home
+      show_in_sidebar: true
+      require_admin: false
+    # Maintenance view, kept off the daily dashboard (and hidden from the
+    # future non-admin wall-tablet user).
+    dashboard-admin:
+      mode: yaml
+      filename: dashboards/admin.yaml
+      title: System
+      icon: mdi:cog-outline
+      show_in_sidebar: true
+      require_admin: true
+
+template:
+  - sensor:
+      - name: "Lights on"
+        unique_id: dashboard_lights_on
+        icon: mdi:lightbulb-group
+        state: "{{ states.light | selectattr('state', 'eq', 'on') | list | count }}"
+      # Entities that exist but are unreachable (a lamp switched off at the
+      # wall, a camera offline, an integration down). Iterating all states is
+      # rate-limited by HA to one update per minute.
+      - name: "Unavailable entities"
+        unique_id: dashboard_unavailable_entities
+        icon: mdi:alert-circle-outline
+        state: "{{ states | selectattr('state', 'eq', 'unavailable') | list | count }}"

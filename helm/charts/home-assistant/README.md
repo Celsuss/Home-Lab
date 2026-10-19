@@ -55,7 +55,58 @@ Current packages: `announcements.yaml` (Phase 2 Google Home smoke test),
 `telegram.yaml` (Phase 4 Telegram chat), `music.yaml` (`script.play_music`
 tool for the agent — Navidrome via Music Assistant, see
 `helm/charts/music-assistant/README.md`), `calendar.yaml` (morning briefing
-and event reminders, see "Calendar (Proton)").
+and event reminders, see "Calendar (Proton)"), `dashboard.yaml` (registers
+the YAML dashboards below, plus their template sensors).
+
+## Dashboards in git: `dashboards/`
+
+Plan: `docs/plans/2026-10-20-apartment-dashboard.md`. Every
+`dashboards/*.yaml` file is a YAML-mode dashboard. It is rendered into a
+ConfigMap, mounted read-only at `/config/dashboards`, and registered under
+`lovelace: dashboards:` in `packages/dashboard.yaml`:
+
+| File | URL | Who |
+|---|---|---|
+| `home.yaml` | `/dashboard-home` | Everyone. Rooms, scenes, cameras, energy. |
+| `admin.yaml` | `/dashboard-admin` | Admins only (`require_admin`). Unavailable entities, updates, lab links. |
+
+- **Editing a dashboard needs no restart.** The ConfigMap volume updates in
+  place about a minute after the ArgoCD sync, and HA re-reads the file on the
+  next page load. That's why the dashboards ConfigMap is deliberately not in
+  the pod's checksum annotations.
+- **Adding or renaming a dashboard** means editing `packages/dashboard.yaml`,
+  which restarts the pod.
+- The dashboards are read-only in the UI ("Edit dashboard" shows the YAML).
+  Prototype a card in a scratch UI dashboard, then copy its YAML here.
+- Entity ids follow the plan's naming convention. A card whose entity
+  doesn't exist yet shows "Entity not available". This is expected for
+  devices that haven't been paired.
+- YAML anchors (`&light_tile` / `<<: *light_tile`) are fine. HA's loader
+  supports them, and they keep repeated cards short.
+- **Default dashboard** (one-time UI step): Settings → Dashboards → Home →
+  ⋮ → Set as default. In the Companion app it's per device: Settings →
+  Companion app → the server → Default dashboard.
+
+## HACS
+
+HACS (custom integrations and cards, needed for the Frigate integration) is
+installed by the `hacs-install` init container. It installs the release
+pinned in `values.yaml` (`hacs.version` + `hacs.sha256`) only if
+`/config/custom_components/hacs` is missing, and never touches an existing
+install. After that, HACS updates itself from the UI. If the download fails,
+the container logs a warning and HA starts without HACS.
+
+One-time setup after the first install:
+
+1. **Settings → Devices & services → Add integration → HACS**, tick the
+   acknowledgements, and complete GitHub's device-code login.
+2. Frontend cards from HACS are registered as dashboard resources in
+   storage mode (the default), which is HACS's normal flow. The YAML
+   dashboards can use them without any extra config.
+
+To reinstall or downgrade: delete `/config/custom_components/hacs`, bump
+`hacs.version` and `hacs.sha256` (`sha256sum hacs.zip` of the release
+asset), push.
 
 ## Secrets
 

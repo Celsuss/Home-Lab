@@ -96,6 +96,39 @@ spec:
               mountPath: /config
             - name: config-seed
               mountPath: /seed
+        {{- if .Values.hacs.enabled }}
+        # Install HACS (https://hacs.xyz) once, at a pinned and checksummed
+        # release. After that HACS updates itself from the UI, so an
+        # existing install is never touched. A failed download only logs a
+        # warning: HA must still start without HACS.
+        - name: hacs-install
+          image: {{ .Values.hacs.installImage | quote }}
+          command:
+            - sh
+            - -c
+            - |
+              dest=/config/custom_components/hacs
+              if [ -f "$dest/manifest.json" ]; then
+                echo "HACS already installed, leaving it to update itself"
+                exit 0
+              fi
+              url="https://github.com/hacs/integration/releases/download/{{ .Values.hacs.version }}/hacs.zip"
+              echo "Installing HACS {{ .Values.hacs.version }} from $url"
+              if ! wget -q -O /tmp/hacs.zip "$url"; then
+                echo "WARNING: HACS download failed, starting without it"
+                exit 0
+              fi
+              if ! echo "{{ .Values.hacs.sha256 }}  /tmp/hacs.zip" | sha256sum -c -; then
+                echo "WARNING: HACS checksum mismatch, not installing"
+                exit 0
+              fi
+              mkdir -p "$dest"
+              unzip -q -o /tmp/hacs.zip -d "$dest"
+              echo "HACS installed; add it in Settings > Devices & services"
+          volumeMounts:
+            - name: config
+              mountPath: /config
+        {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           {{- with .Values.securityContext }}
@@ -129,6 +162,9 @@ spec:
             - name: packages
               mountPath: /config/packages
               readOnly: true
+            - name: dashboards
+              mountPath: /config/dashboards
+              readOnly: true
       volumes:
         - name: config
           persistentVolumeClaim:
@@ -139,6 +175,9 @@ spec:
         - name: packages
           configMap:
             name: {{ include "home-assistant.fullname" . }}-packages
+        - name: dashboards
+          configMap:
+            name: {{ include "home-assistant.fullname" . }}-dashboards
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

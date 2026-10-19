@@ -1,0 +1,20 @@
+---
+# Every file in the chart's dashboards/ directory is a YAML-mode dashboard,
+# mounted read-only at /config/dashboards and registered under `lovelace:
+# dashboards:` in packages/dashboard.yaml. Copied verbatim, like packages/.
+#
+# Deliberately NOT in the deployment's checksum annotations: HA re-reads a
+# YAML dashboard on the next page load, and the ConfigMap volume updates in
+# place, so a dashboard edit needs no pod restart.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "home-assistant.fullname" . }}-dashboards
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "home-assistant.labels" . | nindent 4 }}
+data:
+{{- range $path, $_ := .Files.Glob "dashboards/*.yaml" }}
+  {{ base $path }}: |
+{{ $.Files.Get $path | indent 4 }}
+{{- end }}

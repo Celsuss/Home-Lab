@@ -38,6 +38,15 @@ tailscale:
   enabled: true
   serviceName: home-assistant
 
+# HACS (custom integrations/cards, needed for Frigate). Installed once by an
+# init container, then self-updating from the UI. To reinstall a different
+# release, delete /config/custom_components/hacs and bump these.
+hacs:
+  enabled: true
+  version: "2.0.5"
+  sha256: "97be6b824a4f38e683728cc6dd72367f6b8bad0a43428b1b3b987a3087adf413"
+  installImage: "alpine:3.22"        # busybox wget (HTTPS via ssl_client), unzip, sha256sum
+
 persistence:
   storageClassName: "local-path"
   configStorage: 10Gi               # holds SQLite recorder DB + config

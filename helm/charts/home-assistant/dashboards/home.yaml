@@ -1,0 +1,312 @@
+# "Home" dashboard (/dashboard-home) — docs/plans/2026-10-20-apartment-dashboard.md.
+#
+# Registered in packages/dashboard.yaml. Edits here need no HA restart: the
+# file is re-read on the next page load (allow ~1 min for the ConfigMap to
+# update after an ArgoCD sync).
+#
+# Entity ids follow the plan's naming convention (<domain>.<area>_<thing>).
+# Until a device is paired and renamed to match, its card shows "Entity not
+# available" — that is expected before the move.
+#
+# Built-in cards only. Phase 3 swaps the camera cards for the Advanced Camera
+# Card (HACS) once Frigate exists.
+title: Home
+views:
+  # ── 1. Home: the landing page (phone and, later, the wall tablet) ──────
+  - title: Home
+    path: home
+    icon: mdi:home
+    type: sections
+    max_columns: 4
+    badges:
+      - type: entity
+        entity: zone.home              # number of people home
+        name: Home
+        show_name: true
+        icon: mdi:home-account
+      - type: entity
+        entity: weather.forecast_home
+        state_content: temperature
+      - type: entity
+        entity: sensor.lights_on
+        name: Lights on
+        show_name: true
+        tap_action:
+          action: navigate
+          navigation_path: /dashboard-home/living
+      - type: entity
+        entity: sensor.unavailable_entities
+        name: Unavailable
+        show_name: true
+        color: red
+        tap_action:
+          action: navigate
+          navigation_path: /dashboard-admin/system
+        visibility:
+          - condition: numeric_state
+            entity: sensor.unavailable_entities
+            above: 0
+    sections:
+      - type: grid
+        cards:
+          - type: heading
+            heading: Quick actions
+            icon: mdi:gesture-tap
+          - &scene_button
+            type: button
+            entity: scene.morning
+            name: Morning
+            icon: mdi:weather-sunny
+            show_state: false
+            grid_options:
+              columns: 4
+              rows: 2
+          - <<: *scene_button
+            entity: scene.evening
+            name: Evening
+            icon: mdi:weather-sunset
+          - <<: *scene_button
+            entity: scene.movie
+            name: Movie
+            icon: mdi:movie-open
+          - <<: *scene_button
+            entity: script.good_night
+            name: Good night
+            icon: mdi:bed
+          - <<: *scene_button
+            entity: script.leaving_home
+            name: Leaving
+            icon: mdi:door-open
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Kitchen & living room
+            icon: mdi:sofa
+            tap_action:
+              action: navigate
+              navigation_path: /dashboard-home/living
+          - &light_tile
+            type: tile
+            entity: light.kitchen_ceiling
+            features:
+              - type: light-brightness
+            features_position: bottom
+          - <<: *light_tile
+            entity: light.living_room_floor_lamp
+          - type: tile
+            entity: switch.kitchen_coffee_maker
+          - type: tile
+            entity: switch.living_room_tv_socket
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Bedroom
+            icon: mdi:bed-king-outline
+            tap_action:
+              action: navigate
+              navigation_path: /dashboard-home/bedroom
+          - <<: *light_tile
+            entity: light.bedroom_ceiling
+          - <<: *light_tile
+            entity: light.bedroom_bedside
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Cameras
+            icon: mdi:cctv
+            tap_action:
+              action: navigate
+              navigation_path: /dashboard-home/cameras
+          - type: picture-entity
+            entity: camera.living_room
+            camera_view: auto
+            show_state: false
+          - type: tile
+            entity: input_boolean.camera_privacy
+            name: Privacy mode
+            icon: mdi:eye-off
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Now playing
+            icon: mdi:music
+          - type: media-control
+            entity: media_player.den_speaker
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Today
+            icon: mdi:calendar-today
+          - type: weather-forecast
+            entity: weather.forecast_home
+            forecast_type: daily
+            show_current: true
+            show_forecast: true
+          - type: calendar
+            entities:
+              - calendar.proton
+            initial_view: listWeek
+
+  # ── 2. Kitchen & living room (one open room, two HA areas) ─────────────
+  - title: Kitchen & living room
+    path: living
+    icon: mdi:sofa
+    type: sections
+    max_columns: 3
+    sections:
+      - type: grid
+        cards:
+          - type: heading
+            heading: Lights
+            icon: mdi:lightbulb-group
+          - &light_tile_full
+            type: tile
+            entity: light.kitchen_ceiling
+            features:
+              - type: light-brightness
+              - type: light-color-temp
+            features_position: bottom
+            grid_options:
+              columns: full
+          - <<: *light_tile_full
+            entity: light.living_room_floor_lamp
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Sockets
+            icon: mdi:power-socket-eu
+          - type: tile
+            entity: switch.kitchen_coffee_maker
+          - type: tile
+            entity: sensor.kitchen_coffee_maker_power
+            name: Coffee maker power
+          - type: tile
+            entity: switch.living_room_tv_socket
+          - type: tile
+            entity: sensor.living_room_tv_socket_power
+            name: TV socket power
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Camera
+            icon: mdi:cctv
+          - type: picture-entity
+            entity: camera.living_room
+            camera_view: live
+            show_state: false
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Scenes
+            icon: mdi:palette
+          - <<: *scene_button
+            entity: scene.evening
+            name: Evening
+            icon: mdi:weather-sunset
+          - <<: *scene_button
+            entity: scene.movie
+            name: Movie
+            icon: mdi:movie-open
+
+  # ── 3. Bedroom ─────────────────────────────────────────────────────────
+  - title: Bedroom
+    path: bedroom
+    icon: mdi:bed-king-outline
+    type: sections
+    max_columns: 3
+    sections:
+      - type: grid
+        cards:
+          - type: heading
+            heading: Lights
+            icon: mdi:lightbulb-group
+          - <<: *light_tile_full
+            entity: light.bedroom_ceiling
+          - <<: *light_tile_full
+            entity: light.bedroom_bedside
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Scenes
+            icon: mdi:palette
+          - <<: *scene_button
+            entity: script.good_night
+            name: Good night
+            icon: mdi:bed
+
+  # ── 4. Cameras ─────────────────────────────────────────────────────────
+  - title: Cameras
+    path: cameras
+    icon: mdi:cctv
+    type: sections
+    max_columns: 2
+    sections:
+      - type: grid
+        cards:
+          - type: heading
+            heading: Live
+            icon: mdi:cctv
+          - type: picture-entity
+            entity: camera.living_room
+            camera_view: live
+            show_state: false
+            grid_options:
+              columns: full
+      - type: grid
+        cards:
+          - type: heading
+            heading: Privacy
+            icon: mdi:eye-off
+          - type: tile
+            entity: input_boolean.camera_privacy
+            name: Privacy mode
+            features:
+              - type: toggle
+            features_position: inline
+
+  # ── 5. Energy and sockets (only meaningful if the plugs meter power) ───
+  - title: Energy
+    path: energy
+    icon: mdi:lightning-bolt
+    type: sections
+    max_columns: 2
+    sections:
+      - type: grid
+        cards:
+          - type: heading
+            heading: Power now
+            icon: mdi:flash
+          - type: tile
+            entity: sensor.kitchen_coffee_maker_power
+            name: Coffee maker
+          - type: tile
+            entity: sensor.living_room_tv_socket_power
+            name: TV socket
+      - type: grid
+        cards:
+          - type: heading
+            heading: Energy per day
+            icon: mdi:chart-bar
+          - type: statistics-graph
+            title: Last 7 days
+            chart_type: bar
+            period: day
+            days_to_show: 7
+            stat_types:
+              - change
+            entities:
+              - entity: sensor.kitchen_coffee_maker_energy
+                name: Coffee maker
+              - entity: sensor.living_room_tv_socket_energy
+                name: TV socket
+            grid_options:
+              columns: full
