@@ -1,0 +1,149 @@
+---
+namespace: games
+
+image:
+  repository: rommapp/romm
+  # The full image, not -slim: slim drops the bundled EmulatorJS/Ruffle cores
+  # that in-browser play needs.
+  tag: "5.4.0"
+  pullPolicy: IfNotPresent
+
+romm:
+  # Public URL, used for links RomM generates (invites, OIDC redirects).
+  baseUrl: https://romm.homelab.local
+  timezone: Europe/Stockholm
+  # Both ingresses terminate TLS, so session/CSRF cookies are marked Secure.
+  # Logging in over plain http://romm.homelab.local will silently fail.
+  secureCookie: true
+  # Concurrent API workers / ROMs hashed per scan. Each API worker is a full
+  # Python process (~150 MB), so keep these low on the shared node.
+  webServerConcurrency: 2
+  scanWorkers: 2
+  # Free metadata sources that need no account. Keyed sources (IGDB,
+  # ScreenScraper, SteamGridDB, RetroAchievements) switch on by adding their
+  # keys to Vault - see the README.
+  hasheous: true
+  launchbox: true
+  # Nightly rescan picks up ROMs copied straight into the library PVC.
+  scheduledRescan:
+    enabled: true
+    cron: "0 3 * * *"
+  # Extra plain env vars, e.g. {LOGLEVEL: DEBUG}.
+  extraEnv: {}
+
+# Kanidm SSO. Off until the OAuth2 client exists in Kanidm (README has the
+# commands). Username/password login keeps working alongside it, which matters
+# because Kanidm on *.homelab.local is unreachable from off-LAN devices.
+oidc:
+  enabled: false
+  provider: kanidm
+  clientId: romm
+  # Kanidm's per-client issuer; the metadata URL is derived from it.
+  issuerUrl: https://kanidm.homelab.local/oauth2/openid/romm
+  redirectUri: https://romm.homelab.local/api/oauth/openid
+  # Kanidm serves a homelab-ca certificate; trust-manager syncs the CA bundle
+  # into every namespace.
+  caBundle:
+    configMapName: homelab-ca-bundle
+    key: ca-certificates.crt
+  # Kanidm group (as it appears in the `groups` claim) mapped to RomM roles.
+  # Anyone else who can log in becomes a viewer.
+  claimRoles: groups
+  roleAdmin: "romm_admins@kanidm.homelab.local"
+  roleEditor: ""
+  roleViewer: "*"
+
+postgres:
+  image:
+    repository: postgres
+    tag: "16-alpine"
+    pullPolicy: IfNotPresent
+  database: romm
+  user: romm
+  persistence:
+    storageClassName: local-path
+    storage: 2Gi
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  livenessProbe:
+    exec:
+      command: ["pg_isready", "-U", "romm"]
+    initialDelaySeconds: 30
+    periodSeconds: 30
+  readinessProbe:
+    exec:
+      command: ["pg_isready", "-U", "romm"]
+    initialDelaySeconds: 5
+    periodSeconds: 10
+
+service:
+  type: ClusterIP
+  port: 8080
+
+ingress:
+  enabled: true
+  className: traefik
+  annotations:
+    cert-manager.io/cluster-issuer: homelab-ca
+  host: romm.homelab.local
+  tls:
+    - secretName: romm-tls
+      hosts:
+        - romm.homelab.local
+
+persistence:
+  storageClassName: local-path
+  # ROMs, laid out as roms/<platform-slug>/... (README). local-path does not
+  # enforce the size; it only has to be >= what you put in it on paper.
+  library: 200Gi
+  # Covers/screenshots (resources/), uploaded saves and states (assets/) and
+  # config.yml (config/) - small, and the part worth backing up.
+  data: 5Gi
+
+vault:
+  secretPath: homelab/romm
+  secretName: romm-secrets
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 512Mi
+  limits:
+    cpu: "2"
+    memory: 2Gi
+
+livenessProbe:
+  httpGet:
+    path: /api/heartbeat
+    port: http
+  periodSeconds: 30
+  timeoutSeconds: 5
+
+readinessProbe:
+  httpGet:
+    path: /api/heartbeat
+    port: http
+  periodSeconds: 10
+  timeoutSeconds: 5
+
+# First start runs the database migrations before nginx answers.
+startupProbe:
+  httpGet:
+    path: /api/heartbeat
+    port: http
+  periodSeconds: 10
+  failureThreshold: 60
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+tailscale:
+  enabled: true

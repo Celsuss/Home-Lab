@@ -1,0 +1,11 @@
+---
+apiVersion: v2
+name: romm
+description: A Helm chart for RomM - self-hosted ROM library manager and in-browser player
+type: application
+version: 0.1.0
+appVersion: "5.4.0"
+dependencies:
+  - name: homelab-common
+    version: 0.1.0
+    repository: "file://../homelab-common"

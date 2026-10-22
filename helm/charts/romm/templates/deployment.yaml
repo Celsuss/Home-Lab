@@ -1,0 +1,174 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "romm.fullname" . }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "romm.labels" . | nindent 4 }}
+    app.kubernetes.io/component: server
+spec:
+  replicas: 1
+  # RWO volumes and an in-container Valkey: one pod at a time.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "romm.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: server
+  template:
+    metadata:
+      labels:
+        {{- include "romm.labels" . | nindent 8 }}
+        app.kubernetes.io/component: server
+    spec:
+      initContainers:
+        # RomM runs its migrations on start and exits if the DB is not up yet.
+        - name: wait-for-db
+          image: "{{ .Values.postgres.image.repository }}:{{ .Values.postgres.image.tag }}"
+          imagePullPolicy: {{ .Values.postgres.image.pullPolicy }}
+          command:
+            - /bin/sh
+            - -c
+            - until pg_isready -h {{ include "romm.fullname" . }}-db -p 5432 -U {{ .Values.postgres.user }}; do sleep 2; done
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          # ROMM_AUTH_SECRET_KEY, POSTGRES_PASSWORD and any metadata API keys
+          # (IGDB_*, SCREENSCRAPER_*, STEAMGRIDDB_API_KEY,
+          # RETROACHIEVEMENTS_API_KEY, OIDC_CLIENT_SECRET) come straight from
+          # the Vault-synced secret, so adding a key in Vault is enough.
+          envFrom:
+            - secretRef:
+                name: {{ .Values.vault.secretName }}
+          env:
+            - name: TZ
+              value: {{ .Values.romm.timezone | quote }}
+            - name: ROMM_BASE_URL
+              value: {{ .Values.romm.baseUrl | quote }}
+            - name: ROMM_SESSION_SECURE_COOKIE
+              value: {{ .Values.romm.secureCookie | quote }}
+            - name: ROMM_DB_DRIVER
+              value: postgresql
+            - name: DB_HOST
+              value: {{ include "romm.fullname" . }}-db
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_NAME
+              value: {{ .Values.postgres.database }}
+            - name: DB_USER
+              value: {{ .Values.postgres.user }}
+            - name: DB_PASSWD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.vault.secretName }}
+                  key: POSTGRES_PASSWORD
+            - name: WEB_SERVER_CONCURRENCY
+              value: {{ .Values.romm.webServerConcurrency | quote }}
+            - name: SCAN_WORKERS
+              value: {{ .Values.romm.scanWorkers | quote }}
+            - name: HASHEOUS_API_ENABLED
+              value: {{ .Values.romm.hasheous | quote }}
+            - name: LAUNCHBOX_API_ENABLED
+              value: {{ .Values.romm.launchbox | quote }}
+            - name: ENABLE_SCHEDULED_UPDATE_LAUNCHBOX_METADATA
+              value: {{ .Values.romm.launchbox | quote }}
+            - name: ENABLE_SCHEDULED_RESCAN
+              value: {{ .Values.romm.scheduledRescan.enabled | quote }}
+            - name: SCHEDULED_RESCAN_CRON
+              value: {{ .Values.romm.scheduledRescan.cron | quote }}
+            {{- if .Values.oidc.enabled }}
+            - name: OIDC_ENABLED
+              value: "true"
+            - name: OIDC_PROVIDER
+              value: {{ .Values.oidc.provider | quote }}
+            - name: OIDC_CLIENT_ID
+              value: {{ .Values.oidc.clientId | quote }}
+            - name: OIDC_REDIRECT_URI
+              value: {{ .Values.oidc.redirectUri | quote }}
+            - name: OIDC_SERVER_APPLICATION_URL
+              value: {{ .Values.oidc.issuerUrl | quote }}
+            - name: OIDC_SERVER_METADATA_URL
+              value: "{{ .Values.oidc.issuerUrl }}/.well-known/openid-configuration"
+            - name: OIDC_TLS_CACERTFILE
+              value: /etc/homelab-ca/{{ .Values.oidc.caBundle.key }}
+            - name: OIDC_CLAIM_ROLES
+              value: {{ .Values.oidc.claimRoles | quote }}
+            - name: OIDC_ROLE_ADMIN
+              value: {{ .Values.oidc.roleAdmin | quote }}
+            - name: OIDC_ROLE_EDITOR
+              value: {{ .Values.oidc.roleEditor | quote }}
+            - name: OIDC_ROLE_VIEWER
+              value: {{ .Values.oidc.roleViewer | quote }}
+            {{- end }}
+            {{- range $name, $value := .Values.romm.extraEnv }}
+            - name: {{ $name }}
+              value: {{ $value | quote }}
+            {{- end }}
+          volumeMounts:
+            - name: library
+              mountPath: /romm/library
+            - name: data
+              mountPath: /romm/resources
+              subPath: resources
+            - name: data
+              mountPath: /romm/assets
+              subPath: assets
+            - name: data
+              mountPath: /romm/config
+              subPath: config
+            # Task queue cache for the bundled Valkey; safe to lose on restart.
+            - name: redis-data
+              mountPath: /redis-data
+            {{- if .Values.oidc.enabled }}
+            - name: homelab-ca
+              mountPath: /etc/homelab-ca
+              readOnly: true
+            {{- end }}
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.readinessProbe }}
+          readinessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.startupProbe }}
+          startupProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      volumes:
+        - name: library
+          persistentVolumeClaim:
+            claimName: {{ include "romm.fullname" . }}-library-pvc
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ include "romm.fullname" . }}-data-pvc
+        - name: redis-data
+          emptyDir: {}
+        {{- if .Values.oidc.enabled }}
+        - name: homelab-ca
+          configMap:
+            name: {{ .Values.oidc.caBundle.configMapName }}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
