@@ -22,6 +22,10 @@ spec:
         {{- include "romm.labels" . | nindent 8 }}
         app.kubernetes.io/component: server
     spec:
+      # The Service is named `romm`, so docker-link env vars would inject
+      # ROMM_PORT=tcp://<ClusterIP>:8080 and clobber RomM's own ROMM_PORT,
+      # which nginx then rejects as a listen address.
+      enableServiceLinks: false
       initContainers:
         # RomM runs its migrations on start and exits if the DB is not up yet.
         - name: wait-for-db
@@ -49,6 +53,8 @@ spec:
           env:
             - name: TZ
               value: {{ .Values.romm.timezone | quote }}
+            - name: ROMM_PORT
+              value: "8080"
             - name: ROMM_BASE_URL
               value: {{ .Values.romm.baseUrl | quote }}
             - name: ROMM_SESSION_SECURE_COOKIE
