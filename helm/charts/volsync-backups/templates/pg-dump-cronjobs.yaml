@@ -1,0 +1,72 @@
+{{/*
+PostgreSQL logical dump CronJobs.
+Run before PVC backup windows to ensure database consistency.
+Dumps are written to a PVC that gets backed up by Volsync.
+*/}}
+{{- range .Values.databaseDumps }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ .name }}
+  namespace: {{ .namespace }}
+  labels:
+    {{- include "volsync-backups.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: database-dump
+spec:
+  schedule: {{ .schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/component: database-dump
+            app.kubernetes.io/name: {{ .name }}
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: pg-dump
+              image: postgres:16-alpine
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 128Mi
+                limits:
+                  cpu: 500m
+                  memory: 256Mi
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -e
+                  mkdir -p {{ .dumpDir }}
+                  DUMP_FILE="{{ .dumpDir }}/{{ .name }}.dump"
+                  echo "Starting pg_dump for {{ .database }} at $(date -u +%Y-%m-%dT%H:%M:%SZ)..."
+                  PGPASSWORD="$POSTGRES_PASSWORD" pg_dump \
+                    -h {{ .host }} \
+                    -p {{ .port }} \
+                    -U {{ .user }} \
+                    -d {{ .database }} \
+                    --format=custom \
+                    --compress=6 \
+                    -f "$DUMP_FILE"
+                  echo "pg_dump completed: $(ls -lh $DUMP_FILE)"
+              env:
+                - name: POSTGRES_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ .secretName }}
+                      key: {{ .secretKey }}
+              volumeMounts:
+                - name: dump-volume
+                  mountPath: {{ .dumpDir }}
+                  subPath: backups
+          volumes:
+            - name: dump-volume
+              persistentVolumeClaim:
+                claimName: {{ .dumpPvc }}
+{{- end }}

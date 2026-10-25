@@ -1,0 +1,7 @@
+---
+apiVersion: v2
+name: rclone-restic
+description: restic REST gateway (rclone serve restic) that stores VolSync backups in Google Drive
+type: application
+version: 0.1.0
+appVersion: "1.75.2"

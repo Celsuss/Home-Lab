@@ -1,0 +1,248 @@
+---
+vault:
+  secretPath: homelab/volsync
+
+# Restic repositories are served by the rclone-restic gateway, which stores
+# them in Google Drive (one folder per backup target). See the rclone-restic
+# chart README.
+repository:
+  baseUrl: "rest:http://rclone-restic.volsync-system.svc.cluster.local:8080"
+  # restic pack size in MiB. 64 instead of the default 16 cuts the number of
+  # files 4x, which matters with Drive's ~2 file creations/second.
+  packSizeMiB: 64
+
+restic:
+  tier1:
+    retain:
+      daily: 7
+      weekly: 4
+      monthly: 3
+  tier2:
+    retain:
+      daily: 5
+      weekly: 2
+
+# ---------------------------------------------------------------------------
+# Backup targets
+# ---------------------------------------------------------------------------
+# Each entry generates: 1 ReplicationSource + 1 VaultStaticSecret + 1 K8s Secret
+# PVC names VERIFIED against live cluster on 2026-03-22
+# Schedules staggered across 00:00–06:45 to avoid I/O storms on single node
+
+backups:
+  # --- Tier 1: Critical (7d/4w/3m retention) ---
+  - name: vault-data
+    namespace: vault
+    pvcName: data-vault-server-0
+    schedule: "0 0 * * *"
+    tier: 1
+
+  - name: khoj-postgres
+    namespace: ai-workloads
+    pvcName: postgres-data-khoj-app-postgres-0
+    schedule: "30 0 * * *"
+    tier: 1
+
+  - name: khoj-redis
+    namespace: ai-workloads
+    pvcName: redis-data-khoj-app-redis-0
+    schedule: "0 1 * * *"
+    tier: 1
+
+  - name: khoj-server
+    namespace: ai-workloads
+    pvcName: khoj-app-server-pvc
+    schedule: "30 1 * * *"
+    tier: 1
+
+  - name: tandoor-postgres
+    namespace: tandoor
+    pvcName: tandoor-recipes-postgres
+    schedule: "0 2 * * *"
+    tier: 1
+
+  - name: tandoor-media
+    namespace: tandoor
+    pvcName: tandoor-recipes-media
+    schedule: "15 2 * * *"
+    tier: 1
+
+  - name: kanidm-data
+    namespace: kanidm
+    pvcName: data-kanidm-0
+    schedule: "30 2 * * *"
+    tier: 1
+
+  - name: forgejo-data
+    namespace: forgejo
+    pvcName: gitea-shared-storage
+    schedule: "0 3 * * *"
+    tier: 1
+
+  # --- Tier 2: Important (5d/2w retention) ---
+  - name: uptime-kuma
+    namespace: monitoring
+    pvcName: uptime-kuma
+    schedule: "30 3 * * *"
+    tier: 2
+
+  - name: ezbookkeeping-data
+    namespace: finance
+    pvcName: ezbookkeeping-data-pvc
+    schedule: "45 3 * * *"
+    tier: 2
+
+  - name: ezbookkeeping-storage
+    namespace: finance
+    pvcName: ezbookkeeping-storage-pvc
+    schedule: "0 4 * * *"
+    tier: 2
+
+  - name: audiobookshelf-config
+    namespace: media
+    pvcName: audiobookshelf-config-pvc
+    schedule: "15 4 * * *"
+    tier: 2
+
+  - name: audiobookshelf-metadata
+    namespace: media
+    pvcName: audiobookshelf-metadata-pvc
+    schedule: "30 4 * * *"
+    tier: 2
+
+  - name: donetick-data
+    namespace: utils
+    pvcName: donetick-data-pvc
+    schedule: "45 4 * * *"
+    tier: 2
+
+  - name: beszel
+    namespace: monitoring
+    pvcName: beszel-pvc
+    schedule: "0 5 * * *"
+    tier: 2
+
+  - name: open-webui
+    namespace: ai-workloads
+    pvcName: open-webui-pvc
+    schedule: "15 5 * * *"
+    tier: 2
+
+  - name: karakeep
+    namespace: karakeep
+    pvcName: karakeep-pvc
+    schedule: "30 5 * * *"
+    tier: 2
+
+  - name: meilisearch
+    namespace: karakeep
+    pvcName: meilisearch-pvc
+    schedule: "45 5 * * *"
+    tier: 2
+
+  - name: woodpecker-server
+    namespace: woodpecker
+    pvcName: data-woodpecker-app-server-0
+    schedule: "0 6 * * *"
+    tier: 2
+
+  - name: woodpecker-agent
+    namespace: woodpecker
+    pvcName: agent-config-woodpecker-app-agent-0
+    schedule: "15 6 * * *"
+    tier: 2
+
+  - name: jellyfin-config
+    namespace: media
+    pvcName: jellyfin-config-pvc
+    schedule: "30 6 * * *"
+    tier: 2
+
+  - name: navidrome-data
+    namespace: media
+    pvcName: navidrome-data-pvc
+    schedule: "45 6 * * *"
+    tier: 2
+
+  # Shared assistant memory (SQLite-vec + cached embedding model).
+  - name: mcp-memory-service
+    namespace: ai-workloads
+    pvcName: mcp-memory-service-pvc
+    schedule: "0 7 * * *"
+    tier: 2
+
+  # RomM saves/states, covers and config.yml, plus the nightly pg_dump in
+  # backups/. Tier 1: uploaded saves exist nowhere else. The ROM library PVC
+  # (romm-library-pvc) is deliberately not backed up - too large to upload.
+  - name: romm-data
+    namespace: games
+    pvcName: romm-data-pvc
+    schedule: "15 7 * * *"
+    tier: 1
+
+# ---------------------------------------------------------------------------
+# Namespaces needing VSO resources (ServiceAccount + VaultAuth)
+# ---------------------------------------------------------------------------
+# Namespaces that already have VaultAuth "default": ai-workloads, forgejo,
+# games, karakeep, tandoor, utils, woodpecker — these are skipped.
+
+vsoNamespaces:
+  - vault
+  - kanidm
+  - monitoring
+  - finance
+  - media
+
+# ---------------------------------------------------------------------------
+# PostgreSQL logical dump CronJobs (run before PVC backup for consistency)
+# ---------------------------------------------------------------------------
+databaseDumps:
+  - name: khoj-pg-dump
+    namespace: ai-workloads
+    schedule: "30 23 * * *"
+    host: khoj-app-postgres
+    port: 5432
+    database: khoj_production
+    user: khoj
+    secretName: khoj-app-secrets
+    secretKey: POSTGRES_PASSWORD
+    dumpPvc: khoj-app-server-pvc
+    dumpDir: /backups
+
+  - name: tandoor-pg-dump
+    namespace: tandoor
+    schedule: "45 23 * * *"
+    host: tandoor-recipes-postgres
+    port: 5432
+    database: tandoor
+    user: tandoor
+    secretName: tandoor-recipes-secrets
+    secretKey: POSTGRES_PASSWORD
+    dumpPvc: tandoor-recipes-media
+    dumpDir: /backups
+
+  - name: romm-pg-dump
+    namespace: games
+    schedule: "55 23 * * *"
+    host: romm-db
+    port: 5432
+    database: romm
+    user: romm
+    secretName: romm-secrets
+    secretKey: POSTGRES_PASSWORD
+    dumpPvc: romm-data-pvc
+    dumpDir: /backups
+
+# ---------------------------------------------------------------------------
+# Vault raft snapshot CronJob
+# ---------------------------------------------------------------------------
+vaultSnapshot:
+  enabled: true
+  schedule: "50 23 * * *"
+  image: hashicorp/vault:1.18.0
+  vaultAddr: "http://vault-server.vault.svc.cluster.local:8200"
+  tokenSecretName: vault-root-token
+  tokenSecretKey: token
+  snapshotPvc: data-vault-server-0
+  snapshotDir: /vault/data
+  keepCount: 3

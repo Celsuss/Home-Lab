@@ -1,0 +1,5 @@
+---
+apiVersion: v2
+name: volsync-backups
+description: Central backup configuration for all homelab PVCs via Volsync
+version: 0.1.0

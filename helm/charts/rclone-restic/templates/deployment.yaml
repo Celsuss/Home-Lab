@@ -1,0 +1,107 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "rclone-restic.fullname" . }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "rclone-restic.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "rclone-restic.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "rclone-restic.labels" . | nindent 8 }}
+    spec:
+      enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      initContainers:
+        # rclone writes the refreshed access token back to its config, so the
+        # config lives in a writable emptyDir instead of the read-only Secret.
+        # The long-lived refresh token stays in Vault.
+        - name: render-config
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              umask 077
+              printf '[gdrive]\ntype = drive\nclient_id = %s\nclient_secret = %s\nscope = drive.file\ntoken = %s\n' \
+                "$CLIENT_ID" "$CLIENT_SECRET" "$TOKEN" > /config/rclone.conf
+          envFrom:
+            - secretRef:
+                name: {{ .Values.vault.secretName }}
+          volumeMounts:
+            - name: config
+              mountPath: /config
+      containers:
+        - name: rclone
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - serve
+            - restic
+            - "gdrive:{{ .Values.drive.remotePath }}"
+            - --addr=:8080
+            - --drive-chunk-size={{ .Values.drive.chunkSize }}
+            # Hitting the 750 GiB/day cap fails the backup instead of retrying
+            # for hours; the next schedule picks up where it stopped.
+            - --drive-stop-on-upload-limit
+            {{- with .Values.drive.tpsLimit }}
+            - --tpslimit={{ . }}
+            {{- end }}
+            - -v
+          env:
+            - name: RCLONE_CONFIG
+              value: /config/rclone.conf
+            - name: RCLONE_CACHE_DIR
+              value: /cache
+            # Basic auth for the REST API; the movers send the same pair as
+            # RESTIC_REST_USERNAME/RESTIC_REST_PASSWORD.
+            - name: RCLONE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.vault.secretName }}
+                  key: REST_USER
+            - name: RCLONE_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.vault.secretName }}
+                  key: REST_PASS
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          # TCP probes: every HTTP request, OPTIONS included, needs auth.
+          readinessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: cache
+              mountPath: /cache
+      volumes:
+        - name: config
+          emptyDir: {}
+        - name: cache
+          emptyDir: {}

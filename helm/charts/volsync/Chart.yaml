@@ -1,0 +1,10 @@
+---
+apiVersion: v2
+name: my-volsync
+description: Wrapper chart to deploy Volsync backup operator
+version: 0.1.0
+
+dependencies:
+  - name: volsync
+    version: "0.11.0"
+    repository: "https://backube.github.io/helm-charts/"

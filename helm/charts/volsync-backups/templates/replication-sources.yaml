@@ -1,0 +1,30 @@
+{{- range .Values.backups }}
+---
+apiVersion: volsync.backube/v1alpha1
+kind: ReplicationSource
+metadata:
+  name: backup-{{ .name }}
+  namespace: {{ .namespace }}
+  labels:
+    {{- include "volsync-backups.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: backup
+    volsync-backups/tier: {{ .tier | quote }}
+spec:
+  sourcePVC: {{ .pvcName }}
+  trigger:
+    schedule: {{ .schedule | quote }}
+  restic:
+    pruneIntervalDays: 7
+    repository: volsync-{{ .name }}-secret
+    copyMethod: Direct
+    cacheCapacity: 1Gi
+    retain:
+      {{- if eq (int .tier) 1 }}
+      daily: {{ $.Values.restic.tier1.retain.daily }}
+      weekly: {{ $.Values.restic.tier1.retain.weekly }}
+      monthly: {{ $.Values.restic.tier1.retain.monthly }}
+      {{- else }}
+      daily: {{ $.Values.restic.tier2.retain.daily }}
+      weekly: {{ $.Values.restic.tier2.retain.weekly }}
+      {{- end }}
+{{- end }}

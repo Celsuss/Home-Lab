@@ -1,0 +1,34 @@
+---
+namespace: volsync-system
+
+image:
+  repository: rclone/rclone
+  tag: "1.75.2"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8080
+
+drive:
+  # Folder in "My Drive" that holds one restic repository per backup target.
+  remotePath: homelab-backups
+  # Packs are 64 MiB (RESTIC_PACK_SIZE in volsync-backups), so one chunk per
+  # pack. Each in-flight upload buffers a chunk, hence the memory limit.
+  chunkSize: 64M
+  # Leave unset unless the log shows 403 "rate limit exceeded".
+  tpsLimit: ""
+
+# OAuth client, token and the REST login live in Vault:
+#   CLIENT_ID, CLIENT_SECRET, TOKEN, REST_USER, REST_PASS
+vault:
+  secretPath: homelab/rclone-gdrive
+  secretName: rclone-restic-secrets
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: "1"
+    memory: 768Mi
