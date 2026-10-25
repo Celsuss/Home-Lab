@@ -1,0 +1,26 @@
+---
+# CSI VolumeSnapshot CRDs. K3s doesn't ship them, and the VolSync controller
+# watches VolumeSnapshots on start-up (even with copyMethod: Direct) and
+# crash-loops without them. CRDs only: local-path can't take snapshots, so no
+# snapshot-controller is deployed.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: snapshot-crds
+  namespace: argo-cd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/kubernetes-csi/external-snapshotter.git
+    path: client/config/crd
+    targetRevision: v8.6.0
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: kube-system
+  syncPolicy:
+    automated:
+      # Never prune: deleting a CRD deletes every object of that kind.
+      prune: false
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true
