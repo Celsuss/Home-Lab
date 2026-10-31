@@ -115,6 +115,17 @@ views:
       - type: grid
         cards:
           - type: heading
+            heading: Hallway
+            icon: mdi:door
+            tap_action:
+              action: navigate
+              navigation_path: /dashboard-home/hallway
+          - <<: *light_tile
+            entity: light.hallway_lamp
+
+      - type: grid
+        cards:
+          - type: heading
             heading: Cameras
             icon: mdi:cctv
             tap_action:
@@ -134,8 +145,24 @@ views:
           - type: heading
             heading: Now playing
             icon: mdi:music
-          - type: media-control
-            entity: media_player.den_speaker
+          - &media_card
+            type: media-control
+            entity: media_player.den_speaker      # Google Home
+          - <<: *media_card
+            entity: media_player.living_room_tv   # Chromecast in the TV
+          - <<: *media_card
+            entity: media_player.living_room_voice  # HA Voice (Voice PE)
+          # Voice PE state: idle / listening / processing / responding
+          - &voice_status
+            type: tile
+            entity: assist_satellite.living_room_voice
+            name: HA Voice
+            grid_options:
+              columns: 6
+          - <<: *voice_status
+            entity: switch.living_room_voice_mute
+            name: Mic muted
+            icon: mdi:microphone-off
 
       - type: grid
         cards:
@@ -195,6 +222,23 @@ views:
       - type: grid
         cards:
           - type: heading
+            heading: Media
+            icon: mdi:television-play
+          - <<: *media_card
+            entity: media_player.living_room_tv
+          - <<: *media_card
+            entity: media_player.den_speaker
+          - <<: *media_card
+            entity: media_player.living_room_voice
+          - <<: *voice_status
+          - <<: *voice_status
+            entity: switch.living_room_voice_mute
+            name: Mic muted
+            icon: mdi:microphone-off
+
+      - type: grid
+        cards:
+          - type: heading
             heading: Camera
             icon: mdi:cctv
           - type: picture-entity
@@ -243,7 +287,22 @@ views:
             name: Good night
             icon: mdi:bed
 
-  # ── 4. Cameras ─────────────────────────────────────────────────────────
+  # ── 4. Hallway (entrance) ──────────────────────────────────────────────
+  - title: Hallway
+    path: hallway
+    icon: mdi:door
+    type: sections
+    max_columns: 2
+    sections:
+      - type: grid
+        cards:
+          - type: heading
+            heading: Lights
+            icon: mdi:lightbulb-group
+          - <<: *light_tile_full
+            entity: light.hallway_lamp
+
+  # ── 5. Cameras ─────────────────────────────────────────────────────────
   - title: Cameras
     path: cameras
     icon: mdi:cctv
@@ -273,7 +332,7 @@ views:
               - type: toggle
             features_position: inline
 
-  # ── 5. Energy and sockets (only meaningful if the plugs meter power) ───
+  # ── 6. Energy and sockets (only meaningful if the plugs meter power) ───
   - title: Energy
     path: energy
     icon: mdi:lightning-bolt
