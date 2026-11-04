@@ -6,5 +6,7 @@ type: application
 version: 0.1.0
 dependencies:
   - name: k8s-gateway
-    version: "2.4.0"
-    repository: https://ori-edge.github.io/k8s_gateway
+    # Upstream moved ori-edge (GitHub, image on quay.io, now gone) -> k8s-gateway
+    # on Codeberg. Stay on 3.7.x: 4.x replaces domain/watchedResources with `servers`.
+    version: "3.7.4"
+    repository: "oci://codeberg.org/k8s-gateway/charts"
