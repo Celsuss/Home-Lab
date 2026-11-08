@@ -80,7 +80,7 @@ chrome:
   name: chrome
 
   image:
-    repository: gcr.io/zenika-hub/alpine-chrome
+    repository: docker.io/zenika/alpine-chrome
     pullPolicy: IfNotPresent
     tag: "123"
 
