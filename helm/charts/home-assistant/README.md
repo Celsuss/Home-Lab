@@ -117,7 +117,7 @@ tag tarball (checksummed), and reinstalls it whenever the installed
 `manifest.json` version differs from the pinned one. To upgrade, bump
 `version` and `sha256` and push. Don't also install these through HACS.
 
-Currently: **Adaptive Lighting**, configured in `packages/adaptive-lighting.yaml`.
+Currently: **Adaptive Lighting**, configured in `packages/adaptive_lighting.yaml`.
 It makes `light.bedroom_ceiling` and `light.hallway_lamp` follow the sun, and
 creates `switch.adaptive_lighting_apartment` and
 `switch.adaptive_lighting_apartment_sleep_mode` (both on the Bedroom view).

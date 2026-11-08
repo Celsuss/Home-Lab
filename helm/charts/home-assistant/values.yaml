@@ -56,7 +56,7 @@ hacs:
 customComponents:
   installImage: "alpine:3.22"
   components:
-    - domain: adaptive_lighting       # config: packages/adaptive-lighting.yaml
+    - domain: adaptive_lighting       # config: packages/adaptive_lighting.yaml
       repo: basnijholt/adaptive-lighting
       version: "v1.32.0"
       sha256: "ac29d5e76cb8461e882f0f13c60fd438b83fdce0e23e18690f50ed3f10a07934"
