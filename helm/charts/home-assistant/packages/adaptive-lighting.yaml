@@ -1,0 +1,45 @@
+# Adaptive Lighting: the bedroom (Deltaco, via Tuya) and hallway (Yeelight)
+# bulbs follow one sun-based curve, so they always show the same light:
+# bright, cool white during the day, warm and dim in the evening, and a dim
+# amber "sleep mode" at night.
+#
+# Prerequisite: the adaptive_lighting custom integration, installed by the
+# chart's custom-components-install init container (customComponents in
+# values.yaml). This YAML is authoritative: HA imports it into a config entry
+# on every start, overwriting changes made in the UI, and removing the profile
+# here deletes it.
+#
+# Entities (profile "apartment"):
+#   switch.adaptive_lighting_apartment             on/off for the whole thing
+#   switch.adaptive_lighting_apartment_sleep_mode  night mode
+# Changing a light by hand (colour, brightness) pauses adaptation for that
+# light until it's turned off and on again.
+adaptive_lighting:
+  - name: apartment
+    lights:
+      - light.bedroom_ceiling           # Deltaco (Tuya)
+      - light.hallway_lamp              # Yeelight
+    # The day curve. Bulbs clamp these to their own range, so a bulb that
+    # can't go below e.g. 2700 K stays a bit whiter than the other.
+    min_color_temp: 2200
+    max_color_temp: 5000
+    min_brightness: 30
+    max_brightness: 100
+    # Stockholm's sunrise/sunset swing from ~03:30/22:00 to ~08:45/14:45.
+    # Clamp them so it's never full daylight at 04:00 in summer, and the
+    # evening doesn't turn cosy at 15:00 in winter.
+    min_sunrise_time: "06:00:00"
+    max_sunrise_time: "08:00:00"
+    min_sunset_time: "18:00:00"
+    max_sunset_time: "21:00:00"
+    # Sleep mode uses RGB rather than a colour temperature, so both bulbs show
+    # the same amber even if one can't go warm enough in white mode.
+    sleep_rgb_or_color_temp: rgb_color
+    sleep_rgb_color: [255, 56, 0]
+    sleep_brightness: 5
+    # The Deltaco is controlled through the Tuya cloud: update every 2 min
+    # instead of 90 s to stay clear of its rate limit. It ignores
+    # transitions; the Yeelight fades.
+    interval: 120
+    transition: 45
+    take_over_control: true

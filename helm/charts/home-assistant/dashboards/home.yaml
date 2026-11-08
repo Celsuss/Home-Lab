@@ -276,6 +276,14 @@ views:
             entity: light.bedroom_ceiling
           - <<: *light_tile_full
             entity: light.bedroom_bedside
+          - type: tile
+            entity: switch.adaptive_lighting_apartment
+            name: Adaptive lighting
+            icon: mdi:theme-light-dark
+          - type: tile
+            entity: switch.adaptive_lighting_apartment_sleep_mode
+            name: Sleep mode
+            icon: mdi:sleep
 
       - type: grid
         cards:

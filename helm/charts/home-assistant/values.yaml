@@ -47,6 +47,20 @@ hacs:
   sha256: "97be6b824a4f38e683728cc6dd72367f6b8bad0a43428b1b3b987a3087adf413"
   installImage: "alpine:3.22"        # busybox wget (HTTPS via ssl_client), unzip, sha256sum
 
+# Custom integrations installed from git instead of through HACS, so the
+# version is pinned here. On every start an init container compares the
+# installed manifest.json version with `version` and reinstalls from the
+# GitHub tag tarball when they differ. To upgrade: bump version + sha256
+# (`sha256sum` of https://github.com/<repo>/archive/refs/tags/<version>.tar.gz), push.
+# Don't also install these through HACS.
+customComponents:
+  installImage: "alpine:3.22"
+  components:
+    - domain: adaptive_lighting       # config: packages/adaptive-lighting.yaml
+      repo: basnijholt/adaptive-lighting
+      version: "v1.32.0"
+      sha256: "ac29d5e76cb8461e882f0f13c60fd438b83fdce0e23e18690f50ed3f10a07934"
+
 persistence:
   storageClassName: "local-path"
   configStorage: 10Gi               # holds SQLite recorder DB + config

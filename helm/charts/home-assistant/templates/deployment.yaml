@@ -129,6 +129,50 @@ spec:
             - name: config
               mountPath: /config
         {{- end }}
+        {{- with .Values.customComponents.components }}
+        # Install the custom integrations pinned in values.yaml
+        # (customComponents), reinstalling whenever the installed version
+        # differs. Like hacs-install, failures only log a warning.
+        - name: custom-components-install
+          image: {{ $.Values.customComponents.installImage | quote }}
+          command:
+            - sh
+            - -c
+            - |
+              install() {
+                domain=$1 repo=$2 version=$3 sha256=$4
+                dest=/config/custom_components/$domain
+                if grep -qs "\"version\": \"${version#v}\"" "$dest/manifest.json"; then
+                  echo "$domain ${version#v} already installed"
+                  return
+                fi
+                url="https://github.com/$repo/archive/refs/tags/$version.tar.gz"
+                echo "Installing $domain $version from $url"
+                if ! wget -q -O "/tmp/$domain.tar.gz" "$url"; then
+                  echo "WARNING: $domain download failed, leaving it as is"
+                  return
+                fi
+                if ! echo "$sha256  /tmp/$domain.tar.gz" | sha256sum -c -; then
+                  echo "WARNING: $domain checksum mismatch, not installing"
+                  return
+                fi
+                mkdir -p "/tmp/$domain" && tar -xzf "/tmp/$domain.tar.gz" -C "/tmp/$domain"
+                src=$(find "/tmp/$domain" -type d -path "*/custom_components/$domain" | head -n 1)
+                if [ -z "$src" ]; then
+                  echo "WARNING: no custom_components/$domain in the $repo tarball"
+                  return
+                fi
+                mkdir -p /config/custom_components
+                rm -rf "$dest" && cp -r "$src" "$dest"
+                echo "$domain $version installed"
+              }
+              {{- range . }}
+              install {{ .domain | quote }} {{ .repo | quote }} {{ .version | quote }} {{ .sha256 | quote }}
+              {{- end }}
+          volumeMounts:
+            - name: config
+              mountPath: /config
+        {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           {{- with .Values.securityContext }}

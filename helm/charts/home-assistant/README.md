@@ -108,6 +108,20 @@ To reinstall or downgrade: delete `/config/custom_components/hacs`, bump
 `hacs.version` and `hacs.sha256` (`sha256sum hacs.zip` of the release
 asset), push.
 
+## Custom integrations from git
+
+Custom integrations that should be pinned in git rather than managed by HACS
+are listed under `customComponents.components` in `values.yaml`. The
+`custom-components-install` init container installs each one from its GitHub
+tag tarball (checksummed), and reinstalls it whenever the installed
+`manifest.json` version differs from the pinned one. To upgrade, bump
+`version` and `sha256` and push. Don't also install these through HACS.
+
+Currently: **Adaptive Lighting**, configured in `packages/adaptive-lighting.yaml`.
+It makes `light.bedroom_ceiling` and `light.hallway_lamp` follow the sun, and
+creates `switch.adaptive_lighting_apartment` and
+`switch.adaptive_lighting_apartment_sleep_mode` (both on the Bedroom view).
+
 ## Secrets
 
 No Kubernetes-injected secrets are required — Home Assistant manages its own
@@ -355,8 +369,21 @@ server/storage sensors and an Immich media source (albums and people in the
 HA media browser). There's no LLM tool for photo search yet. A
 `search_photos` tool in homelab-mcp is the planned follow-up.
 
-## Future: Zigbee / Z-Wave USB coordinators
+## Smart-home devices: Matter over Thread
 
-When you add a USB coordinator stick you'll need a `hostPath` device volume
-(e.g. `/dev/ttyUSB0`), `nodeSelector` pinning HA to the node with the stick,
-and device/privileged access. Not configured yet.
+The apartment's IKEA plugs and lamps are Matter over Thread. HA itself needs
+no USB device. The radio and the protocol stacks run as their own charts in
+this namespace, all on the host network:
+
+| Chart | Role | HA integration (URL) |
+|---|---|---|
+| `matter-server` | Matter controller (fabric, pairing) | **Matter** (`ws://127.0.0.1:5580/ws`) |
+| `otbr` | Thread border router on a ZBT-2 stick | **OpenThread Border Router** (`http://127.0.0.1:8081`), then **Thread** |
+
+Bring-up order and pairing steps are in `helm/charts/otbr/README.md`. Name
+devices by the convention in "Assist conventions" right after pairing each
+one.
+
+A Zigbee or Z-Wave stick would still need a `hostPath` device volume and
+device access on this pod (the cluster is a single node, so no
+`nodeSelector`). Not planned: the IKEA devices are Thread.
