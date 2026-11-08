@@ -1,7 +1,7 @@
-# Adaptive Lighting: the bedroom (Deltaco, via Tuya) and hallway (Yeelight)
-# bulbs follow one sun-based curve, so they always show the same light:
-# bright, cool white during the day, warm and dim in the evening, and a dim
-# amber "sleep mode" at night.
+# Adaptive Lighting: the bedroom (Deltaco, via Tuya Local) and hallway
+# (Yeelight) bulbs follow one sun-based curve, so they always show the same
+# light: bright, neutral-warm white during the day, warm and dim in the
+# evening, and a dim amber "sleep mode" at night.
 #
 # Prerequisite: the adaptive_lighting custom integration, installed by the
 # chart's custom-components-install init container (customComponents in
@@ -17,12 +17,12 @@
 adaptive_lighting:
   - name: apartment
     lights:
-      - light.bedroom_ceiling           # Deltaco (Tuya)
+      - light.bedroom_ceiling           # Deltaco (Tuya Local, HACS)
       - light.hallway_lamp              # Yeelight
     # The day curve. Bulbs clamp these to their own range, so a bulb that
     # can't go below e.g. 2700 K stays a bit whiter than the other.
     min_color_temp: 2200
-    max_color_temp: 5000
+    max_color_temp: 4000              # 5000 felt too cold
     min_brightness: 30
     max_brightness: 100
     # Stockholm's sunrise/sunset swing from ~03:30/22:00 to ~08:45/14:45.
@@ -37,9 +37,7 @@ adaptive_lighting:
     sleep_rgb_or_color_temp: rgb_color
     sleep_rgb_color: [255, 56, 0]
     sleep_brightness: 5
-    # The Deltaco is controlled through the Tuya cloud: update every 2 min
-    # instead of 90 s to stay clear of its rate limit. It ignores
-    # transitions; the Yeelight fades.
-    interval: 120
+    # Both bulbs are controlled locally, so the default 90 s interval is fine.
+    interval: 90
     transition: 45
     take_over_control: true
