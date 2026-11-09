@@ -106,6 +106,12 @@ models:
       dir: diffusion_models
       url: https://huggingface.co/Comfy-Org/Flux-2-Klein-4B/resolve/main/split_files/diffusion_models/flux-2-klein-4b.safetensors
       sha256: ec3d4e733a771f61c052fb4856c48b336c55eaf2c65487c2a1faeb9bbda7a343
+    # Non-distilled base model (slower, more steps; the LoRA training target).
+    # The Klein text-to-image template loads it alongside the distilled one.
+    - name: flux-2-klein-base-4b.safetensors
+      dir: diffusion_models
+      url: https://huggingface.co/Comfy-Org/Flux-2-Klein-4B/resolve/main/split_files/diffusion_models/flux-2-klein-base-4b.safetensors
+      sha256: 9c5fed22b76baea749d88fc2abe3ad53245e7b21a0d353a762665eea00043b92
     - name: qwen_3_4b.safetensors
       dir: text_encoders
       url: https://huggingface.co/Comfy-Org/Flux-2-Klein-4B/resolve/main/split_files/text_encoders/qwen_3_4b.safetensors
