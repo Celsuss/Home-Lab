@@ -6,7 +6,7 @@ image:
   # Docker Hub, built by the upstream project. The non-slim image; -slim
   # variants exist too.
   repository: docker.io/doobidoo/mcp-memory-service
-  tag: "11.15.0"
+  tag: "12.4.0"
   pullPolicy: IfNotPresent
 
 service:
