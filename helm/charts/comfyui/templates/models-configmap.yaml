@@ -1,0 +1,46 @@
+{{- if and .Values.persistence.enabled .Values.models.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "comfyui.fullname" . }}-models-cm
+  labels:
+    {{- include "comfyui.labels" . | nindent 4 }}
+data:
+  # One model per line: <models subdir> <filename> <sha256> <url>
+  models.txt: |
+    {{- range .Values.models.files }}
+    {{ .dir }} {{ .name }} {{ .sha256 }} {{ .url }}
+    {{- end }}
+  download-models.sh: |
+    #!/bin/sh
+    # Download each listed model into <basedir>/models/<dir>/<name> if it is
+    # not already there. Files are fetched to a .partial (resumable), checked
+    # against their sha256 and only then renamed, so an existing final file is
+    # always a complete, verified download and is never fetched again.
+    set -eu
+    models_dir=/data/basedir/models
+    while read -r dir name sha url; do
+      [ -n "$dir" ] || continue
+      dest="$models_dir/$dir/$name"
+      if [ -f "$dest" ]; then
+        echo "== $dir/$name already present, skipping"
+        continue
+      fi
+      mkdir -p "$models_dir/$dir"
+      # A pod killed between download and rename leaves a complete .partial;
+      # resuming that would fail (HTTP 416), so check it first.
+      if ! { [ -f "$dest.partial" ] && echo "$sha  $dest.partial" | sha256sum -c - >/dev/null 2>&1; }; then
+        echo "== Downloading $dir/$name"
+        curl -fL --retry 5 --retry-delay 10 -C - -o "$dest.partial" "$url"
+        echo "== Verifying $dir/$name"
+        if ! echo "$sha  $dest.partial" | sha256sum -c -; then
+          rm -f "$dest.partial"
+          echo "!! Checksum mismatch for $dir/$name, removed it" >&2
+          exit 1
+        fi
+      fi
+      mv "$dest.partial" "$dest"
+    done < /scripts/models.txt
+    echo "== All models present"
+{{- end }}

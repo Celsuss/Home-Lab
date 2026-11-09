@@ -15,10 +15,13 @@ spec:
       {{- include "comfyui.selectorLabels" . | nindent 6 }}
   template:
     metadata:
-      {{- with .Values.podAnnotations }}
       annotations:
+        {{- if and .Values.persistence.enabled .Values.models.enabled }}
+        checksum/models: {{ include (print $.Template.BasePath "/models-configmap.yaml") . | sha256sum }}
+        {{- end }}
+        {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
-      {{- end }}
+        {{- end }}
       labels:
         {{- include "comfyui.selectorLabels" . | nindent 8 }}
     spec:
@@ -46,6 +49,23 @@ spec:
           volumeMounts:
             - name: comfyui-data
               mountPath: /data
+        {{- if .Values.models.enabled }}
+        # Fetch any model in .Values.models.files that is not on the PVC yet.
+        # Runs as the comfy user so the files match the 1000:1000 ownership the
+        # entrypoint validates. First run downloads several GB; later starts skip.
+        - name: download-models
+          image: {{ .Values.models.image }}
+          command: ["sh", "/scripts/download-models.sh"]
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            runAsNonRoot: true
+          volumeMounts:
+            - name: comfyui-data
+              mountPath: /data
+            - name: models-scripts
+              mountPath: /scripts
+        {{- end }}
       {{- end }}
       containers:
         - name: {{ .Chart.Name }}
@@ -100,6 +120,11 @@ spec:
           {{- else }}
           emptyDir: {}
           {{- end }}
+        {{- if and .Values.persistence.enabled .Values.models.enabled }}
+        - name: models-scripts
+          configMap:
+            name: {{ include "comfyui.fullname" . }}-models-cm
+        {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
