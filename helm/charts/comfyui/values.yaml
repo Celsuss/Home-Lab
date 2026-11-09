@@ -10,7 +10,10 @@ image:
   pullPolicy: IfNotPresent
   # Pin to a dated build, not bare "latest" — a "latest" entrypoint change is
   # what broke the pod (it now starts as the comfytoo user, not root).
-  tag: "ubuntu24_cuda12.9-20260605"
+  # CUDA 13.0 so the entrypoint installs torch/torchvision/torchaudio from the
+  # cu130 index together (the 12.9 image mixed cu130 torch with cu129
+  # torchaudio and crashed on import). Driver 615 supports up to CUDA 13.4.
+  tag: "ubuntu24_cuda13.0-20261018"
 
 serviceAccount:
   create: true
@@ -27,6 +30,14 @@ env:
   # ComfyUI-Manager security policy (normal = allow installing custom nodes).
   - name: SECURITY_LEVEL
     value: "normal"
+  # Keep models, custom_nodes, input/output and user data in /basedir instead
+  # of inside the ComfyUI source tree. Must match persistence.baseDir.
+  - name: BASE_DIRECTORY
+    value: "/basedir"
+  # Upstream-recommended: install packages with uv instead of pip (much faster
+  # first boot; also sets ComfyUI-Manager's use_uv).
+  - name: USE_UV
+    value: "true"
 
 podSecurityContext:
   fsGroup: 1000

@@ -68,7 +68,7 @@ spec:
               path: /
               port: http
             periodSeconds: 15
-            failureThreshold: 60
+            failureThreshold: 120
           livenessProbe:
             httpGet:
               path: /

@@ -4,9 +4,9 @@ description: A Helm chart for ComfyUI, a node-based AI image generation tool (GP
 
 type: application
 
-version: 0.1.0
+version: 0.2.0
 
-appVersion: "latest"
+appVersion: "ubuntu24_cuda13.0-20261018"
 
 dependencies:
   - name: homelab-common
