@@ -5,13 +5,13 @@ name: cptr
 replicaCount: 1
 
 image:
-  # ~246 MB compressed. Debian bookworm + Python 3.12 + uv, with git, gh and
-  # tini. No compilers, no node, no sudo - the image runs as the unprivileged
-  # `cptr` user. The `-browser` tag adds Chromium for agent browser automation
-  # (much larger); `dev` tracks main.
-  repository: ghcr.io/open-webui/computer
-  # NOTE: no `v` prefix - `v0.9.21` 404s on GHCR. Same trap as open-terminal.
-  tag: "0.9.21"
+  # docker/cptr-agents: upstream ghcr.io/open-webui/computer (Debian bookworm,
+  # Python 3.12, uv, git, gh) plus the Claude Code CLI, Node LTS, curl/wget,
+  # build-essential and the Home-Lab repo tooling (helm, kubeconform, just,
+  # yamlfmt). ~2 GB. The upstream cptr version is the Dockerfile's CPTR_VERSION
+  # ARG; this tag is the CI run number printed by docker-build-and-push.yml.
+  repository: ghcr.io/celsuss/cptr-agents
+  tag: "1.0.26"
   pullPolicy: IfNotPresent
 
 service:
@@ -36,6 +36,10 @@ vault:
   secretName: cptr-secrets
   # Key inside the synced secret holding the sk-cptr-... gateway key.
   apiKeyKey: api-key
+  # `claude setup-token` output (~1 year, Pro/Max), exposed to the pod as
+  # CLAUDE_CODE_OAUTH_TOKEN. A separate token from openhands' so each can be
+  # revoked on its own. Read at pod start only: rotating it needs a restart.
+  claudeTokenKey: claude-code-oauth-token
 
 # LAN access.
 ingress:

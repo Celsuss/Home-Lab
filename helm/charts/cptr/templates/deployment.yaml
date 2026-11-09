@@ -42,6 +42,16 @@ spec:
         # ~/.gitconfig, ~/.ssh and gh auth survive a restart.
         - name: HOME
           value: /workspace
+        {{- if .Values.vault.enabled }}
+        # Claude Code authenticates with this subscription token instead of an
+        # API key, both in the terminal and when cptr's agent profiles spawn it.
+        # `claude setup-token` mints it - see README.md for rotation.
+        - name: CLAUDE_CODE_OAUTH_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.vault.secretName }}
+              key: {{ .Values.vault.claudeTokenKey }}
+        {{- end }}
         resources:
           {{- toYaml .Values.resources | nindent 10 }}
         {{- with .Values.startupProbe }}
