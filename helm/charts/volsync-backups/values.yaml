@@ -180,6 +180,16 @@ backups:
     schedule: "15 7 * * *"
     tier: 1
 
+  # cptr workstation: /data (app.db, config.toml) and /workspace ($HOME -
+  # projects, ~/.claude sessions and settings, dotfiles, gh auth). Tier 2:
+  # finished work is pushed to Forgejo (tier 1); this covers what isn't yet.
+  # The Claude token is an env var from Vault, not a file on this volume.
+  - name: cptr
+    namespace: ai-workloads
+    pvcName: cptr-pvc
+    schedule: "30 7 * * *"
+    tier: 2
+
 # ---------------------------------------------------------------------------
 # Namespaces needing VSO resources (ServiceAccount + VaultAuth)
 # ---------------------------------------------------------------------------

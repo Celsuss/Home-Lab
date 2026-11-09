@@ -2,7 +2,9 @@
 
 [Open WebUI Computer](https://github.com/open-webui/computer) is a browser-based Linux
 workstation — files, editor, terminal, git, AI chat, coding agents — reachable from a phone
-or another machine. This chart runs it in `ai-workloads` for remote work over the tailnet.
+or another machine. This chart runs it in `ai-workloads` for remote work over the tailnet,
+on a derived image (`docker/cptr-agents`) that adds **Claude Code**, billed to the Claude
+subscription rather than API credits. See [Claude Code](#claude-code).
 
 ## Read this first: what "isolated" means here
 
@@ -34,6 +36,7 @@ revisiting the threat model, not just editing `values.yaml`.
 | `automountServiceAccountToken: false` | No Kubernetes API credentials — it cannot touch the cluster it runs on |
 | `runAsUser/Group: 1000`, `runAsNonRoot`, `drop: [ALL]`, `allowPrivilegeEscalation: false`, `seccompProfile: RuntimeDefault` | Unprivileged even *inside* the container |
 | NetworkPolicy | No LAN, no other namespaces, no Vault — see below |
+| Claude subscription token | **In the pod's environment.** Anyone with a cptr login can spend the subscription — the cptr account and the tailnet are what guard it |
 
 Unlike `open-terminal`, this image needs no `sudo` (it has none) and already runs as an
 unprivileged user, so it takes a real `securityContext`. `readOnlyRootFilesystem` stays off:
@@ -67,9 +70,15 @@ survive a restart.
 
 `local-path` does not enforce the 30Gi request (it is a bind mount of a directory on the
 node's root filesystem), so that number is nominal — the node's disk was 88% full when this
-was written. **Not backed up:** push work to Forgejo, which is (tier 1, `forgejo-data`). If
-real work starts living in `/workspace`, add a tier-2 entry for `cptr-pvc` to
-`helm/charts/volsync-backups/values.yaml`.
+was written.
+
+**Backed up nightly**, tier 2 (5 daily / 2 weekly), as the `cptr` entry in
+`helm/charts/volsync-backups/values.yaml` — both subPaths, since it is the whole PVC. That
+includes `~/.claude` (session transcripts, settings), caches and anything installed into
+`$HOME`, all encrypted by restic before it reaches Google Drive. The Claude token is not on
+the volume (it is an env var from Vault). Pushed work is also in Forgejo, which is tier 1;
+the backup is for what has not been pushed yet. Keep big caches (`~/.cache`, `~/.npm`,
+`node_modules`) in check — VolSync's restic mover has no exclude list, so they are uploaded too.
 
 ## Manual steps
 
@@ -124,6 +133,30 @@ Then `vault.enabled: true` (already set) lets the VaultStaticSecret sync it to
 `cptr-secrets`. Ignore the Base URL that panel displays — it is
 `window.location.origin + /v1`, i.e. your browser's view. See below for why.
 
+### 3. Mint the Claude Code token and put it in Vault (before the pod starts)
+
+`claude setup-token` needs an interactive browser login, so run it on the desktop. It
+prints a token valid for ~1 year and saves it nowhere. Use a **new** token rather than
+openhands' — separate tokens can be revoked independently.
+
+```bash
+claude setup-token
+kubectl exec -it vault-server-0 -n vault -- /bin/sh
+```
+
+Then, inside the Vault pod:
+
+```sh
+export VAULT_ADDR="http://127.0.0.1:8200"
+vault login
+vault kv patch secret/homelab/cptr claude-code-oauth-token=-
+```
+
+`patch`, **not** `put`: `put` replaces every key at the path and would delete `api-key`.
+`=-` reads the value from stdin (paste, Enter, Ctrl-D), keeping the token out of shell
+history. If the pod starts before the key exists it sits in `CreateContainerConfigError`
+until VSO syncs it (≤60s), then recovers on its own.
+
 ## Access
 
 - **LAN:** `https://cptr.homelab.local` (Traefik, `homelab-ca` cert)
@@ -141,10 +174,80 @@ They overlap but do different jobs, and both are deployed:
 | Driven by | the model (Open WebUI proxies it) | you, in a browser |
 | UI | none — REST/WS API | full workstation |
 | Exposure | ClusterIP, no ingress | Tailscale + Traefik |
-| Image | ~1.4 GB, root-in-container, sudo | ~246 MB, unprivileged, no sudo |
+| Image | ~1.4 GB, root-in-container, sudo | ~2 GB (`cptr-agents`), unprivileged, no sudo |
 
 `open-terminal` is the LLM's tool backend; `cptr` is a workstation for a human. If the
 duplication ever needs to go, `cptr` is the one that can absorb the other's job.
+
+## Claude Code
+
+### The image
+
+`ghcr.io/celsuss/cptr-agents` is `ghcr.io/open-webui/computer` plus the tools an agent
+expects; upstream ships only Python, `uv`, `git` and `gh`. Everything downloaded is pinned
+by version **and** sha256 in `docker/cptr-agents/Dockerfile`:
+
+| Group | Tools |
+|---|---|
+| Agent | `claude` (native binary, `/usr/local/bin`) |
+| Network / data | curl, wget, jq, yq, dig, netcat, rsync |
+| Search / inspect | ripgrep, fd, tree, file, less, procps, sqlite3 |
+| Build | Node LTS + npm/npx, build-essential, shellcheck |
+| Home-Lab repo | helm, kubeconform, just, yamlfmt — enough for `just check` before a push |
+
+No kubectl on purpose: this pod has no cluster credentials. `npm i -g` installs to
+`/workspace/.npm-global` and `uv tool install` to `/workspace/.local/bin`, both on the PVC
+and both on `PATH`, so tools added at runtime survive a restart.
+
+The chart's `image.tag` is the CI run number (`1.0.<n>`) printed by
+`.github/workflows/docker-build-and-push.yml`, not the cptr version — that is the
+Dockerfile's `CPTR_VERSION` ARG. A new GHCR package starts private; this one is public,
+since the cluster has no pull secret.
+
+### Updating Claude Code
+
+The auto-updater is off (`DISABLE_AUTOUPDATER=1`; `/usr/local` is not writable by `cptr`
+anyway). To bump, read the version and checksum from Anthropic's manifest, edit
+`CLAUDE_VERSION` / `CLAUDE_SHA256` in the Dockerfile, push, then move `image.tag`:
+
+```bash
+v=$(curl -fsS https://downloads.claude.ai/claude-code-releases/stable)
+curl -fsS "https://downloads.claude.ai/claude-code-releases/$v/manifest.json" \
+  | jq -r --arg v "$v" '"CLAUDE_VERSION=\($v)\nCLAUDE_SHA256=\(.platforms["linux-x64"].checksum)"'
+```
+
+### Subscription, not API
+
+Claude Code reads `CLAUDE_CODE_OAUTH_TOKEN` (from `cptr-secrets`, see
+[Manual steps](#3-mint-the-claude-code-token-and-put-it-in-vault-before-the-pod-starts)) and
+bills the subscription; `/status` inside `claude` shows which. That is within Anthropic's
+terms because it is the **unmodified binary, signed in by the subscriber, used by the
+subscriber**. What would not be: giving the token to Open WebUI or any other app, or
+exposing this as a generic model API for other consumers. Keep the gateway reachable from
+Open WebUI only (the NetworkPolicy does) and the `cptr.*` models visible to your user only.
+Usage is shared with the desktop and openhands — one budget.
+
+Env vars are read at pod start, so a rotated token needs a restart:
+
+```bash
+kubectl rollout restart -n ai-workloads deploy/cptr
+```
+
+An expired token shows up as an authentication error printed as `claude`'s *result*, not as
+a crash.
+
+### Permissions
+
+Claude Code runs in **auto mode** (a classifier reviews each action instead of a prompt),
+set in `~/.claude/settings.json` on the PVC. That is a per-volume setting, not managed from
+git. The containment table above is the real boundary either way.
+
+### Agents and the gateway
+
+With `claude` on `PATH`, the claude code profile in **Admin → Agents** reports available.
+Choosing it as the gateway's **Response model** (Admin → Gateway), or per workspace in
+`.cptr/model`, makes the `cptr.<workspace>` models in Open WebUI answer with Claude Code in
+that workspace.
 
 ## Open WebUI integration
 
@@ -222,9 +325,8 @@ ls /var/run/secrets/kubernetes.io/ 2>&1             # absent — no service acco
 echo $HOME; touch ~/persists-across-restarts        # /workspace, writable
 ```
 
-**There is no `curl` in this image** (it installs only `gh`, `git` and `tini`) and no sudo
-to add one. Probe with Python instead — which is better anyway, because it prints the
-elapsed milliseconds that distinguish a REJECT from a DROP:
+Probe with Python rather than `curl`: it prints the elapsed milliseconds that distinguish a
+REJECT from a DROP:
 
 ```bash
 python3 - <<'EOF'
@@ -265,11 +367,10 @@ Then the real test: clone a repo from Forgejo, edit it, commit and push — from
 
 ## Notes
 
-- Image tag has **no `v` prefix**: `0.9.21`, not `v0.9.21` (which 404s on GHCR). Same trap
-  as `open-terminal` in commit `5ee5b4c`.
-- The image is Debian + Python 3.12 + `uv` + `git` + `gh`. No compilers, no Node, no sudo —
-  and `/home/cptr` is ephemeral, so `uv tool install` into `$HOME` (i.e. `/workspace`) is
-  the way to add tooling that survives a restart.
+- Upstream's tag (`CPTR_VERSION` in the Dockerfile) has **no `v` prefix**: `0.9.21`, not
+  `v0.9.21` (which 404s on GHCR). Same trap as `open-terminal` in commit `5ee5b4c`.
+- `/home/cptr` is ephemeral and the image has no sudo, so tooling that should survive a
+  restart goes into `$HOME` (`/workspace`) or into the Dockerfile.
 - Probes are TCP, not HTTP: upstream documents no health endpoint. Tighten if one appears.
-- The `-browser` tag adds Chromium for agent browser automation; much larger, and the node
-  was at 63% memory when this was written.
+- Upstream's `-browser` tag adds Chromium for agent browser automation; to use it, change
+  the Dockerfile's `FROM`. Much larger, and the node was at 63% memory when this was written.
