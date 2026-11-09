@@ -409,6 +409,12 @@ config:
                 - title: OpenHands
                   url: https://openhands.homelab.local/canvas/
                   icon: mdi:robot
+                - title: ComfyUI
+                  url: https://comfyui.homelab.local/
+                  icon: sh:comfyui
+                - title: MCP Memory
+                  url: https://memory.homelab.local/
+                  icon: mdi:brain
                 - title: Beszel
                   url: https://beszel.homelab.local/
                   icon: sh:beszel-light
@@ -457,9 +463,15 @@ config:
                 - title: Navidrome
                   url: https://navidrome.homelab.local/
                   icon: sh:navidrome
+                - title: RomM
+                  url: https://romm.homelab.local/
+                  icon: sh:romm
                 - title: Home Assistant
                   url: https://home-assistant.homelab.local/
                   icon: sh:home-assistant
+                - title: Music Assistant
+                  url: https://music-assistant.homelab.local/
+                  icon: sh:music-assistant
 
             - type: custom-api
               title: Beszel Metrics
