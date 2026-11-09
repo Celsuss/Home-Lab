@@ -29,6 +29,8 @@ jobs:
           filters: |
             argo-cd-repo-server-sops:
               - 'docker/argo-cd-repo-server-sops/**'
+            cptr-agents:
+              - 'docker/cptr-agents/**'
             homelab-mcp:
               - 'docker/homelab-mcp/**'
               - '.github/workflows/docker-build-and-push.yml'
