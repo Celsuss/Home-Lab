@@ -1,5 +1,7 @@
 ---
-replicaCount: 1
+# Scaled to 0 (2026-11-13): ComfyUI keeps models resident in VRAM (~10.6 GB)
+# indefinitely, starving Ollama. Restore to 1 once an idle-unload is in place.
+replicaCount: 0
 
 namespace: ai-workloads
 
