@@ -1,0 +1,52 @@
+---
+namespace: home-assistant           # next to HA, which is its only client
+
+image:
+  # Same image the official HA "Matter Server" add-on (9.x) builds from;
+  # replaces the archived python-matter-server. Pin and bump deliberately.
+  repository: ghcr.io/matter-js/matterjs-server
+  pullPolicy: IfNotPresent
+  tag: "1.4.0"
+
+timezone: "Europe/Stockholm"        # used for device time sync
+
+# Matter is IPv6 link-local multicast + mDNS on the LAN: host networking is
+# required (bridge/pod networking does not work).
+primaryInterface: eno1              # the node's LAN NIC (Matter/mDNS interface)
+
+# The WebSocket API has no authentication. HA runs on the host network too and
+# connects to ws://127.0.0.1:5580/ws, so bind to loopback only — the
+# controller of every Matter device is never exposed to the LAN.
+listenAddress: "127.0.0.1"
+port: 5580
+
+# Same fabric/vendor ids as the HA add-on, so the fabric looks like any other
+# Home Assistant Matter controller in the phone's / devices' fabric lists.
+fabricId: 2
+vendorId: 4939
+
+# Push the host's time to devices that support it (host is NTP-synced).
+timeSync: true
+
+logLevel: info                      # error, warning, info, debug, verbose
+
+# The fabric credentials and every commissioned node live here. Losing this
+# volume means factory-resetting and re-pairing every Matter device — back it up.
+persistence:
+  storageClassName: "local-path"
+  dataStorage: 1Gi
+
+# The image runs as uid/gid 1000 (local-path volumes are created 0777).
+securityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
+  runAsNonRoot: true
+  allowPrivilegeEscalation: false
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi

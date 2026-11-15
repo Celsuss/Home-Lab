@@ -1,0 +1,77 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "matter-server.fullname" . }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "matter-server.labels" . | nindent 4 }}
+spec:
+  replicas: 1                       # one controller per fabric; PVC is RWO
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "matter-server.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "matter-server.labels" . | nindent 8 }}
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          # All server options are env vars in this image (docs/docker.md).
+          env:
+            - name: TZ
+              value: {{ .Values.timezone | quote }}
+            - name: STORAGE_PATH
+              value: /data
+            - name: PRIMARY_INTERFACE
+              value: {{ .Values.primaryInterface | quote }}
+            - name: LISTEN_ADDRESS
+              value: {{ .Values.listenAddress | quote }}
+            - name: PORT
+              value: {{ .Values.port | quote }}
+            - name: FABRIC_ID
+              value: {{ .Values.fabricId | quote }}
+            - name: VENDOR_ID
+              value: {{ .Values.vendorId | quote }}
+            - name: ENABLE_TIME_SYNC
+              value: {{ .Values.timeSync | quote }}
+            - name: LOG_LEVEL
+              value: {{ .Values.logLevel | quote }}
+            - name: MATTER_LOG_FORMAT
+              value: plain
+          # The server binds loopback only, which kubelet's TCP/HTTP probes
+          # (aimed at the host IP) can't reach — use the image's own
+          # healthcheck, which curls /health on LISTEN_ADDRESS.
+          startupProbe:
+            exec:
+              command: ["/usr/local/bin/healthcheck.sh"]
+            periodSeconds: 10
+            failureThreshold: 90    # first start can take minutes (DCL download)
+          livenessProbe:
+            exec:
+              command: ["/usr/local/bin/healthcheck.sh"]
+            periodSeconds: 60
+            timeoutSeconds: 10
+            failureThreshold: 5
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ include "matter-server.fullname" . }}-pvc
