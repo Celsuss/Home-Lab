@@ -94,10 +94,29 @@ views:
             features_position: bottom
           - <<: *light_tile
             entity: light.living_room_floor_lamp
+          # On/off lamp on GRILLPLATS plug 1 (switch shown as light); tapping
+          # the tile toggles it instead of opening the more-info dialog.
+          - &plug_light_tile
+            type: tile
+            entity: light.living_room_bookshelf
+            name: Bookshelf lamp
+            icon: mdi:bookshelf
+            tap_action:
+              action: toggle
           - type: tile
             entity: switch.kitchen_coffee_maker
           - type: tile
             entity: switch.living_room_tv_socket
+          # TIMMERFLOTTE
+          - &climate_tile
+            type: tile
+            entity: sensor.living_room_temperature
+            name: Temperature
+            grid_options:
+              columns: 6
+          - <<: *climate_tile
+            entity: sensor.living_room_humidity
+            name: Humidity
 
       - type: grid
         cards:
@@ -202,6 +221,29 @@ views:
               columns: full
           - <<: *light_tile_full
             entity: light.living_room_floor_lamp
+          - <<: *plug_light_tile
+            grid_options:
+              columns: full
+
+      - type: grid
+        cards:
+          - type: heading
+            heading: Climate
+            icon: mdi:thermometer
+          - <<: *climate_tile
+          - <<: *climate_tile
+            entity: sensor.living_room_humidity
+            name: Humidity
+          - type: history-graph
+            title: Last 24 hours
+            hours_to_show: 24
+            entities:
+              - entity: sensor.living_room_temperature
+                name: Temperature
+              - entity: sensor.living_room_humidity
+                name: Humidity
+            grid_options:
+              columns: full
 
       - type: grid
         cards:
